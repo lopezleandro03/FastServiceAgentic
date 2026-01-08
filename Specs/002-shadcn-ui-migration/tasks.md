@@ -240,7 +240,7 @@
   - **Dependencies**: T025
   - **Parallel**: No
 
-- [ ] **T027**: Commit Phase 3 card components
+- [X] **T027**: Commit Phase 3 card components
   - **Files**: All Phase 3 files
   - **Command**: `git add . && git commit -m "feat(ui): migrate Card and Separator components (Phase 3)"`
   - **Validation**: Git commit successful
@@ -251,7 +251,7 @@
 
 ### Component Installation
 
-- [ ] **T028**: Install Table component via shadcn CLI
+- [X] **T028**: Install Table component via shadcn CLI
   - **Files**: `frontend/src/components/ui/table.tsx`
   - **Command**: `cd frontend && npx shadcn-ui@latest add table`
   - **Validation**: table.tsx exists in src/components/ui/
@@ -260,7 +260,7 @@
 
 ### Component Migration
 
-- [ ] **T029**: Migrate OrderList to use shadcn Table
+- [X] **T029**: Migrate OrderList to use shadcn Table
   - **Files**: `frontend/src/components/Orders/OrderList.tsx`
   - **Action**: Replace entire component with shadcn Table-based implementation (see quickstart.md Phase 4 Step 2)
   - **Validation**: Component imports Table, TableBody, TableCell, TableHead, TableHeader, TableRow from ../ui/table
@@ -269,7 +269,7 @@
 
 ### Testing
 
-- [ ] **T030**: Test OrderList table functionality
+- [X] **T030**: Test OrderList table functionality
   - **Files**: None (manual test)
   - **Actions**:
     - Search for orders to display list
