@@ -1,0 +1,6 @@
+@FastService.McpServer_HostAddress = http://localhost:5207
+
+GET {{FastService.McpServer_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

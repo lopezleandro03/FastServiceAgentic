@@ -1,0 +1,143 @@
+﻿@model IEnumerable<FastService.Models.VentaModel>
+
+<div class="row">
+    <div class="col-md-12">
+        <div id="jsGrid"></div>
+    </div>
+</div>
+
+<script>
+    $.datepicker.regional['es'] = {
+        closeText: 'Cerrar',
+        prevText: '< Ant',
+        nextText: 'Sig >',
+        currentText: 'Hoy',
+        monthNames: ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'],
+        monthNamesShort: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'],
+        dayNames: ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'],
+        dayNamesShort: ['Dom', 'Lun', 'Mar', 'Mié', 'Juv', 'Vie', 'Sáb'],
+        dayNamesMin: ['Do', 'Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sá'],
+        weekHeader: 'Sm',
+        dateFormat: 'dd/mm/yy',
+        firstDay: 1,
+        isRTL: false,
+        showMonthAfterYear: false,
+        yearSuffix: ''
+    };
+
+    $.datepicker.setDefaults($.datepicker.regional['es']);
+
+    var MyDateField = function (config) {
+        jsGrid.Field.call(this, config);
+    };
+
+    MyDateField.prototype = new jsGrid.Field({
+
+        css: "date-field",            // redefine general property 'css'
+        align: "center",              // redefine general property 'align'
+
+        myCustomProperty: "foo",      // custom property
+
+        sorter: function (date1, date2) {
+            return new Date(date1) - new Date(date2);
+        },
+
+        itemTemplate: function (value) {
+            return new Date(parseInt(value.substr(6))).toLocaleDateString();
+        },
+
+        insertTemplate: function (value) {
+            return this._insertPicker = $("<input>").datepicker({ defaultDate: new Date() });
+        },
+
+        editTemplate: function (value) {
+            return this._editPicker = $("<input>").datepicker().datepicker("setDate", new Date(value));
+        },
+
+        insertValue: function () {
+            return this._insertPicker.datepicker("getDate").toISOString();
+        },
+
+        editValue: function () {
+            return this._editPicker.datepicker("getDate").toISOString();
+        }
+    });
+
+    jsGrid.fields.date = MyDateField;
+
+    $("#jsGrid").jsGrid({
+        width: "100%",
+        height: "900px",
+        autoload: true,
+        heading: true,
+        filtering: true,
+        inserting: true,
+        editing: true,
+        selecting: true,
+        sorting: true,
+        paging: true,
+        pageLoading: false,
+        pageSize: 15,
+        pageIndex: 1,
+        pageButtonCount: 15,
+        deleteConfirm: "Estas seguro que quieres borrar la venta?",
+
+        pagerFormat: "Pages: {first} {prev} {pages} {next} {last}    {pageIndex} of {pageCount}",
+        pagePrevText: "Anterior",
+        pageNextText: "Siguiente",
+        pageFirstText: "Primera",
+        pageLastText: "Ultima",
+        pageNavigatorNextText: "...",
+        pageNavigatorPrevText: "...",
+
+        controller: {
+            loadData: function (filter) {
+                return $.ajax({
+                    type: "GET",
+                    url: "@Url.Action("Get","Venta")",
+                    data: filter
+                });
+            },
+            insertItem: function (item) {
+                return $.post({
+                    type: "POST",
+                    contentType: "application/json",
+                    url: "@Url.Action("Create", "Venta")",
+                    data: JSON.stringify(item),
+                    dataType: 'json'
+                });
+            },
+            updateItem: function (item) {
+                 return $.post({
+                    type: "POST",
+                    contentType: "application/json",
+                    url: "@Url.Action("Edit", "Venta")",
+                    data: JSON.stringify(item),
+                    dataType: 'json'
+                });
+            },
+            deleteItem: function (item) {
+                var VentaId = item.VentaId;
+                return $.post({
+                    type: "POST",
+                    url: "@Url.Action("Delete","Venta")",
+                    data: { VentaId: VentaId}
+                });
+            }
+        },
+
+        fields: [
+            { name: "VentaId", type: "text",title:"ID", width: 25 },
+            { name: "OrigenNombre", type: "text",title:"Origen", width: 60 },
+            { name: "Cliente.Dni", type: "text", title: "DNI", width: 50 },
+            { name: "Cliente.Nombre", type: "text", title: "Nombre",/* items: countries,*/ valueField: "Id", textField: "Name" },
+            { name: "Cliente.Apellido", type: "text", title: "Apellido", sorting: false },
+            { name: "Monto", type: "text", title: "Monto", sorting: false },
+            { name: "Descripcion", type: "text", title: "Motivo", sorting: false },
+            { name: "MetodoDePago", type: "text", title: "Forma de Pago", width: 80, sorting: false },
+            { name: "NroFactura", type: "text", title: "Factura", width: 50, sorting: false },
+            { name: "Fecha", type: "date", title: "Fecha", width: 80, sorting: false },
+            { type: "control" }
+        ]
+    });
+</script>

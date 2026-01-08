@@ -1,0 +1,427 @@
+openapi: 3.0.3
+info:
+  title: FastService Order Search API (REST Companion)
+  description: |
+    REST API companion endpoints for the FastService MCP Server.
+    The primary interface is MCP (Model Context Protocol), but these REST endpoints
+    provide direct access for debugging and non-MCP clients.
+  version: 1.0.0
+  contact:
+    name: FastService Team
+
+servers:
+  - url: https://localhost:7001/api
+    description: Local development
+  - url: https://fastservice-api.azurewebsites.net/api
+    description: Production
+
+paths:
+  /orders/search:
+    post:
+      operationId: searchOrders
+      summary: Search orders by multiple criteria
+      description: |
+        Search for orders matching the provided criteria. 
+        At least one criterion should be provided.
+        Results are limited to 50 items per request.
+      tags:
+        - Orders
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderSearchCriteria'
+            examples:
+              byOrderNumber:
+                summary: Search by order number
+                value:
+                  orderNumber: 12345
+              byCustomerName:
+                summary: Search by customer name
+                value:
+                  customerName: "Lopez"
+              byTechnicianAndStatus:
+                summary: Search by technician and status
+                value:
+                  technicianName: "Carlos"
+                  status: "En Reparación"
+      responses:
+        '200':
+          description: Search results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderSearchResult'
+        '400':
+          description: Invalid search criteria
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /orders/{orderNumber}:
+    get:
+      operationId: getOrderDetails
+      summary: Get full details for a specific order
+      tags:
+        - Orders
+      parameters:
+        - name: orderNumber
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: The order/repair ID
+      responses:
+        '200':
+          description: Order details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderDetails'
+        '404':
+          description: Order not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /orders/statuses:
+    get:
+      operationId: listOrderStatuses
+      summary: List all available order statuses
+      description: Returns all active order statuses configured in the system
+      tags:
+        - Orders
+      responses:
+        '200':
+          description: List of order statuses
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/OrderStatus'
+
+  /customers/{customerId}/orders:
+    get:
+      operationId: getCustomerOrders
+      summary: Get all orders for a customer
+      tags:
+        - Customers
+      parameters:
+        - name: customerId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: The customer ID
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+            maximum: 50
+          description: Maximum number of orders to return
+      responses:
+        '200':
+          description: Customer's orders
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/OrderSummary'
+        '404':
+          description: Customer not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    OrderSearchCriteria:
+      type: object
+      properties:
+        orderNumber:
+          type: integer
+          description: Exact order/repair ID to find
+          example: 12345
+        customerName:
+          type: string
+          description: Customer name (partial match, searches first and last name)
+          minLength: 2
+          example: "Lopez"
+        dni:
+          type: integer
+          description: Customer's national ID (DNI)
+          example: 36285548
+        technicianName:
+          type: string
+          description: Assigned technician name (partial match)
+          example: "Carlos"
+        status:
+          type: string
+          description: Order status name (exact match)
+          example: "En Reparación"
+        brand:
+          type: string
+          description: Device brand name (partial match)
+          example: "Samsung"
+        deviceType:
+          type: string
+          description: Device type name (partial match)
+          example: "TV"
+        serialNumber:
+          type: string
+          description: Device serial number (partial match)
+          example: "SN123456"
+        maxResults:
+          type: integer
+          default: 50
+          maximum: 50
+          minimum: 1
+          description: Maximum number of results to return
+
+    OrderSearchResult:
+      type: object
+      properties:
+        orders:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderSummary'
+        totalCount:
+          type: integer
+          description: Total number of matching orders (may exceed returned results)
+        hasMore:
+          type: boolean
+          description: Whether there are more results beyond the limit
+      required:
+        - orders
+        - totalCount
+        - hasMore
+
+    OrderSummary:
+      type: object
+      properties:
+        orderNumber:
+          type: integer
+          example: 12345
+        customerName:
+          type: string
+          example: "Juan Lopez"
+        status:
+          type: string
+          example: "En Reparación"
+        statusCategory:
+          type: string
+          example: "In Progress"
+        deviceType:
+          type: string
+          example: "TV"
+        brand:
+          type: string
+          example: "Samsung"
+        model:
+          type: string
+          nullable: true
+          example: "UN55AU7000"
+        technicianName:
+          type: string
+          example: "Carlos Garcia"
+        createdOn:
+          type: string
+          format: date-time
+        deliveryDate:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+        - orderNumber
+        - customerName
+        - status
+        - deviceType
+        - brand
+        - technicianName
+        - createdOn
+
+    OrderDetails:
+      type: object
+      properties:
+        orderNumber:
+          type: integer
+        createdOn:
+          type: string
+          format: date-time
+        modifiedOn:
+          type: string
+          format: date-time
+        deliveryDate:
+          type: string
+          format: date-time
+          nullable: true
+        statusId:
+          type: integer
+        status:
+          type: string
+        statusDescription:
+          type: string
+        statusCategory:
+          type: string
+        customer:
+          $ref: '#/components/schemas/CustomerInfo'
+        device:
+          $ref: '#/components/schemas/DeviceInfo'
+        repair:
+          $ref: '#/components/schemas/RepairInfo'
+        employee:
+          $ref: '#/components/schemas/UserInfo'
+        technician:
+          $ref: '#/components/schemas/UserInfo'
+      required:
+        - orderNumber
+        - createdOn
+        - modifiedOn
+        - statusId
+        - status
+        - customer
+        - device
+        - employee
+        - technician
+
+    CustomerInfo:
+      type: object
+      properties:
+        id:
+          type: integer
+        firstName:
+          type: string
+        lastName:
+          type: string
+        fullName:
+          type: string
+        dni:
+          type: integer
+          nullable: true
+        email:
+          type: string
+          nullable: true
+        phone:
+          type: string
+          nullable: true
+        address:
+          type: string
+      required:
+        - id
+        - firstName
+        - lastName
+        - fullName
+        - address
+
+    DeviceInfo:
+      type: object
+      properties:
+        type:
+          type: string
+        brand:
+          type: string
+        model:
+          type: string
+          nullable: true
+        serialNumber:
+          type: string
+          nullable: true
+      required:
+        - type
+        - brand
+
+    RepairInfo:
+      type: object
+      properties:
+        isWarranty:
+          type: boolean
+        isHomeService:
+          type: boolean
+        quote:
+          type: number
+          format: decimal
+          nullable: true
+        quoteDate:
+          type: string
+          format: date-time
+          nullable: true
+        finalPrice:
+          type: number
+          format: decimal
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        accessories:
+          type: string
+          nullable: true
+        referenceNumber:
+          type: string
+          nullable: true
+        invoiceNumber:
+          type: string
+          nullable: true
+      required:
+        - isWarranty
+        - isHomeService
+
+    UserInfo:
+      type: object
+      properties:
+        id:
+          type: integer
+        firstName:
+          type: string
+        lastName:
+          type: string
+        fullName:
+          type: string
+        email:
+          type: string
+          nullable: true
+      required:
+        - id
+        - firstName
+        - lastName
+        - fullName
+
+    OrderStatus:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+        category:
+          type: string
+          nullable: true
+      required:
+        - id
+        - name
+        - description
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error type/code
+        message:
+          type: string
+          description: Human-readable error message
+        details:
+          type: object
+          additionalProperties: true
+          description: Additional error details
+      required:
+        - error
+        - message

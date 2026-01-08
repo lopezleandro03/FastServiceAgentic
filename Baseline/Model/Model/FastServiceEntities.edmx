@@ -1,0 +1,2449 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<edmx:Edmx Version="3.0" xmlns:edmx="http://schemas.microsoft.com/ado/2009/11/edmx">
+  <!-- EF Runtime content -->
+  <edmx:Runtime>
+    <!-- SSDL content -->
+    <edmx:StorageModels>
+    <Schema Namespace="FastServiceModel.Store" Provider="System.Data.SqlClient" ProviderManifestToken="2012" Alias="Self" xmlns:store="http://schemas.microsoft.com/ado/2007/12/edm/EntityStoreSchemaGenerator" xmlns:customannotation="http://schemas.microsoft.com/ado/2013/11/edm/customannotation" xmlns="http://schemas.microsoft.com/ado/2009/11/edm/ssdl">
+        <EntityType Name="Cliente">
+          <Key>
+            <PropertyRef Name="ClienteId" />
+          </Key>
+          <Property Name="ClienteId" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="Dni" Type="int" />
+          <Property Name="Nombre" Type="varchar" MaxLength="200" Nullable="false" />
+          <Property Name="Apellido" Type="varchar" MaxLength="200" Nullable="false" />
+          <Property Name="Mail" Type="varchar" MaxLength="200" />
+          <Property Name="Telefono1" Type="varchar" MaxLength="20" />
+          <Property Name="Telefono2" Type="varchar" MaxLength="20" />
+          <Property Name="Direccion" Type="varchar" MaxLength="300" Nullable="false" />
+          <Property Name="DireccionId" Type="int" />
+          <Property Name="Localidad" Type="varchar" MaxLength="300" />
+          <Property Name="Latitud" Type="float" />
+          <Property Name="Longitud" Type="float" />
+        </EntityType>
+        <EntityType Name="Comercio">
+          <Key>
+            <PropertyRef Name="ComercioId" />
+          </Key>
+          <Property Name="ComercioId" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="Code" Type="varchar" MaxLength="100" />
+          <Property Name="Descripcion" Type="varchar" MaxLength="200" />
+          <Property Name="Contacto" Type="varchar" MaxLength="200" />
+          <Property Name="Direccion" Type="varchar" MaxLength="400" />
+          <Property Name="Localidad" Type="varchar" MaxLength="200" />
+          <Property Name="Mail" Type="varchar" MaxLength="200" />
+          <Property Name="Telefono" Type="varchar" MaxLength="200" />
+          <Property Name="Telefono2" Type="varchar" MaxLength="200" />
+          <Property Name="cuit" Type="varchar" MaxLength="200" />
+          <Property Name="activo" Type="bit" Nullable="false" />
+          <Property Name="modificadoEn" Type="datetime" />
+          <Property Name="modificadoPor" Type="int" />
+        </EntityType>
+        <EntityType Name="Compra">
+          <Key>
+            <PropertyRef Name="CompraId" />
+          </Key>
+          <Property Name="CompraId" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="ProveedorId" Type="varchar" MaxLength="100" Nullable="false" />
+          <Property Name="Monto" Type="money" Nullable="false" />
+          <Property Name="Facturado" Type="bit" Nullable="false" />
+          <Property Name="Descripcion" Type="varchar" MaxLength="500" />
+          <Property Name="PuntoDeVentaId" Type="int" Nullable="false" />
+          <Property Name="Estado" Type="int" Nullable="false" />
+          <Property Name="FechaCreacion" Type="datetime" Nullable="false" />
+          <Property Name="CreadoPor" Type="int" Nullable="false" />
+        </EntityType>
+        <EntityType Name="Direccion">
+          <Key>
+            <PropertyRef Name="DireccionId" />
+          </Key>
+          <Property Name="DireccionId" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="Altura" Type="varchar" MaxLength="50" />
+          <Property Name="Calle" Type="varchar" MaxLength="200" />
+          <Property Name="Calle2" Type="varchar" MaxLength="200" />
+          <Property Name="Calle3" Type="varchar" MaxLength="200" />
+          <Property Name="Ciudad" Type="varchar" MaxLength="200" />
+          <Property Name="Provincia" Type="varchar" MaxLength="200" />
+          <Property Name="CodigoPostal" Type="varchar" MaxLength="100" />
+          <Property Name="Pais" Type="varchar" MaxLength="200" />
+          <Property Name="Comentarios" Type="varchar" MaxLength="200" />
+          <Property Name="Latitud" Type="decimal" Precision="9" Scale="6" />
+          <Property Name="Longitud" Type="decimal" Precision="9" Scale="6" />
+          <Property Name="ChangedOn" Type="datetime" Nullable="false" />
+          <Property Name="ChangedBy" Type="int" Nullable="false" />
+        </EntityType>
+        <EntityType Name="EstadoReparacion">
+          <Key>
+            <PropertyRef Name="EstadoReparacionId" />
+          </Key>
+          <Property Name="EstadoReparacionId" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="nombre" Type="varchar" MaxLength="200" Nullable="false" />
+          <Property Name="descripcion" Type="varchar" MaxLength="400" />
+          <Property Name="categoria" Type="varchar" MaxLength="200" />
+          <Property Name="activo" Type="bit" />
+          <Property Name="modificadoEn" Type="datetime" />
+          <Property Name="modificadoPor" Type="int" />
+        </EntityType>
+        <EntityType Name="Factura">
+          <Key>
+            <PropertyRef Name="FacturaId" />
+          </Key>
+          <Property Name="FacturaId" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="TipoFacturaId" Type="int" Nullable="false" />
+          <Property Name="NroFactura" Type="varchar" MaxLength="100" Nullable="false" />
+          <Property Name="Media" Type="varbinary(max)" />
+          <Property Name="ModificadoEn" Type="datetime" Nullable="false" />
+          <Property Name="ModificadoPor" Type="int" Nullable="false" />
+        </EntityType>
+        <EntityType Name="GlobalConfig">
+          <Key>
+            <PropertyRef Name="GlobalConfigId" />
+          </Key>
+          <Property Name="GlobalConfigId" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="Key" Type="varchar" MaxLength="300" Nullable="false" />
+          <Property Name="Value" Type="varchar" MaxLength="300" Nullable="false" />
+        </EntityType>
+        <EntityType Name="ItemMenu">
+          <Key>
+            <PropertyRef Name="ItemMenuId" />
+          </Key>
+          <Property Name="ItemMenuId" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="Name" Type="varchar" MaxLength="100" Nullable="false" />
+          <Property Name="Orden" Type="int" Nullable="false" />
+          <Property Name="Estado" Type="bit" Nullable="false" />
+          <Property Name="ItemMenuPadreId" Type="int" />
+          <Property Name="Controlador" Type="varchar" MaxLength="50" />
+          <Property Name="Accion" Type="varchar" MaxLength="50" />
+          <Property Name="Parametros" Type="varchar" MaxLength="500" />
+          <Property Name="Icon" Type="varchar" MaxLength="50" />
+        </EntityType>
+        <EntityType Name="Log">
+          <Key>
+            <PropertyRef Name="Id" />
+          </Key>
+          <Property Name="Id" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="Application" Type="nvarchar" MaxLength="50" Nullable="false" />
+          <Property Name="Logged" Type="datetime" Nullable="false" />
+          <Property Name="Level" Type="nvarchar" MaxLength="50" Nullable="false" />
+          <Property Name="Message" Type="nvarchar(max)" Nullable="false" />
+          <Property Name="UserName" Type="nvarchar" MaxLength="250" />
+          <Property Name="ServerName" Type="nvarchar(max)" />
+          <Property Name="Port" Type="nvarchar(max)" />
+          <Property Name="Url" Type="nvarchar(max)" />
+          <Property Name="Https" Type="bit" />
+          <Property Name="ServerAddress" Type="nvarchar" MaxLength="100" />
+          <Property Name="RemoteAddress" Type="nvarchar" MaxLength="100" />
+          <Property Name="Logger" Type="nvarchar" MaxLength="250" />
+          <Property Name="Callsite" Type="nvarchar(max)" />
+          <Property Name="Exception" Type="nvarchar(max)" />
+        </EntityType>
+        <EntityType Name="Logs">
+          <Key>
+            <PropertyRef Name="Id" />
+          </Key>
+          <Property Name="Id" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="EventDateTime" Type="datetime" Nullable="false" />
+          <Property Name="EventLevel" Type="nvarchar" MaxLength="100" Nullable="false" />
+          <Property Name="UserName" Type="nvarchar" MaxLength="100" Nullable="false" />
+          <Property Name="MachineName" Type="nvarchar" MaxLength="100" Nullable="false" />
+          <Property Name="EventMessage" Type="nvarchar(max)" Nullable="false" />
+          <Property Name="ErrorSource" Type="nvarchar" MaxLength="100" />
+          <Property Name="ErrorClass" Type="nvarchar" MaxLength="500" />
+          <Property Name="ErrorMethod" Type="nvarchar(max)" />
+          <Property Name="ErrorMessage" Type="nvarchar(max)" />
+          <Property Name="InnerErrorMessage" Type="nvarchar(max)" />
+        </EntityType>
+        <EntityType Name="Marca">
+          <Key>
+            <PropertyRef Name="MarcaId" />
+          </Key>
+          <Property Name="MarcaId" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="nombre" Type="varchar" MaxLength="200" Nullable="false" />
+          <Property Name="descripcion" Type="varchar" MaxLength="400" />
+          <Property Name="activo" Type="bit" Nullable="false" />
+          <Property Name="modificadoEn" Type="datetime" />
+          <Property Name="modificadoPor" Type="int" />
+        </EntityType>
+        <EntityType Name="MetodoPago">
+          <Key>
+            <PropertyRef Name="MetodoPagoId" />
+          </Key>
+          <Property Name="MetodoPagoId" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="Nombre" Type="varchar" MaxLength="300" />
+          <Property Name="Descripcion" Type="varchar" MaxLength="300" />
+        </EntityType>
+        <EntityType Name="Modelo">
+          <Key>
+            <PropertyRef Name="DispositivoModeloId" />
+          </Key>
+          <Property Name="DispositivoModeloId" Type="int" Nullable="false" />
+          <Property Name="MarcaId" Type="int" />
+          <Property Name="TipoId" Type="int" />
+          <Property Name="Modelo" Type="varchar" MaxLength="200" />
+          <Property Name="Code" Type="varchar" MaxLength="200" />
+          <Property Name="Descripcion" Type="varchar" MaxLength="400" />
+          <Property Name="activo" Type="binary" MaxLength="1" />
+          <Property Name="modificadoEn" Type="datetime" />
+          <Property Name="modificadoPor" Type="int" />
+        </EntityType>
+        <EntityType Name="Novedad">
+          <Key>
+            <PropertyRef Name="novedadId" />
+          </Key>
+          <Property Name="novedadId" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="reparacionId" Type="int" Nullable="false" />
+          <Property Name="UserId" Type="int" Nullable="false" />
+          <Property Name="tipoNovedadId" Type="int" Nullable="false" />
+          <Property Name="monto" Type="decimal" Precision="18" Scale="0" />
+          <Property Name="observacion" Type="varchar" MaxLength="500" />
+          <Property Name="modificadoEn" Type="datetime" Nullable="false" />
+          <Property Name="modificadoPor" Type="int" />
+        </EntityType>
+        <EntityType Name="Pago">
+          <Key>
+            <PropertyRef Name="PagoId" />
+          </Key>
+          <Property Name="PagoId" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="CompraId" Type="int" Nullable="false" />
+          <Property Name="Monto" Type="money" Nullable="false" />
+          <Property Name="FechaDebito" Type="datetime" Nullable="false" />
+          <Property Name="FechaEmision" Type="datetime" Nullable="false" />
+          <Property Name="NroReferencia" Type="varchar" MaxLength="100" />
+          <Property Name="Motivo" Type="varchar" MaxLength="500" />
+          <Property Name="TipoTransaccionId" Type="int" Nullable="false" />
+          <Property Name="FacturaId" Type="int" />
+          <Property Name="CreadoPor" Type="int" />
+          <Property Name="FechaCreacion" Type="datetime" Nullable="false" />
+          <Property Name="MetodoDePagoId" Type="int" Nullable="false" />
+        </EntityType>
+        <!--Errores durante la generación:
+advertencia 6002: La tabla o vista 'FastService.dbo.Producto' no tiene definida ninguna clave principal. Se ha inferido la clave y la definición se creado como una vista o tabla de solo lectura.-->
+        <EntityType Name="Producto">
+          <Key>
+            <PropertyRef Name="id" />
+          </Key>
+          <Property Name="id" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="origenid" Type="int" />
+          <Property Name="nombre" Type="varchar" MaxLength="200" />
+          <Property Name="descripcion" Type="varchar" MaxLength="300" />
+          <Property Name="categoria" Type="varchar" MaxLength="100" />
+          <Property Name="categoria2" Type="varchar" MaxLength="100" />
+          <Property Name="categoria3" Type="varchar" MaxLength="100" />
+          <Property Name="cantidad" Type="int" />
+          <Property Name="minimo" Type="int" />
+          <Property Name="costo" Type="decimal" Precision="18" Scale="0" />
+          <Property Name="utilidad" Type="decimal" Precision="18" Scale="0" />
+        </EntityType>
+        <EntityType Name="Proveedor">
+          <Key>
+            <PropertyRef Name="ProveedorId" />
+          </Key>
+          <Property Name="ProveedorId" Type="varchar" MaxLength="100" Nullable="false" />
+          <Property Name="Nombre" Type="varchar" MaxLength="200" Nullable="false" />
+          <Property Name="Mail" Type="varchar" MaxLength="200" />
+          <Property Name="Contacto" Type="varchar" MaxLength="200" />
+          <Property Name="Telefono1" Type="varchar" MaxLength="50" />
+          <Property Name="Telefono2" Type="varchar" MaxLength="50" />
+          <Property Name="Direccion" Type="varchar" MaxLength="300" />
+          <Property Name="Localidad" Type="varchar" MaxLength="100" />
+        </EntityType>
+        <EntityType Name="PuntoDeVenta">
+          <Key>
+            <PropertyRef Name="PuntoDeVentaId" />
+          </Key>
+          <Property Name="PuntoDeVentaId" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="Nombre" Type="varchar" MaxLength="50" Nullable="false" />
+          <Property Name="Descripcion" Type="varchar" MaxLength="50" Nullable="false" />
+        </EntityType>
+        <EntityType Name="Reparacion">
+          <Key>
+            <PropertyRef Name="ReparacionId" />
+          </Key>
+          <Property Name="ReparacionId" Type="int" Nullable="false" />
+          <Property Name="ClienteId" Type="int" Nullable="false" />
+          <Property Name="EmpleadoAsignadoId" Type="int" Nullable="false" />
+          <Property Name="TecnicoAsignadoId" Type="int" Nullable="false" />
+          <Property Name="EstadoReparacionId" Type="int" Nullable="false" />
+          <Property Name="ComercioId" Type="int" />
+          <Property Name="MarcaId" Type="int" Nullable="false" />
+          <Property Name="TipoDispositivoId" Type="int" Nullable="false" />
+          <Property Name="ReparacionDetalleId" Type="int" />
+          <Property Name="FechaEntrega" Type="datetime" />
+          <Property Name="InformadoEn" Type="datetime" />
+          <Property Name="InformadoPor" Type="int" />
+          <Property Name="ModificadoEn" Type="datetime" Nullable="false" />
+          <Property Name="ModificadoPor" Type="int" />
+          <Property Name="CreadoEn" Type="datetime" Nullable="false" />
+          <Property Name="CreadoPor" Type="int" />
+        </EntityType>
+        <EntityType Name="ReparacionDetalle">
+          <Key>
+            <PropertyRef Name="ReparacionDetalleId" />
+          </Key>
+          <Property Name="ReparacionDetalleId" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="EsGarantia" Type="bit" Nullable="false" />
+          <Property Name="EsDomicilio" Type="bit" Nullable="false" />
+          <Property Name="NroReferencia" Type="varchar" MaxLength="200" />
+          <Property Name="FechoCompra" Type="datetime" />
+          <Property Name="NroFactura" Type="varchar" MaxLength="200" />
+          <Property Name="Presupuesto" Type="decimal" Precision="18" Scale="0" />
+          <Property Name="PresupuestoFecha" Type="datetime" />
+          <Property Name="Precio" Type="decimal" Precision="18" Scale="0" />
+          <Property Name="Modelo" Type="varchar" MaxLength="100" />
+          <Property Name="Serie" Type="varchar" MaxLength="200" />
+          <Property Name="Serbus" Type="varchar" MaxLength="200" />
+          <Property Name="Unicacion" Type="varchar" MaxLength="100" />
+          <Property Name="Accesorios" Type="varchar" MaxLength="200" />
+          <Property Name="ReparacionDesc" Type="varchar" MaxLength="500" />
+          <Property Name="ModificadoEn" Type="datetime" Nullable="false" />
+          <Property Name="ModificadoPor" Type="int" Nullable="false" />
+        </EntityType>
+        <EntityType Name="Role">
+          <Key>
+            <PropertyRef Name="RolId" />
+          </Key>
+          <Property Name="RolId" Type="int" Nullable="false" />
+          <Property Name="Status" Type="varchar" MaxLength="50" Nullable="false" />
+          <Property Name="Nombre" Type="varchar" MaxLength="50" Nullable="false" />
+          <Property Name="Descripcion" Type="varchar" MaxLength="200" Nullable="false" />
+          <Property Name="DefaultController" Type="varchar" MaxLength="50" />
+          <Property Name="DefaultAction" Type="varchar" MaxLength="50" />
+        </EntityType>
+        <!--Errores durante la generación:
+advertencia 6002: La tabla o vista 'FastService.dbo.RoleMenu' no tiene definida ninguna clave principal. Se ha inferido la clave y la definición se creado como una vista o tabla de solo lectura.-->
+        <EntityType Name="RoleMenu">
+          <Key>
+            <PropertyRef Name="id" />
+            <PropertyRef Name="RolId" />
+            <PropertyRef Name="ItemMenuId" />
+          </Key>
+          <Property Name="id" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="RolId" Type="int" Nullable="false" />
+          <Property Name="ItemMenuId" Type="int" Nullable="false" />
+        </EntityType>
+        <EntityType Name="TipoDispositivo">
+          <Key>
+            <PropertyRef Name="TipoDispositivoId" />
+          </Key>
+          <Property Name="TipoDispositivoId" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="nombre" Type="varchar" MaxLength="200" Nullable="false" />
+          <Property Name="descripcion" Type="varchar" MaxLength="400" />
+          <Property Name="activo" Type="bit" Nullable="false" />
+          <Property Name="modificadoEn" Type="datetime" />
+          <Property Name="modificadoPor" Type="int" />
+        </EntityType>
+        <EntityType Name="TipoFactura">
+          <Key>
+            <PropertyRef Name="TipoFacturaId" />
+          </Key>
+          <Property Name="TipoFacturaId" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="Nombre" Type="varchar" MaxLength="50" Nullable="false" />
+          <Property Name="Descripcion" Type="varchar" MaxLength="100" Nullable="false" />
+          <Property Name="ModificadoEn" Type="datetime" Nullable="false" />
+          <Property Name="ModificadoPor" Type="int" Nullable="false" />
+        </EntityType>
+        <EntityType Name="TipoNovedad">
+          <Key>
+            <PropertyRef Name="TipoNovedadId" />
+          </Key>
+          <Property Name="TipoNovedadId" Type="int" Nullable="false" />
+          <Property Name="nombre" Type="varchar" MaxLength="200" Nullable="false" />
+          <Property Name="descripcion" Type="varchar" MaxLength="400" />
+          <Property Name="activo" Type="bit" Nullable="false" />
+          <Property Name="modificadoEn" Type="datetime" />
+          <Property Name="modificadoPor" Type="int" />
+        </EntityType>
+        <EntityType Name="TipoTransaccion">
+          <Key>
+            <PropertyRef Name="TipoTransaccionId" />
+          </Key>
+          <Property Name="TipoTransaccionId" Type="int" Nullable="false" />
+          <Property Name="Nombre" Type="varchar" MaxLength="50" Nullable="false" />
+          <Property Name="Descripcion" Type="varchar" MaxLength="200" Nullable="false" />
+        </EntityType>
+        <EntityType Name="Usuario">
+          <Key>
+            <PropertyRef Name="UserId" />
+          </Key>
+          <Property Name="UserId" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="Login" Type="varchar" MaxLength="200" Nullable="false" />
+          <Property Name="Email" Type="varchar" MaxLength="200" Nullable="false" />
+          <Property Name="Nombre" Type="varchar" MaxLength="100" Nullable="false" />
+          <Property Name="Apellido" Type="varchar" MaxLength="100" Nullable="false" />
+          <Property Name="Contraseña" Type="varchar" MaxLength="200" Nullable="false" />
+          <Property Name="Direccion" Type="varchar" MaxLength="500" Nullable="false" />
+          <Property Name="Telefono1" Type="varchar" MaxLength="50" Nullable="false" />
+          <Property Name="Telefono2" Type="varchar" MaxLength="50" />
+          <Property Name="Activo" Type="bit" Nullable="false" />
+        </EntityType>
+        <!--Errores durante la generación:
+advertencia 6002: La tabla o vista 'FastService.dbo.UsuarioRol' no tiene definida ninguna clave principal. Se ha inferido la clave y la definición se creado como una vista o tabla de solo lectura.-->
+        <EntityType Name="UsuarioRol">
+          <Key>
+            <PropertyRef Name="RolId" />
+            <PropertyRef Name="UserId" />
+          </Key>
+          <Property Name="RolId" Type="int" Nullable="false" />
+          <Property Name="UserId" Type="int" Nullable="false" />
+        </EntityType>
+        <EntityType Name="Venta">
+          <Key>
+            <PropertyRef Name="VentaId" />
+          </Key>
+          <Property Name="VentaId" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="ClienteId" Type="int" />
+          <Property Name="Monto" Type="money" Nullable="false" />
+          <Property Name="Facturado" Type="bit" Nullable="false" />
+          <Property Name="Descripcion" Type="varchar" MaxLength="500" />
+          <Property Name="FacturaId" Type="int" />
+          <Property Name="RefNumber" Type="varchar" MaxLength="200" />
+          <Property Name="PuntoDeVentaId" Type="int" Nullable="false" />
+          <Property Name="Fecha" Type="datetime" Nullable="false" />
+          <Property Name="Vendedor" Type="int" Nullable="false" />
+          <Property Name="MetodoPagoId" Type="int" />
+          <Property Name="TipoTransaccionId" Type="int" Nullable="false" />
+        </EntityType>
+        <!--Errores durante la generación:
+advertencia 6002: La tabla o vista 'FastService.dbo.vw_ComprasAPagar' no tiene definida ninguna clave principal. Se ha inferido la clave y la definición se creado como una vista o tabla de solo lectura.-->
+        <EntityType Name="vw_ComprasAPagar">
+          <Key>
+            <PropertyRef Name="CompraId" />
+            <PropertyRef Name="ProveedorId" />
+            <PropertyRef Name="Monto" />
+            <PropertyRef Name="Facturado" />
+            <PropertyRef Name="PuntoDeVentaId" />
+            <PropertyRef Name="Estado" />
+            <PropertyRef Name="FechaCreacion" />
+            <PropertyRef Name="CreadoPor" />
+            <PropertyRef Name="saldo" />
+          </Key>
+          <Property Name="CompraId" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="ProveedorId" Type="varchar" MaxLength="100" Nullable="false" />
+          <Property Name="Monto" Type="money" Nullable="false" />
+          <Property Name="Facturado" Type="bit" Nullable="false" />
+          <Property Name="Descripcion" Type="varchar" MaxLength="500" />
+          <Property Name="PuntoDeVentaId" Type="int" Nullable="false" />
+          <Property Name="Estado" Type="int" Nullable="false" />
+          <Property Name="FechaCreacion" Type="datetime" Nullable="false" />
+          <Property Name="CreadoPor" Type="int" Nullable="false" />
+          <Property Name="saldo" Type="money" Nullable="false" />
+        </EntityType>
+        <!--Errores durante la generación:
+advertencia 6002: La tabla o vista 'FastService.dbo.vw_ProveedoresAcreedores' no tiene definida ninguna clave principal. Se ha inferido la clave y la definición se creado como una vista o tabla de solo lectura.-->
+        <EntityType Name="vw_ProveedoresAcreedores">
+          <Key>
+            <PropertyRef Name="ProveedorId" />
+            <PropertyRef Name="Nombre" />
+          </Key>
+          <Property Name="ProveedorId" Type="varchar" MaxLength="100" Nullable="false" />
+          <Property Name="Nombre" Type="varchar" MaxLength="200" Nullable="false" />
+          <Property Name="Mail" Type="varchar" MaxLength="200" />
+          <Property Name="Contacto" Type="varchar" MaxLength="200" />
+          <Property Name="Telefono1" Type="varchar" MaxLength="50" />
+          <Property Name="Telefono2" Type="varchar" MaxLength="50" />
+          <Property Name="Direccion" Type="varchar" MaxLength="300" />
+          <Property Name="Localidad" Type="varchar" MaxLength="100" />
+        </EntityType>
+        <!--Errores durante la generación:
+advertencia 6002: La tabla o vista 'FastService.dbo.vw_ReparacionTiempos' no tiene definida ninguna clave principal. Se ha inferido la clave y la definición se creado como una vista o tabla de solo lectura.-->
+        <EntityType Name="vw_ReparacionTiempos">
+          <Key>
+            <PropertyRef Name="reparacionId" />
+          </Key>
+          <Property Name="reparacionId" Type="int" Nullable="false" />
+          <Property Name="DiasDesdeUltimaActividad" Type="int" />
+        </EntityType>
+        <!--Errores durante la generación:
+advertencia 6002: La tabla o vista 'FastService.dbo.vw_VentasAnuales' no tiene definida ninguna clave principal. Se ha inferido la clave y la definición se creado como una vista o tabla de solo lectura.-->
+        <EntityType Name="vw_VentasAnuales">
+          <Key>
+            <PropertyRef Name="facturado" />
+          </Key>
+          <Property Name="Total" Type="money" />
+          <Property Name="facturado" Type="bit" Nullable="false" />
+        </EntityType>
+        <!--Errores durante la generación:
+advertencia 6002: La tabla o vista 'FastService.dbo.vw_VentasDiarias' no tiene definida ninguna clave principal. Se ha inferido la clave y la definición se creado como una vista o tabla de solo lectura.-->
+        <EntityType Name="vw_VentasDiarias">
+          <Key>
+            <PropertyRef Name="facturado" />
+          </Key>
+          <Property Name="Total" Type="money" />
+          <Property Name="facturado" Type="bit" Nullable="false" />
+        </EntityType>
+        <!--Errores durante la generación:
+advertencia 6002: La tabla o vista 'FastService.dbo.vw_VentasMensuales' no tiene definida ninguna clave principal. Se ha inferido la clave y la definición se creado como una vista o tabla de solo lectura.-->
+        <EntityType Name="vw_VentasMensuales">
+          <Key>
+            <PropertyRef Name="facturado" />
+          </Key>
+          <Property Name="Total" Type="money" />
+          <Property Name="facturado" Type="bit" Nullable="false" />
+        </EntityType>
+        <Association Name="FK__Cliente__Direcci__5F29F348">
+          <End Role="Direccion" Type="Self.Direccion" Multiplicity="0..1" />
+          <End Role="Cliente" Type="Self.Cliente" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="Direccion">
+              <PropertyRef Name="DireccionId" />
+            </Principal>
+            <Dependent Role="Cliente">
+              <PropertyRef Name="DireccionId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK__Compra__Proveedo__2E51B1C3">
+          <End Role="Proveedor" Type="Self.Proveedor" Multiplicity="1" />
+          <End Role="Compra" Type="Self.Compra" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="Proveedor">
+              <PropertyRef Name="ProveedorId" />
+            </Principal>
+            <Dependent Role="Compra">
+              <PropertyRef Name="ProveedorId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK__Compra__PuntoDeV__2F45D5FC">
+          <End Role="PuntoDeVenta" Type="Self.PuntoDeVenta" Multiplicity="1" />
+          <End Role="Compra" Type="Self.Compra" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="PuntoDeVenta">
+              <PropertyRef Name="PuntoDeVentaId" />
+            </Principal>
+            <Dependent Role="Compra">
+              <PropertyRef Name="PuntoDeVentaId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK__Factura__TipoFac__50A6C9C7">
+          <End Role="TipoFactura" Type="Self.TipoFactura" Multiplicity="1" />
+          <End Role="Factura" Type="Self.Factura" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="TipoFactura">
+              <PropertyRef Name="TipoFacturaId" />
+            </Principal>
+            <Dependent Role="Factura">
+              <PropertyRef Name="TipoFacturaId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK__Pago__CompraId__3039FA35">
+          <End Role="Compra" Type="Self.Compra" Multiplicity="1" />
+          <End Role="Pago" Type="Self.Pago" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="Compra">
+              <PropertyRef Name="CompraId" />
+            </Principal>
+            <Dependent Role="Pago">
+              <PropertyRef Name="CompraId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK__Pago__FacturaId__4FB2A58E">
+          <End Role="Factura" Type="Self.Factura" Multiplicity="0..1" />
+          <End Role="Pago" Type="Self.Pago" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="Factura">
+              <PropertyRef Name="FacturaId" />
+            </Principal>
+            <Dependent Role="Pago">
+              <PropertyRef Name="FacturaId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK__Pago__MetodoDePa__340A8B19">
+          <End Role="MetodoPago" Type="Self.MetodoPago" Multiplicity="1" />
+          <End Role="Pago" Type="Self.Pago" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="MetodoPago">
+              <PropertyRef Name="MetodoPagoId" />
+            </Principal>
+            <Dependent Role="Pago">
+              <PropertyRef Name="MetodoDePagoId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK__Pago__TipoTransa__312E1E6E">
+          <End Role="TipoTransaccion" Type="Self.TipoTransaccion" Multiplicity="1" />
+          <End Role="Pago" Type="Self.Pago" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="TipoTransaccion">
+              <PropertyRef Name="TipoTransaccionId" />
+            </Principal>
+            <Dependent Role="Pago">
+              <PropertyRef Name="TipoTransaccionId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK__Reparacio__Clien__25BC6BC2">
+          <End Role="Cliente" Type="Self.Cliente" Multiplicity="1" />
+          <End Role="Reparacion" Type="Self.Reparacion" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="Cliente">
+              <PropertyRef Name="ClienteId" />
+            </Principal>
+            <Dependent Role="Reparacion">
+              <PropertyRef Name="ClienteId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK__Reparacio__Comer__2C696951">
+          <End Role="Comercio" Type="Self.Comercio" Multiplicity="0..1" />
+          <End Role="Reparacion" Type="Self.Reparacion" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="Comercio">
+              <PropertyRef Name="ComercioId" />
+            </Principal>
+            <Dependent Role="Reparacion">
+              <PropertyRef Name="ComercioId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK__Reparacio__Emple__26B08FFB">
+          <End Role="Usuario" Type="Self.Usuario" Multiplicity="1" />
+          <End Role="Reparacion" Type="Self.Reparacion" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="Usuario">
+              <PropertyRef Name="UserId" />
+            </Principal>
+            <Dependent Role="Reparacion">
+              <PropertyRef Name="EmpleadoAsignadoId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK__Reparacio__Estad__2898D86D">
+          <End Role="EstadoReparacion" Type="Self.EstadoReparacion" Multiplicity="1" />
+          <End Role="Reparacion" Type="Self.Reparacion" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="EstadoReparacion">
+              <PropertyRef Name="EstadoReparacionId" />
+            </Principal>
+            <Dependent Role="Reparacion">
+              <PropertyRef Name="EstadoReparacionId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK__Reparacio__Marca__298CFCA6">
+          <End Role="Marca" Type="Self.Marca" Multiplicity="1" />
+          <End Role="Reparacion" Type="Self.Reparacion" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="Marca">
+              <PropertyRef Name="MarcaId" />
+            </Principal>
+            <Dependent Role="Reparacion">
+              <PropertyRef Name="MarcaId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK__Reparacio__Repar__2B754518">
+          <End Role="ReparacionDetalle" Type="Self.ReparacionDetalle" Multiplicity="0..1" />
+          <End Role="Reparacion" Type="Self.Reparacion" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="ReparacionDetalle">
+              <PropertyRef Name="ReparacionDetalleId" />
+            </Principal>
+            <Dependent Role="Reparacion">
+              <PropertyRef Name="ReparacionDetalleId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK__Reparacio__Tecni__27A4B434">
+          <End Role="Usuario" Type="Self.Usuario" Multiplicity="1" />
+          <End Role="Reparacion" Type="Self.Reparacion" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="Usuario">
+              <PropertyRef Name="UserId" />
+            </Principal>
+            <Dependent Role="Reparacion">
+              <PropertyRef Name="TecnicoAsignadoId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK__Reparacio__TipoD__2A8120DF">
+          <End Role="TipoDispositivo" Type="Self.TipoDispositivo" Multiplicity="1" />
+          <End Role="Reparacion" Type="Self.Reparacion" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="TipoDispositivo">
+              <PropertyRef Name="TipoDispositivoId" />
+            </Principal>
+            <Dependent Role="Reparacion">
+              <PropertyRef Name="TipoDispositivoId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK__Reparacio__TipoD__2D5D8D8A">
+          <End Role="TipoDispositivo" Type="Self.TipoDispositivo" Multiplicity="1" />
+          <End Role="Reparacion" Type="Self.Reparacion" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="TipoDispositivo">
+              <PropertyRef Name="TipoDispositivoId" />
+            </Principal>
+            <Dependent Role="Reparacion">
+              <PropertyRef Name="TipoDispositivoId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK__Venta__ClienteId__39C3646F">
+          <End Role="Cliente" Type="Self.Cliente" Multiplicity="0..1" />
+          <End Role="Venta" Type="Self.Venta" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="Cliente">
+              <PropertyRef Name="ClienteId" />
+            </Principal>
+            <Dependent Role="Venta">
+              <PropertyRef Name="ClienteId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK__Venta__FacturaId__4EBE8155">
+          <End Role="Factura" Type="Self.Factura" Multiplicity="0..1" />
+          <End Role="Venta" Type="Self.Venta" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="Factura">
+              <PropertyRef Name="FacturaId" />
+            </Principal>
+            <Dependent Role="Venta">
+              <PropertyRef Name="FacturaId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK__Venta__PuntoDeVe__3AB788A8">
+          <End Role="PuntoDeVenta" Type="Self.PuntoDeVenta" Multiplicity="1" />
+          <End Role="Venta" Type="Self.Venta" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="PuntoDeVenta">
+              <PropertyRef Name="PuntoDeVentaId" />
+            </Principal>
+            <Dependent Role="Venta">
+              <PropertyRef Name="PuntoDeVentaId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK__Venta__PuntoDeVe__3BABACE1">
+          <End Role="PuntoDeVenta" Type="Self.PuntoDeVenta" Multiplicity="1" />
+          <End Role="Venta" Type="Self.Venta" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="PuntoDeVenta">
+              <PropertyRef Name="PuntoDeVentaId" />
+            </Principal>
+            <Dependent Role="Venta">
+              <PropertyRef Name="PuntoDeVentaId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK__Venta__TipoTrans__3C9FD11A">
+          <End Role="TipoTransaccion" Type="Self.TipoTransaccion" Multiplicity="1" />
+          <End Role="Venta" Type="Self.Venta" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="TipoTransaccion">
+              <PropertyRef Name="TipoTransaccionId" />
+            </Principal>
+            <Dependent Role="Venta">
+              <PropertyRef Name="TipoTransaccionId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_RoleMenu_ItemMenu">
+          <End Role="ItemMenu" Type="Self.ItemMenu" Multiplicity="1" />
+          <End Role="RoleMenu" Type="Self.RoleMenu" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="ItemMenu">
+              <PropertyRef Name="ItemMenuId" />
+            </Principal>
+            <Dependent Role="RoleMenu">
+              <PropertyRef Name="ItemMenuId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_RoleMenu_Rol">
+          <End Role="Role" Type="Self.Role" Multiplicity="1" />
+          <End Role="RoleMenu" Type="Self.RoleMenu" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="Role">
+              <PropertyRef Name="RolId" />
+            </Principal>
+            <Dependent Role="RoleMenu">
+              <PropertyRef Name="RolId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_UsuarioRol_Rol">
+          <End Role="Role" Type="Self.Role" Multiplicity="1" />
+          <End Role="UsuarioRol" Type="Self.UsuarioRol" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="Role">
+              <PropertyRef Name="RolId" />
+            </Principal>
+            <Dependent Role="UsuarioRol">
+              <PropertyRef Name="RolId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <EntityContainer Name="FastServiceModelStoreContainer">
+          <EntitySet Name="Cliente" EntityType="Self.Cliente" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="Comercio" EntityType="Self.Comercio" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="Compra" EntityType="Self.Compra" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="Direccion" EntityType="Self.Direccion" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="EstadoReparacion" EntityType="Self.EstadoReparacion" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="Factura" EntityType="Self.Factura" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="GlobalConfig" EntityType="Self.GlobalConfig" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="ItemMenu" EntityType="Self.ItemMenu" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="Log" EntityType="Self.Log" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="Logs" EntityType="Self.Logs" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="Marca" EntityType="Self.Marca" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="MetodoPago" EntityType="Self.MetodoPago" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="Modelo" EntityType="Self.Modelo" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="Novedad" EntityType="Self.Novedad" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="Pago" EntityType="Self.Pago" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="Proveedor" EntityType="Self.Proveedor" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="PuntoDeVenta" EntityType="Self.PuntoDeVenta" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="Reparacion" EntityType="Self.Reparacion" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="ReparacionDetalle" EntityType="Self.ReparacionDetalle" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="Role" EntityType="Self.Role" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="TipoDispositivo" EntityType="Self.TipoDispositivo" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="TipoFactura" EntityType="Self.TipoFactura" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="TipoNovedad" EntityType="Self.TipoNovedad" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="TipoTransaccion" EntityType="Self.TipoTransaccion" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="Usuario" EntityType="Self.Usuario" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="Venta" EntityType="Self.Venta" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="Producto" EntityType="Self.Producto" store:Type="Tables" store:Schema="dbo">
+            <DefiningQuery>SELECT 
+    [Producto].[id] AS [id], 
+    [Producto].[origenid] AS [origenid], 
+    [Producto].[nombre] AS [nombre], 
+    [Producto].[descripcion] AS [descripcion], 
+    [Producto].[categoria] AS [categoria], 
+    [Producto].[categoria2] AS [categoria2], 
+    [Producto].[categoria3] AS [categoria3], 
+    [Producto].[cantidad] AS [cantidad], 
+    [Producto].[minimo] AS [minimo], 
+    [Producto].[costo] AS [costo], 
+    [Producto].[utilidad] AS [utilidad]
+    FROM [dbo].[Producto] AS [Producto]</DefiningQuery>
+          </EntitySet>
+          <EntitySet Name="RoleMenu" EntityType="Self.RoleMenu" store:Type="Tables" store:Schema="dbo">
+            <DefiningQuery>SELECT 
+    [RoleMenu].[id] AS [id], 
+    [RoleMenu].[RolId] AS [RolId], 
+    [RoleMenu].[ItemMenuId] AS [ItemMenuId]
+    FROM [dbo].[RoleMenu] AS [RoleMenu]</DefiningQuery>
+          </EntitySet>
+          <EntitySet Name="UsuarioRol" EntityType="Self.UsuarioRol" store:Type="Tables" store:Schema="dbo">
+            <DefiningQuery>SELECT 
+    [UsuarioRol].[RolId] AS [RolId], 
+    [UsuarioRol].[UserId] AS [UserId]
+    FROM [dbo].[UsuarioRol] AS [UsuarioRol]</DefiningQuery>
+          </EntitySet>
+          <EntitySet Name="vw_ComprasAPagar" EntityType="Self.vw_ComprasAPagar" store:Type="Views" store:Schema="dbo">
+            <DefiningQuery>SELECT 
+    [vw_ComprasAPagar].[CompraId] AS [CompraId], 
+    [vw_ComprasAPagar].[ProveedorId] AS [ProveedorId], 
+    [vw_ComprasAPagar].[Monto] AS [Monto], 
+    [vw_ComprasAPagar].[Facturado] AS [Facturado], 
+    [vw_ComprasAPagar].[Descripcion] AS [Descripcion], 
+    [vw_ComprasAPagar].[PuntoDeVentaId] AS [PuntoDeVentaId], 
+    [vw_ComprasAPagar].[Estado] AS [Estado], 
+    [vw_ComprasAPagar].[FechaCreacion] AS [FechaCreacion], 
+    [vw_ComprasAPagar].[CreadoPor] AS [CreadoPor], 
+    [vw_ComprasAPagar].[saldo] AS [saldo]
+    FROM [dbo].[vw_ComprasAPagar] AS [vw_ComprasAPagar]</DefiningQuery>
+          </EntitySet>
+          <EntitySet Name="vw_ProveedoresAcreedores" EntityType="Self.vw_ProveedoresAcreedores" store:Type="Views" store:Schema="dbo">
+            <DefiningQuery>SELECT 
+    [vw_ProveedoresAcreedores].[ProveedorId] AS [ProveedorId], 
+    [vw_ProveedoresAcreedores].[Nombre] AS [Nombre], 
+    [vw_ProveedoresAcreedores].[Mail] AS [Mail], 
+    [vw_ProveedoresAcreedores].[Contacto] AS [Contacto], 
+    [vw_ProveedoresAcreedores].[Telefono1] AS [Telefono1], 
+    [vw_ProveedoresAcreedores].[Telefono2] AS [Telefono2], 
+    [vw_ProveedoresAcreedores].[Direccion] AS [Direccion], 
+    [vw_ProveedoresAcreedores].[Localidad] AS [Localidad]
+    FROM [dbo].[vw_ProveedoresAcreedores] AS [vw_ProveedoresAcreedores]</DefiningQuery>
+          </EntitySet>
+          <EntitySet Name="vw_ReparacionTiempos" EntityType="Self.vw_ReparacionTiempos" store:Type="Views" store:Schema="dbo">
+            <DefiningQuery>SELECT 
+    [vw_ReparacionTiempos].[reparacionId] AS [reparacionId], 
+    [vw_ReparacionTiempos].[DiasDesdeUltimaActividad] AS [DiasDesdeUltimaActividad]
+    FROM [dbo].[vw_ReparacionTiempos] AS [vw_ReparacionTiempos]</DefiningQuery>
+          </EntitySet>
+          <EntitySet Name="vw_VentasAnuales" EntityType="Self.vw_VentasAnuales" store:Type="Views" store:Schema="dbo">
+            <DefiningQuery>SELECT 
+    [vw_VentasAnuales].[Total] AS [Total], 
+    [vw_VentasAnuales].[facturado] AS [facturado]
+    FROM [dbo].[vw_VentasAnuales] AS [vw_VentasAnuales]</DefiningQuery>
+          </EntitySet>
+          <EntitySet Name="vw_VentasDiarias" EntityType="Self.vw_VentasDiarias" store:Type="Views" store:Schema="dbo">
+            <DefiningQuery>SELECT 
+    [vw_VentasDiarias].[Total] AS [Total], 
+    [vw_VentasDiarias].[facturado] AS [facturado]
+    FROM [dbo].[vw_VentasDiarias] AS [vw_VentasDiarias]</DefiningQuery>
+          </EntitySet>
+          <EntitySet Name="vw_VentasMensuales" EntityType="Self.vw_VentasMensuales" store:Type="Views" store:Schema="dbo">
+            <DefiningQuery>SELECT 
+    [vw_VentasMensuales].[Total] AS [Total], 
+    [vw_VentasMensuales].[facturado] AS [facturado]
+    FROM [dbo].[vw_VentasMensuales] AS [vw_VentasMensuales]</DefiningQuery>
+          </EntitySet>
+          <AssociationSet Name="FK__Cliente__Direcci__5F29F348" Association="Self.FK__Cliente__Direcci__5F29F348">
+            <End Role="Direccion" EntitySet="Direccion" />
+            <End Role="Cliente" EntitySet="Cliente" />
+          </AssociationSet>
+          <AssociationSet Name="FK__Compra__Proveedo__2E51B1C3" Association="Self.FK__Compra__Proveedo__2E51B1C3">
+            <End Role="Proveedor" EntitySet="Proveedor" />
+            <End Role="Compra" EntitySet="Compra" />
+          </AssociationSet>
+          <AssociationSet Name="FK__Compra__PuntoDeV__2F45D5FC" Association="Self.FK__Compra__PuntoDeV__2F45D5FC">
+            <End Role="PuntoDeVenta" EntitySet="PuntoDeVenta" />
+            <End Role="Compra" EntitySet="Compra" />
+          </AssociationSet>
+          <AssociationSet Name="FK__Factura__TipoFac__50A6C9C7" Association="Self.FK__Factura__TipoFac__50A6C9C7">
+            <End Role="TipoFactura" EntitySet="TipoFactura" />
+            <End Role="Factura" EntitySet="Factura" />
+          </AssociationSet>
+          <AssociationSet Name="FK__Pago__CompraId__3039FA35" Association="Self.FK__Pago__CompraId__3039FA35">
+            <End Role="Compra" EntitySet="Compra" />
+            <End Role="Pago" EntitySet="Pago" />
+          </AssociationSet>
+          <AssociationSet Name="FK__Pago__FacturaId__4FB2A58E" Association="Self.FK__Pago__FacturaId__4FB2A58E">
+            <End Role="Factura" EntitySet="Factura" />
+            <End Role="Pago" EntitySet="Pago" />
+          </AssociationSet>
+          <AssociationSet Name="FK__Pago__MetodoDePa__340A8B19" Association="Self.FK__Pago__MetodoDePa__340A8B19">
+            <End Role="MetodoPago" EntitySet="MetodoPago" />
+            <End Role="Pago" EntitySet="Pago" />
+          </AssociationSet>
+          <AssociationSet Name="FK__Pago__TipoTransa__312E1E6E" Association="Self.FK__Pago__TipoTransa__312E1E6E">
+            <End Role="TipoTransaccion" EntitySet="TipoTransaccion" />
+            <End Role="Pago" EntitySet="Pago" />
+          </AssociationSet>
+          <AssociationSet Name="FK__Reparacio__Clien__25BC6BC2" Association="Self.FK__Reparacio__Clien__25BC6BC2">
+            <End Role="Cliente" EntitySet="Cliente" />
+            <End Role="Reparacion" EntitySet="Reparacion" />
+          </AssociationSet>
+          <AssociationSet Name="FK__Reparacio__Comer__2C696951" Association="Self.FK__Reparacio__Comer__2C696951">
+            <End Role="Comercio" EntitySet="Comercio" />
+            <End Role="Reparacion" EntitySet="Reparacion" />
+          </AssociationSet>
+          <AssociationSet Name="FK__Reparacio__Emple__26B08FFB" Association="Self.FK__Reparacio__Emple__26B08FFB">
+            <End Role="Usuario" EntitySet="Usuario" />
+            <End Role="Reparacion" EntitySet="Reparacion" />
+          </AssociationSet>
+          <AssociationSet Name="FK__Reparacio__Estad__2898D86D" Association="Self.FK__Reparacio__Estad__2898D86D">
+            <End Role="EstadoReparacion" EntitySet="EstadoReparacion" />
+            <End Role="Reparacion" EntitySet="Reparacion" />
+          </AssociationSet>
+          <AssociationSet Name="FK__Reparacio__Marca__298CFCA6" Association="Self.FK__Reparacio__Marca__298CFCA6">
+            <End Role="Marca" EntitySet="Marca" />
+            <End Role="Reparacion" EntitySet="Reparacion" />
+          </AssociationSet>
+          <AssociationSet Name="FK__Reparacio__Repar__2B754518" Association="Self.FK__Reparacio__Repar__2B754518">
+            <End Role="ReparacionDetalle" EntitySet="ReparacionDetalle" />
+            <End Role="Reparacion" EntitySet="Reparacion" />
+          </AssociationSet>
+          <AssociationSet Name="FK__Reparacio__Tecni__27A4B434" Association="Self.FK__Reparacio__Tecni__27A4B434">
+            <End Role="Usuario" EntitySet="Usuario" />
+            <End Role="Reparacion" EntitySet="Reparacion" />
+          </AssociationSet>
+          <AssociationSet Name="FK__Reparacio__TipoD__2A8120DF" Association="Self.FK__Reparacio__TipoD__2A8120DF">
+            <End Role="TipoDispositivo" EntitySet="TipoDispositivo" />
+            <End Role="Reparacion" EntitySet="Reparacion" />
+          </AssociationSet>
+          <AssociationSet Name="FK__Reparacio__TipoD__2D5D8D8A" Association="Self.FK__Reparacio__TipoD__2D5D8D8A">
+            <End Role="TipoDispositivo" EntitySet="TipoDispositivo" />
+            <End Role="Reparacion" EntitySet="Reparacion" />
+          </AssociationSet>
+          <AssociationSet Name="FK__Venta__ClienteId__39C3646F" Association="Self.FK__Venta__ClienteId__39C3646F">
+            <End Role="Cliente" EntitySet="Cliente" />
+            <End Role="Venta" EntitySet="Venta" />
+          </AssociationSet>
+          <AssociationSet Name="FK__Venta__FacturaId__4EBE8155" Association="Self.FK__Venta__FacturaId__4EBE8155">
+            <End Role="Factura" EntitySet="Factura" />
+            <End Role="Venta" EntitySet="Venta" />
+          </AssociationSet>
+          <AssociationSet Name="FK__Venta__PuntoDeVe__3AB788A8" Association="Self.FK__Venta__PuntoDeVe__3AB788A8">
+            <End Role="PuntoDeVenta" EntitySet="PuntoDeVenta" />
+            <End Role="Venta" EntitySet="Venta" />
+          </AssociationSet>
+          <AssociationSet Name="FK__Venta__PuntoDeVe__3BABACE1" Association="Self.FK__Venta__PuntoDeVe__3BABACE1">
+            <End Role="PuntoDeVenta" EntitySet="PuntoDeVenta" />
+            <End Role="Venta" EntitySet="Venta" />
+          </AssociationSet>
+          <AssociationSet Name="FK__Venta__TipoTrans__3C9FD11A" Association="Self.FK__Venta__TipoTrans__3C9FD11A">
+            <End Role="TipoTransaccion" EntitySet="TipoTransaccion" />
+            <End Role="Venta" EntitySet="Venta" />
+          </AssociationSet>
+          <AssociationSet Name="FK_RoleMenu_ItemMenu" Association="Self.FK_RoleMenu_ItemMenu">
+            <End Role="ItemMenu" EntitySet="ItemMenu" />
+            <End Role="RoleMenu" EntitySet="RoleMenu" />
+          </AssociationSet>
+          <AssociationSet Name="FK_RoleMenu_Rol" Association="Self.FK_RoleMenu_Rol">
+            <End Role="Role" EntitySet="Role" />
+            <End Role="RoleMenu" EntitySet="RoleMenu" />
+          </AssociationSet>
+          <AssociationSet Name="FK_UsuarioRol_Rol" Association="Self.FK_UsuarioRol_Rol">
+            <End Role="Role" EntitySet="Role" />
+            <End Role="UsuarioRol" EntitySet="UsuarioRol" />
+          </AssociationSet>
+        </EntityContainer>
+      </Schema></edmx:StorageModels>
+    <!-- CSDL content -->
+    <edmx:ConceptualModels>
+      <Schema Namespace="FastServiceModel" Alias="Self" annotation:UseStrongSpatialTypes="false" xmlns:annotation="http://schemas.microsoft.com/ado/2009/02/edm/annotation" xmlns:customannotation="http://schemas.microsoft.com/ado/2013/11/edm/customannotation" xmlns="http://schemas.microsoft.com/ado/2009/11/edm">
+        <EntityType Name="Cliente">
+          <Key>
+            <PropertyRef Name="ClienteId" />
+          </Key>
+          <Property Name="ClienteId" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="Dni" Type="Int32" />
+          <Property Name="Nombre" Type="String" MaxLength="200" FixedLength="false" Unicode="false" Nullable="false" />
+          <Property Name="Apellido" Type="String" MaxLength="200" FixedLength="false" Unicode="false" Nullable="false" />
+          <Property Name="Mail" Type="String" MaxLength="200" FixedLength="false" Unicode="false" />
+          <Property Name="Telefono1" Type="String" MaxLength="20" FixedLength="false" Unicode="false" />
+          <Property Name="Telefono2" Type="String" MaxLength="20" FixedLength="false" Unicode="false" />
+          <Property Name="Direccion" Type="String" MaxLength="300" FixedLength="false" Unicode="false" Nullable="false" />
+          <Property Name="DireccionId" Type="Int32" />
+          <Property Name="Localidad" Type="String" MaxLength="300" FixedLength="false" Unicode="false" />
+          <Property Name="Latitud" Type="Double" />
+          <Property Name="Longitud" Type="Double" />
+          <NavigationProperty Name="Direccion1" Relationship="Self.FK__Cliente__Direcci__5F29F348" FromRole="Cliente" ToRole="Direccion" />
+          <NavigationProperty Name="Reparacion" Relationship="Self.FK__Reparacio__Clien__25BC6BC2" FromRole="Cliente" ToRole="Reparacion" />
+          <NavigationProperty Name="Venta" Relationship="Self.FK__Venta__ClienteId__39C3646F" FromRole="Cliente" ToRole="Venta" />
+        </EntityType>
+        <EntityType Name="Comercio">
+          <Key>
+            <PropertyRef Name="ComercioId" />
+          </Key>
+          <Property Name="ComercioId" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="Code" Type="String" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="Descripcion" Type="String" MaxLength="200" FixedLength="false" Unicode="false" />
+          <Property Name="Contacto" Type="String" MaxLength="200" FixedLength="false" Unicode="false" />
+          <Property Name="Direccion" Type="String" MaxLength="400" FixedLength="false" Unicode="false" />
+          <Property Name="Localidad" Type="String" MaxLength="200" FixedLength="false" Unicode="false" />
+          <Property Name="Mail" Type="String" MaxLength="200" FixedLength="false" Unicode="false" />
+          <Property Name="Telefono" Type="String" MaxLength="200" FixedLength="false" Unicode="false" />
+          <Property Name="Telefono2" Type="String" MaxLength="200" FixedLength="false" Unicode="false" />
+          <Property Name="cuit" Type="String" MaxLength="200" FixedLength="false" Unicode="false" />
+          <Property Name="activo" Type="Boolean" Nullable="false" />
+          <Property Name="modificadoEn" Type="DateTime" Precision="3" />
+          <Property Name="modificadoPor" Type="Int32" />
+          <NavigationProperty Name="Reparacion" Relationship="Self.FK__Reparacio__Comer__2C696951" FromRole="Comercio" ToRole="Reparacion" />
+        </EntityType>
+        <EntityType Name="Compra">
+          <Key>
+            <PropertyRef Name="CompraId" />
+          </Key>
+          <Property Name="CompraId" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="ProveedorId" Type="String" MaxLength="100" FixedLength="false" Unicode="false" Nullable="false" />
+          <Property Name="Monto" Type="Decimal" Precision="19" Scale="4" Nullable="false" />
+          <Property Name="Facturado" Type="Boolean" Nullable="false" />
+          <Property Name="Descripcion" Type="String" MaxLength="500" FixedLength="false" Unicode="false" />
+          <Property Name="PuntoDeVentaId" Type="Int32" Nullable="false" />
+          <Property Name="Estado" Type="Int32" Nullable="false" />
+          <Property Name="FechaCreacion" Type="DateTime" Nullable="false" Precision="3" />
+          <Property Name="CreadoPor" Type="Int32" Nullable="false" />
+          <NavigationProperty Name="Proveedor" Relationship="Self.FK__Compra__Proveedo__2E51B1C3" FromRole="Compra" ToRole="Proveedor" />
+          <NavigationProperty Name="PuntoDeVenta" Relationship="Self.FK__Compra__PuntoDeV__2F45D5FC" FromRole="Compra" ToRole="PuntoDeVenta" />
+          <NavigationProperty Name="Pago" Relationship="Self.FK__Pago__CompraId__3039FA35" FromRole="Compra" ToRole="Pago" />
+        </EntityType>
+        <EntityType Name="Direccion">
+          <Key>
+            <PropertyRef Name="DireccionId" />
+          </Key>
+          <Property Name="DireccionId" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="Altura" Type="String" MaxLength="50" FixedLength="false" Unicode="false" />
+          <Property Name="Calle" Type="String" MaxLength="200" FixedLength="false" Unicode="false" />
+          <Property Name="Calle2" Type="String" MaxLength="200" FixedLength="false" Unicode="false" />
+          <Property Name="Calle3" Type="String" MaxLength="200" FixedLength="false" Unicode="false" />
+          <Property Name="Ciudad" Type="String" MaxLength="200" FixedLength="false" Unicode="false" />
+          <Property Name="Provincia" Type="String" MaxLength="200" FixedLength="false" Unicode="false" />
+          <Property Name="CodigoPostal" Type="String" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="Pais" Type="String" MaxLength="200" FixedLength="false" Unicode="false" />
+          <Property Name="Comentarios" Type="String" MaxLength="200" FixedLength="false" Unicode="false" />
+          <Property Name="Latitud" Type="Decimal" Precision="9" Scale="6" />
+          <Property Name="Longitud" Type="Decimal" Precision="9" Scale="6" />
+          <Property Name="ChangedOn" Type="DateTime" Nullable="false" Precision="3" />
+          <Property Name="ChangedBy" Type="Int32" Nullable="false" />
+          <NavigationProperty Name="Cliente" Relationship="Self.FK__Cliente__Direcci__5F29F348" FromRole="Direccion" ToRole="Cliente" />
+        </EntityType>
+        <EntityType Name="EstadoReparacion">
+          <Key>
+            <PropertyRef Name="EstadoReparacionId" />
+          </Key>
+          <Property Name="EstadoReparacionId" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="nombre" Type="String" MaxLength="200" FixedLength="false" Unicode="false" Nullable="false" />
+          <Property Name="descripcion" Type="String" MaxLength="400" FixedLength="false" Unicode="false" />
+          <Property Name="categoria" Type="String" MaxLength="200" FixedLength="false" Unicode="false" />
+          <Property Name="activo" Type="Boolean" />
+          <Property Name="modificadoEn" Type="DateTime" Precision="3" />
+          <Property Name="modificadoPor" Type="Int32" />
+          <NavigationProperty Name="Reparacion" Relationship="Self.FK__Reparacio__Estad__2898D86D" FromRole="EstadoReparacion" ToRole="Reparacion" />
+        </EntityType>
+        <EntityType Name="Factura">
+          <Key>
+            <PropertyRef Name="FacturaId" />
+          </Key>
+          <Property Name="FacturaId" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="TipoFacturaId" Type="Int32" Nullable="false" />
+          <Property Name="NroFactura" Type="String" MaxLength="100" FixedLength="false" Unicode="false" Nullable="false" />
+          <Property Name="Media" Type="Binary" MaxLength="Max" FixedLength="false" />
+          <Property Name="ModificadoEn" Type="DateTime" Nullable="false" Precision="3" />
+          <Property Name="ModificadoPor" Type="Int32" Nullable="false" />
+          <NavigationProperty Name="TipoFactura" Relationship="Self.FK__Factura__TipoFac__50A6C9C7" FromRole="Factura" ToRole="TipoFactura" />
+          <NavigationProperty Name="Pago" Relationship="Self.FK__Pago__FacturaId__4FB2A58E" FromRole="Factura" ToRole="Pago" />
+          <NavigationProperty Name="Venta" Relationship="Self.FK__Venta__FacturaId__4EBE8155" FromRole="Factura" ToRole="Venta" />
+        </EntityType>
+        <EntityType Name="GlobalConfig">
+          <Key>
+            <PropertyRef Name="GlobalConfigId" />
+          </Key>
+          <Property Name="GlobalConfigId" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="Key" Type="String" MaxLength="300" FixedLength="false" Unicode="false" Nullable="false" />
+          <Property Name="Value" Type="String" MaxLength="300" FixedLength="false" Unicode="false" Nullable="false" />
+        </EntityType>
+        <EntityType Name="ItemMenu">
+          <Key>
+            <PropertyRef Name="ItemMenuId" />
+          </Key>
+          <Property Name="ItemMenuId" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="Name" Type="String" MaxLength="100" FixedLength="false" Unicode="false" Nullable="false" />
+          <Property Name="Orden" Type="Int32" Nullable="false" />
+          <Property Name="Estado" Type="Boolean" Nullable="false" />
+          <Property Name="ItemMenuPadreId" Type="Int32" />
+          <Property Name="Controlador" Type="String" MaxLength="50" FixedLength="false" Unicode="false" />
+          <Property Name="Accion" Type="String" MaxLength="50" FixedLength="false" Unicode="false" />
+          <Property Name="Parametros" Type="String" MaxLength="500" FixedLength="false" Unicode="false" />
+          <Property Name="Icon" Type="String" MaxLength="50" FixedLength="false" Unicode="false" />
+          <NavigationProperty Name="RoleMenu" Relationship="Self.FK_RoleMenu_ItemMenu" FromRole="ItemMenu" ToRole="RoleMenu" />
+        </EntityType>
+        <EntityType Name="Log">
+          <Key>
+            <PropertyRef Name="Id" />
+          </Key>
+          <Property Name="Id" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="Application" Type="String" MaxLength="50" FixedLength="false" Unicode="true" Nullable="false" />
+          <Property Name="Logged" Type="DateTime" Nullable="false" Precision="3" />
+          <Property Name="Level" Type="String" MaxLength="50" FixedLength="false" Unicode="true" Nullable="false" />
+          <Property Name="Message" Type="String" MaxLength="Max" FixedLength="false" Unicode="true" Nullable="false" />
+          <Property Name="UserName" Type="String" MaxLength="250" FixedLength="false" Unicode="true" />
+          <Property Name="ServerName" Type="String" MaxLength="Max" FixedLength="false" Unicode="true" />
+          <Property Name="Port" Type="String" MaxLength="Max" FixedLength="false" Unicode="true" />
+          <Property Name="Url" Type="String" MaxLength="Max" FixedLength="false" Unicode="true" />
+          <Property Name="Https" Type="Boolean" />
+          <Property Name="ServerAddress" Type="String" MaxLength="100" FixedLength="false" Unicode="true" />
+          <Property Name="RemoteAddress" Type="String" MaxLength="100" FixedLength="false" Unicode="true" />
+          <Property Name="Logger" Type="String" MaxLength="250" FixedLength="false" Unicode="true" />
+          <Property Name="Callsite" Type="String" MaxLength="Max" FixedLength="false" Unicode="true" />
+          <Property Name="Exception" Type="String" MaxLength="Max" FixedLength="false" Unicode="true" />
+        </EntityType>
+        <EntityType Name="Logs">
+          <Key>
+            <PropertyRef Name="Id" />
+          </Key>
+          <Property Name="Id" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="EventDateTime" Type="DateTime" Nullable="false" Precision="3" />
+          <Property Name="EventLevel" Type="String" MaxLength="100" FixedLength="false" Unicode="true" Nullable="false" />
+          <Property Name="UserName" Type="String" MaxLength="100" FixedLength="false" Unicode="true" Nullable="false" />
+          <Property Name="MachineName" Type="String" MaxLength="100" FixedLength="false" Unicode="true" Nullable="false" />
+          <Property Name="EventMessage" Type="String" MaxLength="Max" FixedLength="false" Unicode="true" Nullable="false" />
+          <Property Name="ErrorSource" Type="String" MaxLength="100" FixedLength="false" Unicode="true" />
+          <Property Name="ErrorClass" Type="String" MaxLength="500" FixedLength="false" Unicode="true" />
+          <Property Name="ErrorMethod" Type="String" MaxLength="Max" FixedLength="false" Unicode="true" />
+          <Property Name="ErrorMessage" Type="String" MaxLength="Max" FixedLength="false" Unicode="true" />
+          <Property Name="InnerErrorMessage" Type="String" MaxLength="Max" FixedLength="false" Unicode="true" />
+        </EntityType>
+        <EntityType Name="Marca">
+          <Key>
+            <PropertyRef Name="MarcaId" />
+          </Key>
+          <Property Name="MarcaId" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="nombre" Type="String" MaxLength="200" FixedLength="false" Unicode="false" Nullable="false" />
+          <Property Name="descripcion" Type="String" MaxLength="400" FixedLength="false" Unicode="false" />
+          <Property Name="activo" Type="Boolean" Nullable="false" />
+          <Property Name="modificadoEn" Type="DateTime" Precision="3" />
+          <Property Name="modificadoPor" Type="Int32" />
+          <NavigationProperty Name="Reparacion" Relationship="Self.FK__Reparacio__Marca__298CFCA6" FromRole="Marca" ToRole="Reparacion" />
+        </EntityType>
+        <EntityType Name="MetodoPago">
+          <Key>
+            <PropertyRef Name="MetodoPagoId" />
+          </Key>
+          <Property Name="MetodoPagoId" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="Nombre" Type="String" MaxLength="300" FixedLength="false" Unicode="false" />
+          <Property Name="Descripcion" Type="String" MaxLength="300" FixedLength="false" Unicode="false" />
+          <NavigationProperty Name="Pago" Relationship="Self.FK__Pago__MetodoDePa__340A8B19" FromRole="MetodoPago" ToRole="Pago" />
+        </EntityType>
+        <EntityType Name="Modelo">
+          <Key>
+            <PropertyRef Name="DispositivoModeloId" />
+          </Key>
+          <Property Name="DispositivoModeloId" Type="Int32" Nullable="false" />
+          <Property Name="MarcaId" Type="Int32" />
+          <Property Name="TipoId" Type="Int32" />
+          <Property Name="Modelo1" Type="String" MaxLength="200" FixedLength="false" Unicode="false" />
+          <Property Name="Code" Type="String" MaxLength="200" FixedLength="false" Unicode="false" />
+          <Property Name="Descripcion" Type="String" MaxLength="400" FixedLength="false" Unicode="false" />
+          <Property Name="activo" Type="Binary" MaxLength="1" FixedLength="true" />
+          <Property Name="modificadoEn" Type="DateTime" Precision="3" />
+          <Property Name="modificadoPor" Type="Int32" />
+        </EntityType>
+        <EntityType Name="Novedad">
+          <Key>
+            <PropertyRef Name="novedadId" />
+          </Key>
+          <Property Name="novedadId" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="reparacionId" Type="Int32" Nullable="false" />
+          <Property Name="UserId" Type="Int32" Nullable="false" />
+          <Property Name="tipoNovedadId" Type="Int32" Nullable="false" />
+          <Property Name="monto" Type="Decimal" Precision="18" Scale="0" />
+          <Property Name="observacion" Type="String" MaxLength="500" FixedLength="false" Unicode="false" />
+          <Property Name="modificadoEn" Type="DateTime" Nullable="false" Precision="3" />
+          <Property Name="modificadoPor" Type="Int32" />
+        </EntityType>
+        <EntityType Name="Pago">
+          <Key>
+            <PropertyRef Name="PagoId" />
+          </Key>
+          <Property Name="PagoId" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="CompraId" Type="Int32" Nullable="false" />
+          <Property Name="Monto" Type="Decimal" Precision="19" Scale="4" Nullable="false" />
+          <Property Name="FechaDebito" Type="DateTime" Nullable="false" Precision="3" />
+          <Property Name="FechaEmision" Type="DateTime" Nullable="false" Precision="3" />
+          <Property Name="NroReferencia" Type="String" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="Motivo" Type="String" MaxLength="500" FixedLength="false" Unicode="false" />
+          <Property Name="TipoTransaccionId" Type="Int32" Nullable="false" />
+          <Property Name="FacturaId" Type="Int32" />
+          <Property Name="CreadoPor" Type="Int32" />
+          <Property Name="FechaCreacion" Type="DateTime" Nullable="false" Precision="3" />
+          <Property Name="MetodoDePagoId" Type="Int32" Nullable="false" />
+          <NavigationProperty Name="Compra" Relationship="Self.FK__Pago__CompraId__3039FA35" FromRole="Pago" ToRole="Compra" />
+          <NavigationProperty Name="Factura" Relationship="Self.FK__Pago__FacturaId__4FB2A58E" FromRole="Pago" ToRole="Factura" />
+          <NavigationProperty Name="MetodoPago" Relationship="Self.FK__Pago__MetodoDePa__340A8B19" FromRole="Pago" ToRole="MetodoPago" />
+          <NavigationProperty Name="TipoTransaccion" Relationship="Self.FK__Pago__TipoTransa__312E1E6E" FromRole="Pago" ToRole="TipoTransaccion" />
+        </EntityType>
+        <EntityType Name="Proveedor">
+          <Key>
+            <PropertyRef Name="ProveedorId" />
+          </Key>
+          <Property Name="ProveedorId" Type="String" MaxLength="100" FixedLength="false" Unicode="false" Nullable="false" />
+          <Property Name="Nombre" Type="String" MaxLength="200" FixedLength="false" Unicode="false" Nullable="false" />
+          <Property Name="Mail" Type="String" MaxLength="200" FixedLength="false" Unicode="false" />
+          <Property Name="Contacto" Type="String" MaxLength="200" FixedLength="false" Unicode="false" />
+          <Property Name="Telefono1" Type="String" MaxLength="50" FixedLength="false" Unicode="false" />
+          <Property Name="Telefono2" Type="String" MaxLength="50" FixedLength="false" Unicode="false" />
+          <Property Name="Direccion" Type="String" MaxLength="300" FixedLength="false" Unicode="false" />
+          <Property Name="Localidad" Type="String" MaxLength="100" FixedLength="false" Unicode="false" />
+          <NavigationProperty Name="Compra" Relationship="Self.FK__Compra__Proveedo__2E51B1C3" FromRole="Proveedor" ToRole="Compra" />
+        </EntityType>
+        <EntityType Name="PuntoDeVenta">
+          <Key>
+            <PropertyRef Name="PuntoDeVentaId" />
+          </Key>
+          <Property Name="PuntoDeVentaId" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="Nombre" Type="String" MaxLength="50" FixedLength="false" Unicode="false" Nullable="false" />
+          <Property Name="Descripcion" Type="String" MaxLength="50" FixedLength="false" Unicode="false" Nullable="false" />
+          <NavigationProperty Name="Compra" Relationship="Self.FK__Compra__PuntoDeV__2F45D5FC" FromRole="PuntoDeVenta" ToRole="Compra" />
+          <NavigationProperty Name="Venta" Relationship="Self.FK__Venta__PuntoDeVe__3AB788A8" FromRole="PuntoDeVenta" ToRole="Venta" />
+          <NavigationProperty Name="Venta1" Relationship="Self.FK__Venta__PuntoDeVe__3BABACE1" FromRole="PuntoDeVenta" ToRole="Venta" />
+        </EntityType>
+        <EntityType Name="Reparacion">
+          <Key>
+            <PropertyRef Name="ReparacionId" />
+          </Key>
+          <Property Name="ReparacionId" Type="Int32" Nullable="false" />
+          <Property Name="ClienteId" Type="Int32" Nullable="false" />
+          <Property Name="EmpleadoAsignadoId" Type="Int32" Nullable="false" />
+          <Property Name="TecnicoAsignadoId" Type="Int32" Nullable="false" />
+          <Property Name="EstadoReparacionId" Type="Int32" Nullable="false" />
+          <Property Name="ComercioId" Type="Int32" />
+          <Property Name="MarcaId" Type="Int32" Nullable="false" />
+          <Property Name="TipoDispositivoId" Type="Int32" Nullable="false" />
+          <Property Name="ReparacionDetalleId" Type="Int32" />
+          <Property Name="FechaEntrega" Type="DateTime" Precision="3" />
+          <Property Name="InformadoEn" Type="DateTime" Precision="3" />
+          <Property Name="InformadoPor" Type="Int32" />
+          <Property Name="ModificadoEn" Type="DateTime" Nullable="false" Precision="3" />
+          <Property Name="ModificadoPor" Type="Int32" />
+          <Property Name="CreadoEn" Type="DateTime" Nullable="false" Precision="3" />
+          <Property Name="CreadoPor" Type="Int32" />
+          <NavigationProperty Name="Cliente" Relationship="Self.FK__Reparacio__Clien__25BC6BC2" FromRole="Reparacion" ToRole="Cliente" />
+          <NavigationProperty Name="Comercio" Relationship="Self.FK__Reparacio__Comer__2C696951" FromRole="Reparacion" ToRole="Comercio" />
+          <NavigationProperty Name="EstadoReparacion" Relationship="Self.FK__Reparacio__Estad__2898D86D" FromRole="Reparacion" ToRole="EstadoReparacion" />
+          <NavigationProperty Name="Marca" Relationship="Self.FK__Reparacio__Marca__298CFCA6" FromRole="Reparacion" ToRole="Marca" />
+          <NavigationProperty Name="Usuario" Relationship="Self.FK__Reparacio__Emple__26B08FFB" FromRole="Reparacion" ToRole="Usuario" />
+          <NavigationProperty Name="ReparacionDetalle" Relationship="Self.FK__Reparacio__Repar__2B754518" FromRole="Reparacion" ToRole="ReparacionDetalle" />
+          <NavigationProperty Name="Usuario1" Relationship="Self.FK__Reparacio__Tecni__27A4B434" FromRole="Reparacion" ToRole="Usuario" />
+          <NavigationProperty Name="TipoDispositivo" Relationship="Self.FK__Reparacio__TipoD__2A8120DF" FromRole="Reparacion" ToRole="TipoDispositivo" />
+          <NavigationProperty Name="TipoDispositivo1" Relationship="Self.FK__Reparacio__TipoD__2D5D8D8A" FromRole="Reparacion" ToRole="TipoDispositivo" />
+        </EntityType>
+        <EntityType Name="ReparacionDetalle">
+          <Key>
+            <PropertyRef Name="ReparacionDetalleId" />
+          </Key>
+          <Property Name="ReparacionDetalleId" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="EsGarantia" Type="Boolean" Nullable="false" />
+          <Property Name="EsDomicilio" Type="Boolean" Nullable="false" />
+          <Property Name="NroReferencia" Type="String" MaxLength="200" FixedLength="false" Unicode="false" />
+          <Property Name="FechoCompra" Type="DateTime" Precision="3" />
+          <Property Name="NroFactura" Type="String" MaxLength="200" FixedLength="false" Unicode="false" />
+          <Property Name="Presupuesto" Type="Decimal" Precision="18" Scale="0" />
+          <Property Name="PresupuestoFecha" Type="DateTime" Precision="3" />
+          <Property Name="Precio" Type="Decimal" Precision="18" Scale="0" />
+          <Property Name="Modelo" Type="String" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="Serie" Type="String" MaxLength="200" FixedLength="false" Unicode="false" />
+          <Property Name="Serbus" Type="String" MaxLength="200" FixedLength="false" Unicode="false" />
+          <Property Name="Unicacion" Type="String" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="Accesorios" Type="String" MaxLength="200" FixedLength="false" Unicode="false" />
+          <Property Name="ReparacionDesc" Type="String" MaxLength="500" FixedLength="false" Unicode="false" />
+          <Property Name="ModificadoEn" Type="DateTime" Nullable="false" Precision="3" />
+          <Property Name="ModificadoPor" Type="Int32" Nullable="false" />
+          <NavigationProperty Name="Reparacion" Relationship="Self.FK__Reparacio__Repar__2B754518" FromRole="ReparacionDetalle" ToRole="Reparacion" />
+        </EntityType>
+        <EntityType Name="Role">
+          <Key>
+            <PropertyRef Name="RolId" />
+          </Key>
+          <Property Name="RolId" Type="Int32" Nullable="false" />
+          <Property Name="Status" Type="String" MaxLength="50" FixedLength="false" Unicode="false" Nullable="false" />
+          <Property Name="Nombre" Type="String" MaxLength="50" FixedLength="false" Unicode="false" Nullable="false" />
+          <Property Name="Descripcion" Type="String" MaxLength="200" FixedLength="false" Unicode="false" Nullable="false" />
+          <Property Name="DefaultController" Type="String" MaxLength="50" FixedLength="false" Unicode="false" />
+          <Property Name="DefaultAction" Type="String" MaxLength="50" FixedLength="false" Unicode="false" />
+          <NavigationProperty Name="RoleMenu" Relationship="Self.FK_RoleMenu_Rol" FromRole="Role" ToRole="RoleMenu" />
+          <NavigationProperty Name="UsuarioRol" Relationship="Self.FK_UsuarioRol_Rol" FromRole="Role" ToRole="UsuarioRol" />
+        </EntityType>
+        <EntityType Name="TipoDispositivo">
+          <Key>
+            <PropertyRef Name="TipoDispositivoId" />
+          </Key>
+          <Property Name="TipoDispositivoId" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="nombre" Type="String" MaxLength="200" FixedLength="false" Unicode="false" Nullable="false" />
+          <Property Name="descripcion" Type="String" MaxLength="400" FixedLength="false" Unicode="false" />
+          <Property Name="activo" Type="Boolean" Nullable="false" />
+          <Property Name="modificadoEn" Type="DateTime" Precision="3" />
+          <Property Name="modificadoPor" Type="Int32" />
+          <NavigationProperty Name="Reparacion" Relationship="Self.FK__Reparacio__TipoD__2A8120DF" FromRole="TipoDispositivo" ToRole="Reparacion" />
+          <NavigationProperty Name="Reparacion1" Relationship="Self.FK__Reparacio__TipoD__2D5D8D8A" FromRole="TipoDispositivo" ToRole="Reparacion" />
+        </EntityType>
+        <EntityType Name="TipoFactura">
+          <Key>
+            <PropertyRef Name="TipoFacturaId" />
+          </Key>
+          <Property Name="TipoFacturaId" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="Nombre" Type="String" MaxLength="50" FixedLength="false" Unicode="false" Nullable="false" />
+          <Property Name="Descripcion" Type="String" MaxLength="100" FixedLength="false" Unicode="false" Nullable="false" />
+          <Property Name="ModificadoEn" Type="DateTime" Nullable="false" Precision="3" />
+          <Property Name="ModificadoPor" Type="Int32" Nullable="false" />
+          <NavigationProperty Name="Factura" Relationship="Self.FK__Factura__TipoFac__50A6C9C7" FromRole="TipoFactura" ToRole="Factura" />
+        </EntityType>
+        <EntityType Name="TipoNovedad">
+          <Key>
+            <PropertyRef Name="TipoNovedadId" />
+          </Key>
+          <Property Name="TipoNovedadId" Type="Int32" Nullable="false" />
+          <Property Name="nombre" Type="String" MaxLength="200" FixedLength="false" Unicode="false" Nullable="false" />
+          <Property Name="descripcion" Type="String" MaxLength="400" FixedLength="false" Unicode="false" />
+          <Property Name="activo" Type="Boolean" Nullable="false" />
+          <Property Name="modificadoEn" Type="DateTime" Precision="3" />
+          <Property Name="modificadoPor" Type="Int32" />
+        </EntityType>
+        <EntityType Name="TipoTransaccion">
+          <Key>
+            <PropertyRef Name="TipoTransaccionId" />
+          </Key>
+          <Property Name="TipoTransaccionId" Type="Int32" Nullable="false" />
+          <Property Name="Nombre" Type="String" MaxLength="50" FixedLength="false" Unicode="false" Nullable="false" />
+          <Property Name="Descripcion" Type="String" MaxLength="200" FixedLength="false" Unicode="false" Nullable="false" />
+          <NavigationProperty Name="Pago" Relationship="Self.FK__Pago__TipoTransa__312E1E6E" FromRole="TipoTransaccion" ToRole="Pago" />
+          <NavigationProperty Name="Venta" Relationship="Self.FK__Venta__TipoTrans__3C9FD11A" FromRole="TipoTransaccion" ToRole="Venta" />
+        </EntityType>
+        <EntityType Name="Usuario">
+          <Key>
+            <PropertyRef Name="UserId" />
+          </Key>
+          <Property Name="UserId" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="Login" Type="String" MaxLength="200" FixedLength="false" Unicode="false" Nullable="false" />
+          <Property Name="Email" Type="String" MaxLength="200" FixedLength="false" Unicode="false" Nullable="false" />
+          <Property Name="Nombre" Type="String" MaxLength="100" FixedLength="false" Unicode="false" Nullable="false" />
+          <Property Name="Apellido" Type="String" MaxLength="100" FixedLength="false" Unicode="false" Nullable="false" />
+          <Property Name="Contraseña" Type="String" MaxLength="200" FixedLength="false" Unicode="false" Nullable="false" />
+          <Property Name="Direccion" Type="String" MaxLength="500" FixedLength="false" Unicode="false" Nullable="false" />
+          <Property Name="Telefono1" Type="String" MaxLength="50" FixedLength="false" Unicode="false" Nullable="false" />
+          <Property Name="Telefono2" Type="String" MaxLength="50" FixedLength="false" Unicode="false" />
+          <Property Name="Activo" Type="Boolean" Nullable="false" />
+          <NavigationProperty Name="Reparacion" Relationship="Self.FK__Reparacio__Emple__26B08FFB" FromRole="Usuario" ToRole="Reparacion" />
+          <NavigationProperty Name="Reparacion1" Relationship="Self.FK__Reparacio__Tecni__27A4B434" FromRole="Usuario" ToRole="Reparacion" />
+        </EntityType>
+        <EntityType Name="Venta">
+          <Key>
+            <PropertyRef Name="VentaId" />
+          </Key>
+          <Property Name="VentaId" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="ClienteId" Type="Int32" />
+          <Property Name="Monto" Type="Decimal" Precision="19" Scale="4" Nullable="false" />
+          <Property Name="Facturado" Type="Boolean" Nullable="false" />
+          <Property Name="Descripcion" Type="String" MaxLength="500" FixedLength="false" Unicode="false" />
+          <Property Name="FacturaId" Type="Int32" />
+          <Property Name="RefNumber" Type="String" MaxLength="200" FixedLength="false" Unicode="false" />
+          <Property Name="PuntoDeVentaId" Type="Int32" Nullable="false" />
+          <Property Name="Fecha" Type="DateTime" Nullable="false" Precision="3" />
+          <Property Name="Vendedor" Type="Int32" Nullable="false" />
+          <Property Name="MetodoPagoId" Type="Int32" />
+          <Property Name="TipoTransaccionId" Type="Int32" Nullable="false" />
+          <NavigationProperty Name="Cliente" Relationship="Self.FK__Venta__ClienteId__39C3646F" FromRole="Venta" ToRole="Cliente" />
+          <NavigationProperty Name="Factura" Relationship="Self.FK__Venta__FacturaId__4EBE8155" FromRole="Venta" ToRole="Factura" />
+          <NavigationProperty Name="PuntoDeVenta" Relationship="Self.FK__Venta__PuntoDeVe__3AB788A8" FromRole="Venta" ToRole="PuntoDeVenta" />
+          <NavigationProperty Name="PuntoDeVenta1" Relationship="Self.FK__Venta__PuntoDeVe__3BABACE1" FromRole="Venta" ToRole="PuntoDeVenta" />
+          <NavigationProperty Name="TipoTransaccion" Relationship="Self.FK__Venta__TipoTrans__3C9FD11A" FromRole="Venta" ToRole="TipoTransaccion" />
+        </EntityType>
+        <EntityType Name="RoleMenu">
+          <Key>
+            <PropertyRef Name="id" />
+            <PropertyRef Name="RolId" />
+            <PropertyRef Name="ItemMenuId" />
+          </Key>
+          <Property Name="id" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="RolId" Type="Int32" Nullable="false" />
+          <Property Name="ItemMenuId" Type="Int32" Nullable="false" />
+          <NavigationProperty Name="ItemMenu" Relationship="Self.FK_RoleMenu_ItemMenu" FromRole="RoleMenu" ToRole="ItemMenu" />
+          <NavigationProperty Name="Role" Relationship="Self.FK_RoleMenu_Rol" FromRole="RoleMenu" ToRole="Role" />
+        </EntityType>
+        <EntityType Name="UsuarioRol">
+          <Key>
+            <PropertyRef Name="RolId" />
+            <PropertyRef Name="UserId" />
+          </Key>
+          <Property Name="RolId" Type="Int32" Nullable="false" />
+          <Property Name="UserId" Type="Int32" Nullable="false" />
+          <NavigationProperty Name="Role" Relationship="Self.FK_UsuarioRol_Rol" FromRole="UsuarioRol" ToRole="Role" />
+        </EntityType>
+        <EntityType Name="vw_ComprasAPagar">
+          <Key>
+            <PropertyRef Name="CompraId" />
+            <PropertyRef Name="ProveedorId" />
+            <PropertyRef Name="Monto" />
+            <PropertyRef Name="Facturado" />
+            <PropertyRef Name="PuntoDeVentaId" />
+            <PropertyRef Name="Estado" />
+            <PropertyRef Name="FechaCreacion" />
+            <PropertyRef Name="CreadoPor" />
+            <PropertyRef Name="saldo" />
+          </Key>
+          <Property Name="CompraId" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="ProveedorId" Type="String" MaxLength="100" FixedLength="false" Unicode="false" Nullable="false" />
+          <Property Name="Monto" Type="Decimal" Precision="19" Scale="4" Nullable="false" />
+          <Property Name="Facturado" Type="Boolean" Nullable="false" />
+          <Property Name="Descripcion" Type="String" MaxLength="500" FixedLength="false" Unicode="false" />
+          <Property Name="PuntoDeVentaId" Type="Int32" Nullable="false" />
+          <Property Name="Estado" Type="Int32" Nullable="false" />
+          <Property Name="FechaCreacion" Type="DateTime" Nullable="false" Precision="3" />
+          <Property Name="CreadoPor" Type="Int32" Nullable="false" />
+          <Property Name="saldo" Type="Decimal" Precision="19" Scale="4" Nullable="false" />
+        </EntityType>
+        <EntityType Name="vw_ProveedoresAcreedores">
+          <Key>
+            <PropertyRef Name="ProveedorId" />
+            <PropertyRef Name="Nombre" />
+          </Key>
+          <Property Name="ProveedorId" Type="String" MaxLength="100" FixedLength="false" Unicode="false" Nullable="false" />
+          <Property Name="Nombre" Type="String" MaxLength="200" FixedLength="false" Unicode="false" Nullable="false" />
+          <Property Name="Mail" Type="String" MaxLength="200" FixedLength="false" Unicode="false" />
+          <Property Name="Contacto" Type="String" MaxLength="200" FixedLength="false" Unicode="false" />
+          <Property Name="Telefono1" Type="String" MaxLength="50" FixedLength="false" Unicode="false" />
+          <Property Name="Telefono2" Type="String" MaxLength="50" FixedLength="false" Unicode="false" />
+          <Property Name="Direccion" Type="String" MaxLength="300" FixedLength="false" Unicode="false" />
+          <Property Name="Localidad" Type="String" MaxLength="100" FixedLength="false" Unicode="false" />
+        </EntityType>
+        <EntityType Name="vw_ReparacionTiempos">
+          <Key>
+            <PropertyRef Name="reparacionId" />
+          </Key>
+          <Property Name="reparacionId" Type="Int32" Nullable="false" />
+          <Property Name="DiasDesdeUltimaActividad" Type="Int32" />
+        </EntityType>
+        <EntityType Name="vw_VentasAnuales">
+          <Key>
+            <PropertyRef Name="facturado" />
+          </Key>
+          <Property Name="Total" Type="Decimal" Precision="19" Scale="4" />
+          <Property Name="facturado" Type="Boolean" Nullable="false" />
+        </EntityType>
+        <EntityType Name="vw_VentasDiarias">
+          <Key>
+            <PropertyRef Name="facturado" />
+          </Key>
+          <Property Name="Total" Type="Decimal" Precision="19" Scale="4" />
+          <Property Name="facturado" Type="Boolean" Nullable="false" />
+        </EntityType>
+        <EntityType Name="vw_VentasMensuales">
+          <Key>
+            <PropertyRef Name="facturado" />
+          </Key>
+          <Property Name="Total" Type="Decimal" Precision="19" Scale="4" />
+          <Property Name="facturado" Type="Boolean" Nullable="false" />
+        </EntityType>
+        <Association Name="FK__Cliente__Direcci__5F29F348">
+          <End Role="Direccion" Type="Self.Direccion" Multiplicity="0..1" />
+          <End Role="Cliente" Type="Self.Cliente" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="Direccion">
+              <PropertyRef Name="DireccionId" />
+            </Principal>
+            <Dependent Role="Cliente">
+              <PropertyRef Name="DireccionId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK__Reparacio__Clien__25BC6BC2">
+          <End Role="Cliente" Type="Self.Cliente" Multiplicity="1" />
+          <End Role="Reparacion" Type="Self.Reparacion" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="Cliente">
+              <PropertyRef Name="ClienteId" />
+            </Principal>
+            <Dependent Role="Reparacion">
+              <PropertyRef Name="ClienteId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK__Venta__ClienteId__39C3646F">
+          <End Role="Cliente" Type="Self.Cliente" Multiplicity="0..1" />
+          <End Role="Venta" Type="Self.Venta" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="Cliente">
+              <PropertyRef Name="ClienteId" />
+            </Principal>
+            <Dependent Role="Venta">
+              <PropertyRef Name="ClienteId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK__Reparacio__Comer__2C696951">
+          <End Role="Comercio" Type="Self.Comercio" Multiplicity="0..1" />
+          <End Role="Reparacion" Type="Self.Reparacion" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="Comercio">
+              <PropertyRef Name="ComercioId" />
+            </Principal>
+            <Dependent Role="Reparacion">
+              <PropertyRef Name="ComercioId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK__Compra__Proveedo__2E51B1C3">
+          <End Role="Proveedor" Type="Self.Proveedor" Multiplicity="1" />
+          <End Role="Compra" Type="Self.Compra" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="Proveedor">
+              <PropertyRef Name="ProveedorId" />
+            </Principal>
+            <Dependent Role="Compra">
+              <PropertyRef Name="ProveedorId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK__Compra__PuntoDeV__2F45D5FC">
+          <End Role="PuntoDeVenta" Type="Self.PuntoDeVenta" Multiplicity="1" />
+          <End Role="Compra" Type="Self.Compra" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="PuntoDeVenta">
+              <PropertyRef Name="PuntoDeVentaId" />
+            </Principal>
+            <Dependent Role="Compra">
+              <PropertyRef Name="PuntoDeVentaId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK__Pago__CompraId__3039FA35">
+          <End Role="Compra" Type="Self.Compra" Multiplicity="1" />
+          <End Role="Pago" Type="Self.Pago" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="Compra">
+              <PropertyRef Name="CompraId" />
+            </Principal>
+            <Dependent Role="Pago">
+              <PropertyRef Name="CompraId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK__Reparacio__Estad__2898D86D">
+          <End Role="EstadoReparacion" Type="Self.EstadoReparacion" Multiplicity="1" />
+          <End Role="Reparacion" Type="Self.Reparacion" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="EstadoReparacion">
+              <PropertyRef Name="EstadoReparacionId" />
+            </Principal>
+            <Dependent Role="Reparacion">
+              <PropertyRef Name="EstadoReparacionId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK__Factura__TipoFac__50A6C9C7">
+          <End Role="TipoFactura" Type="Self.TipoFactura" Multiplicity="1" />
+          <End Role="Factura" Type="Self.Factura" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="TipoFactura">
+              <PropertyRef Name="TipoFacturaId" />
+            </Principal>
+            <Dependent Role="Factura">
+              <PropertyRef Name="TipoFacturaId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK__Pago__FacturaId__4FB2A58E">
+          <End Role="Factura" Type="Self.Factura" Multiplicity="0..1" />
+          <End Role="Pago" Type="Self.Pago" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="Factura">
+              <PropertyRef Name="FacturaId" />
+            </Principal>
+            <Dependent Role="Pago">
+              <PropertyRef Name="FacturaId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK__Venta__FacturaId__4EBE8155">
+          <End Role="Factura" Type="Self.Factura" Multiplicity="0..1" />
+          <End Role="Venta" Type="Self.Venta" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="Factura">
+              <PropertyRef Name="FacturaId" />
+            </Principal>
+            <Dependent Role="Venta">
+              <PropertyRef Name="FacturaId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_RoleMenu_ItemMenu">
+          <End Role="ItemMenu" Type="Self.ItemMenu" Multiplicity="1" />
+          <End Role="RoleMenu" Type="Self.RoleMenu" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="ItemMenu">
+              <PropertyRef Name="ItemMenuId" />
+            </Principal>
+            <Dependent Role="RoleMenu">
+              <PropertyRef Name="ItemMenuId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK__Reparacio__Marca__298CFCA6">
+          <End Role="Marca" Type="Self.Marca" Multiplicity="1" />
+          <End Role="Reparacion" Type="Self.Reparacion" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="Marca">
+              <PropertyRef Name="MarcaId" />
+            </Principal>
+            <Dependent Role="Reparacion">
+              <PropertyRef Name="MarcaId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK__Pago__MetodoDePa__340A8B19">
+          <End Role="MetodoPago" Type="Self.MetodoPago" Multiplicity="1" />
+          <End Role="Pago" Type="Self.Pago" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="MetodoPago">
+              <PropertyRef Name="MetodoPagoId" />
+            </Principal>
+            <Dependent Role="Pago">
+              <PropertyRef Name="MetodoDePagoId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK__Pago__TipoTransa__312E1E6E">
+          <End Role="TipoTransaccion" Type="Self.TipoTransaccion" Multiplicity="1" />
+          <End Role="Pago" Type="Self.Pago" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="TipoTransaccion">
+              <PropertyRef Name="TipoTransaccionId" />
+            </Principal>
+            <Dependent Role="Pago">
+              <PropertyRef Name="TipoTransaccionId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK__Venta__PuntoDeVe__3AB788A8">
+          <End Role="PuntoDeVenta" Type="Self.PuntoDeVenta" Multiplicity="1" />
+          <End Role="Venta" Type="Self.Venta" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="PuntoDeVenta">
+              <PropertyRef Name="PuntoDeVentaId" />
+            </Principal>
+            <Dependent Role="Venta">
+              <PropertyRef Name="PuntoDeVentaId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK__Venta__PuntoDeVe__3BABACE1">
+          <End Role="PuntoDeVenta" Type="Self.PuntoDeVenta" Multiplicity="1" />
+          <End Role="Venta" Type="Self.Venta" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="PuntoDeVenta">
+              <PropertyRef Name="PuntoDeVentaId" />
+            </Principal>
+            <Dependent Role="Venta">
+              <PropertyRef Name="PuntoDeVentaId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK__Reparacio__Emple__26B08FFB">
+          <End Role="Usuario" Type="Self.Usuario" Multiplicity="1" />
+          <End Role="Reparacion" Type="Self.Reparacion" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="Usuario">
+              <PropertyRef Name="UserId" />
+            </Principal>
+            <Dependent Role="Reparacion">
+              <PropertyRef Name="EmpleadoAsignadoId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK__Reparacio__Repar__2B754518">
+          <End Role="ReparacionDetalle" Type="Self.ReparacionDetalle" Multiplicity="0..1" />
+          <End Role="Reparacion" Type="Self.Reparacion" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="ReparacionDetalle">
+              <PropertyRef Name="ReparacionDetalleId" />
+            </Principal>
+            <Dependent Role="Reparacion">
+              <PropertyRef Name="ReparacionDetalleId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK__Reparacio__Tecni__27A4B434">
+          <End Role="Usuario" Type="Self.Usuario" Multiplicity="1" />
+          <End Role="Reparacion" Type="Self.Reparacion" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="Usuario">
+              <PropertyRef Name="UserId" />
+            </Principal>
+            <Dependent Role="Reparacion">
+              <PropertyRef Name="TecnicoAsignadoId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK__Reparacio__TipoD__2A8120DF">
+          <End Role="TipoDispositivo" Type="Self.TipoDispositivo" Multiplicity="1" />
+          <End Role="Reparacion" Type="Self.Reparacion" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="TipoDispositivo">
+              <PropertyRef Name="TipoDispositivoId" />
+            </Principal>
+            <Dependent Role="Reparacion">
+              <PropertyRef Name="TipoDispositivoId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK__Reparacio__TipoD__2D5D8D8A">
+          <End Role="TipoDispositivo" Type="Self.TipoDispositivo" Multiplicity="1" />
+          <End Role="Reparacion" Type="Self.Reparacion" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="TipoDispositivo">
+              <PropertyRef Name="TipoDispositivoId" />
+            </Principal>
+            <Dependent Role="Reparacion">
+              <PropertyRef Name="TipoDispositivoId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_RoleMenu_Rol">
+          <End Role="Role" Type="Self.Role" Multiplicity="1" />
+          <End Role="RoleMenu" Type="Self.RoleMenu" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="Role">
+              <PropertyRef Name="RolId" />
+            </Principal>
+            <Dependent Role="RoleMenu">
+              <PropertyRef Name="RolId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK_UsuarioRol_Rol">
+          <End Role="Role" Type="Self.Role" Multiplicity="1" />
+          <End Role="UsuarioRol" Type="Self.UsuarioRol" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="Role">
+              <PropertyRef Name="RolId" />
+            </Principal>
+            <Dependent Role="UsuarioRol">
+              <PropertyRef Name="RolId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <Association Name="FK__Venta__TipoTrans__3C9FD11A">
+          <End Role="TipoTransaccion" Type="Self.TipoTransaccion" Multiplicity="1" />
+          <End Role="Venta" Type="Self.Venta" Multiplicity="*" />
+          <ReferentialConstraint>
+            <Principal Role="TipoTransaccion">
+              <PropertyRef Name="TipoTransaccionId" />
+            </Principal>
+            <Dependent Role="Venta">
+              <PropertyRef Name="TipoTransaccionId" />
+            </Dependent>
+          </ReferentialConstraint>
+        </Association>
+        <EntityContainer Name="Entities" annotation:LazyLoadingEnabled="true">
+          <EntitySet Name="Cliente" EntityType="Self.Cliente" />
+          <EntitySet Name="Comercio" EntityType="Self.Comercio" />
+          <EntitySet Name="Compra" EntityType="Self.Compra" />
+          <EntitySet Name="Direccion" EntityType="Self.Direccion" />
+          <EntitySet Name="EstadoReparacion" EntityType="Self.EstadoReparacion" />
+          <EntitySet Name="Factura" EntityType="Self.Factura" />
+          <EntitySet Name="GlobalConfig" EntityType="Self.GlobalConfig" />
+          <EntitySet Name="ItemMenu" EntityType="Self.ItemMenu" />
+          <EntitySet Name="Log" EntityType="Self.Log" />
+          <EntitySet Name="Logs" EntityType="Self.Logs" />
+          <EntitySet Name="Marca" EntityType="Self.Marca" />
+          <EntitySet Name="MetodoPago" EntityType="Self.MetodoPago" />
+          <EntitySet Name="Modelo" EntityType="Self.Modelo" />
+          <EntitySet Name="Novedad" EntityType="Self.Novedad" />
+          <EntitySet Name="Pago" EntityType="Self.Pago" />
+          <EntitySet Name="Proveedor" EntityType="Self.Proveedor" />
+          <EntitySet Name="PuntoDeVenta" EntityType="Self.PuntoDeVenta" />
+          <EntitySet Name="Reparacion" EntityType="Self.Reparacion" />
+          <EntitySet Name="ReparacionDetalle" EntityType="Self.ReparacionDetalle" />
+          <EntitySet Name="Role" EntityType="Self.Role" />
+          <EntitySet Name="TipoDispositivo" EntityType="Self.TipoDispositivo" />
+          <EntitySet Name="TipoFactura" EntityType="Self.TipoFactura" />
+          <EntitySet Name="TipoNovedad" EntityType="Self.TipoNovedad" />
+          <EntitySet Name="TipoTransaccion" EntityType="Self.TipoTransaccion" />
+          <EntitySet Name="Usuario" EntityType="Self.Usuario" />
+          <EntitySet Name="Venta" EntityType="Self.Venta" />
+          <EntitySet Name="RoleMenu" EntityType="Self.RoleMenu" />
+          <EntitySet Name="UsuarioRol" EntityType="Self.UsuarioRol" />
+          <EntitySet Name="vw_ComprasAPagar" EntityType="Self.vw_ComprasAPagar" />
+          <EntitySet Name="vw_ProveedoresAcreedores" EntityType="Self.vw_ProveedoresAcreedores" />
+          <EntitySet Name="vw_ReparacionTiempos" EntityType="Self.vw_ReparacionTiempos" />
+          <EntitySet Name="vw_VentasAnuales" EntityType="Self.vw_VentasAnuales" />
+          <EntitySet Name="vw_VentasDiarias" EntityType="Self.vw_VentasDiarias" />
+          <EntitySet Name="vw_VentasMensuales" EntityType="Self.vw_VentasMensuales" />
+          <AssociationSet Name="FK__Cliente__Direcci__5F29F348" Association="Self.FK__Cliente__Direcci__5F29F348">
+            <End Role="Direccion" EntitySet="Direccion" />
+            <End Role="Cliente" EntitySet="Cliente" />
+          </AssociationSet>
+          <AssociationSet Name="FK__Reparacio__Clien__25BC6BC2" Association="Self.FK__Reparacio__Clien__25BC6BC2">
+            <End Role="Cliente" EntitySet="Cliente" />
+            <End Role="Reparacion" EntitySet="Reparacion" />
+          </AssociationSet>
+          <AssociationSet Name="FK__Venta__ClienteId__39C3646F" Association="Self.FK__Venta__ClienteId__39C3646F">
+            <End Role="Cliente" EntitySet="Cliente" />
+            <End Role="Venta" EntitySet="Venta" />
+          </AssociationSet>
+          <AssociationSet Name="FK__Reparacio__Comer__2C696951" Association="Self.FK__Reparacio__Comer__2C696951">
+            <End Role="Comercio" EntitySet="Comercio" />
+            <End Role="Reparacion" EntitySet="Reparacion" />
+          </AssociationSet>
+          <AssociationSet Name="FK__Compra__Proveedo__2E51B1C3" Association="Self.FK__Compra__Proveedo__2E51B1C3">
+            <End Role="Proveedor" EntitySet="Proveedor" />
+            <End Role="Compra" EntitySet="Compra" />
+          </AssociationSet>
+          <AssociationSet Name="FK__Compra__PuntoDeV__2F45D5FC" Association="Self.FK__Compra__PuntoDeV__2F45D5FC">
+            <End Role="PuntoDeVenta" EntitySet="PuntoDeVenta" />
+            <End Role="Compra" EntitySet="Compra" />
+          </AssociationSet>
+          <AssociationSet Name="FK__Pago__CompraId__3039FA35" Association="Self.FK__Pago__CompraId__3039FA35">
+            <End Role="Compra" EntitySet="Compra" />
+            <End Role="Pago" EntitySet="Pago" />
+          </AssociationSet>
+          <AssociationSet Name="FK__Reparacio__Estad__2898D86D" Association="Self.FK__Reparacio__Estad__2898D86D">
+            <End Role="EstadoReparacion" EntitySet="EstadoReparacion" />
+            <End Role="Reparacion" EntitySet="Reparacion" />
+          </AssociationSet>
+          <AssociationSet Name="FK__Factura__TipoFac__50A6C9C7" Association="Self.FK__Factura__TipoFac__50A6C9C7">
+            <End Role="TipoFactura" EntitySet="TipoFactura" />
+            <End Role="Factura" EntitySet="Factura" />
+          </AssociationSet>
+          <AssociationSet Name="FK__Pago__FacturaId__4FB2A58E" Association="Self.FK__Pago__FacturaId__4FB2A58E">
+            <End Role="Factura" EntitySet="Factura" />
+            <End Role="Pago" EntitySet="Pago" />
+          </AssociationSet>
+          <AssociationSet Name="FK__Venta__FacturaId__4EBE8155" Association="Self.FK__Venta__FacturaId__4EBE8155">
+            <End Role="Factura" EntitySet="Factura" />
+            <End Role="Venta" EntitySet="Venta" />
+          </AssociationSet>
+          <AssociationSet Name="FK_RoleMenu_ItemMenu" Association="Self.FK_RoleMenu_ItemMenu">
+            <End Role="ItemMenu" EntitySet="ItemMenu" />
+            <End Role="RoleMenu" EntitySet="RoleMenu" />
+          </AssociationSet>
+          <AssociationSet Name="FK__Reparacio__Marca__298CFCA6" Association="Self.FK__Reparacio__Marca__298CFCA6">
+            <End Role="Marca" EntitySet="Marca" />
+            <End Role="Reparacion" EntitySet="Reparacion" />
+          </AssociationSet>
+          <AssociationSet Name="FK__Pago__MetodoDePa__340A8B19" Association="Self.FK__Pago__MetodoDePa__340A8B19">
+            <End Role="MetodoPago" EntitySet="MetodoPago" />
+            <End Role="Pago" EntitySet="Pago" />
+          </AssociationSet>
+          <AssociationSet Name="FK__Pago__TipoTransa__312E1E6E" Association="Self.FK__Pago__TipoTransa__312E1E6E">
+            <End Role="TipoTransaccion" EntitySet="TipoTransaccion" />
+            <End Role="Pago" EntitySet="Pago" />
+          </AssociationSet>
+          <AssociationSet Name="FK__Venta__PuntoDeVe__3AB788A8" Association="Self.FK__Venta__PuntoDeVe__3AB788A8">
+            <End Role="PuntoDeVenta" EntitySet="PuntoDeVenta" />
+            <End Role="Venta" EntitySet="Venta" />
+          </AssociationSet>
+          <AssociationSet Name="FK__Venta__PuntoDeVe__3BABACE1" Association="Self.FK__Venta__PuntoDeVe__3BABACE1">
+            <End Role="PuntoDeVenta" EntitySet="PuntoDeVenta" />
+            <End Role="Venta" EntitySet="Venta" />
+          </AssociationSet>
+          <AssociationSet Name="FK__Reparacio__Emple__26B08FFB" Association="Self.FK__Reparacio__Emple__26B08FFB">
+            <End Role="Usuario" EntitySet="Usuario" />
+            <End Role="Reparacion" EntitySet="Reparacion" />
+          </AssociationSet>
+          <AssociationSet Name="FK__Reparacio__Repar__2B754518" Association="Self.FK__Reparacio__Repar__2B754518">
+            <End Role="ReparacionDetalle" EntitySet="ReparacionDetalle" />
+            <End Role="Reparacion" EntitySet="Reparacion" />
+          </AssociationSet>
+          <AssociationSet Name="FK__Reparacio__Tecni__27A4B434" Association="Self.FK__Reparacio__Tecni__27A4B434">
+            <End Role="Usuario" EntitySet="Usuario" />
+            <End Role="Reparacion" EntitySet="Reparacion" />
+          </AssociationSet>
+          <AssociationSet Name="FK__Reparacio__TipoD__2A8120DF" Association="Self.FK__Reparacio__TipoD__2A8120DF">
+            <End Role="TipoDispositivo" EntitySet="TipoDispositivo" />
+            <End Role="Reparacion" EntitySet="Reparacion" />
+          </AssociationSet>
+          <AssociationSet Name="FK__Reparacio__TipoD__2D5D8D8A" Association="Self.FK__Reparacio__TipoD__2D5D8D8A">
+            <End Role="TipoDispositivo" EntitySet="TipoDispositivo" />
+            <End Role="Reparacion" EntitySet="Reparacion" />
+          </AssociationSet>
+          <AssociationSet Name="FK_RoleMenu_Rol" Association="Self.FK_RoleMenu_Rol">
+            <End Role="Role" EntitySet="Role" />
+            <End Role="RoleMenu" EntitySet="RoleMenu" />
+          </AssociationSet>
+          <AssociationSet Name="FK_UsuarioRol_Rol" Association="Self.FK_UsuarioRol_Rol">
+            <End Role="Role" EntitySet="Role" />
+            <End Role="UsuarioRol" EntitySet="UsuarioRol" />
+          </AssociationSet>
+          <AssociationSet Name="FK__Venta__TipoTrans__3C9FD11A" Association="Self.FK__Venta__TipoTrans__3C9FD11A">
+            <End Role="TipoTransaccion" EntitySet="TipoTransaccion" />
+            <End Role="Venta" EntitySet="Venta" />
+          </AssociationSet>
+          <EntitySet Name="Producto" EntityType="FastServiceModel.Producto" />
+        </EntityContainer>
+        <EntityType Name="Producto">
+          <Key>
+            <PropertyRef Name="id" />
+          </Key>
+          <Property Name="id" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="origenid" Type="Int32" />
+          <Property Name="nombre" Type="String" MaxLength="200" FixedLength="false" Unicode="false" />
+          <Property Name="descripcion" Type="String" MaxLength="300" FixedLength="false" Unicode="false" />
+          <Property Name="categoria" Type="String" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="categoria2" Type="String" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="categoria3" Type="String" MaxLength="100" FixedLength="false" Unicode="false" />
+          <Property Name="cantidad" Type="Int32" />
+          <Property Name="minimo" Type="Int32" />
+          <Property Name="costo" Type="Decimal" Precision="18" Scale="0" />
+          <Property Name="utilidad" Type="Decimal" Precision="18" Scale="0" />
+        </EntityType>
+      </Schema>
+    </edmx:ConceptualModels>
+    <!-- C-S mapping content -->
+    <edmx:Mappings>
+      <Mapping Space="C-S" xmlns="http://schemas.microsoft.com/ado/2009/11/mapping/cs">
+        <EntityContainerMapping StorageEntityContainer="FastServiceModelStoreContainer" CdmEntityContainer="Entities">
+          <EntitySetMapping Name="Cliente">
+            <EntityTypeMapping TypeName="FastServiceModel.Cliente">
+              <MappingFragment StoreEntitySet="Cliente">
+                <ScalarProperty Name="ClienteId" ColumnName="ClienteId" />
+                <ScalarProperty Name="Dni" ColumnName="Dni" />
+                <ScalarProperty Name="Nombre" ColumnName="Nombre" />
+                <ScalarProperty Name="Apellido" ColumnName="Apellido" />
+                <ScalarProperty Name="Mail" ColumnName="Mail" />
+                <ScalarProperty Name="Telefono1" ColumnName="Telefono1" />
+                <ScalarProperty Name="Telefono2" ColumnName="Telefono2" />
+                <ScalarProperty Name="Direccion" ColumnName="Direccion" />
+                <ScalarProperty Name="DireccionId" ColumnName="DireccionId" />
+                <ScalarProperty Name="Localidad" ColumnName="Localidad" />
+                <ScalarProperty Name="Latitud" ColumnName="Latitud" />
+                <ScalarProperty Name="Longitud" ColumnName="Longitud" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="Comercio">
+            <EntityTypeMapping TypeName="FastServiceModel.Comercio">
+              <MappingFragment StoreEntitySet="Comercio">
+                <ScalarProperty Name="ComercioId" ColumnName="ComercioId" />
+                <ScalarProperty Name="Code" ColumnName="Code" />
+                <ScalarProperty Name="Descripcion" ColumnName="Descripcion" />
+                <ScalarProperty Name="Contacto" ColumnName="Contacto" />
+                <ScalarProperty Name="Direccion" ColumnName="Direccion" />
+                <ScalarProperty Name="Localidad" ColumnName="Localidad" />
+                <ScalarProperty Name="Mail" ColumnName="Mail" />
+                <ScalarProperty Name="Telefono" ColumnName="Telefono" />
+                <ScalarProperty Name="Telefono2" ColumnName="Telefono2" />
+                <ScalarProperty Name="cuit" ColumnName="cuit" />
+                <ScalarProperty Name="activo" ColumnName="activo" />
+                <ScalarProperty Name="modificadoEn" ColumnName="modificadoEn" />
+                <ScalarProperty Name="modificadoPor" ColumnName="modificadoPor" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="Compra">
+            <EntityTypeMapping TypeName="FastServiceModel.Compra">
+              <MappingFragment StoreEntitySet="Compra">
+                <ScalarProperty Name="CompraId" ColumnName="CompraId" />
+                <ScalarProperty Name="ProveedorId" ColumnName="ProveedorId" />
+                <ScalarProperty Name="Monto" ColumnName="Monto" />
+                <ScalarProperty Name="Facturado" ColumnName="Facturado" />
+                <ScalarProperty Name="Descripcion" ColumnName="Descripcion" />
+                <ScalarProperty Name="PuntoDeVentaId" ColumnName="PuntoDeVentaId" />
+                <ScalarProperty Name="Estado" ColumnName="Estado" />
+                <ScalarProperty Name="FechaCreacion" ColumnName="FechaCreacion" />
+                <ScalarProperty Name="CreadoPor" ColumnName="CreadoPor" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="Direccion">
+            <EntityTypeMapping TypeName="FastServiceModel.Direccion">
+              <MappingFragment StoreEntitySet="Direccion">
+                <ScalarProperty Name="DireccionId" ColumnName="DireccionId" />
+                <ScalarProperty Name="Altura" ColumnName="Altura" />
+                <ScalarProperty Name="Calle" ColumnName="Calle" />
+                <ScalarProperty Name="Calle2" ColumnName="Calle2" />
+                <ScalarProperty Name="Calle3" ColumnName="Calle3" />
+                <ScalarProperty Name="Ciudad" ColumnName="Ciudad" />
+                <ScalarProperty Name="Provincia" ColumnName="Provincia" />
+                <ScalarProperty Name="CodigoPostal" ColumnName="CodigoPostal" />
+                <ScalarProperty Name="Pais" ColumnName="Pais" />
+                <ScalarProperty Name="Comentarios" ColumnName="Comentarios" />
+                <ScalarProperty Name="Latitud" ColumnName="Latitud" />
+                <ScalarProperty Name="Longitud" ColumnName="Longitud" />
+                <ScalarProperty Name="ChangedOn" ColumnName="ChangedOn" />
+                <ScalarProperty Name="ChangedBy" ColumnName="ChangedBy" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="EstadoReparacion">
+            <EntityTypeMapping TypeName="FastServiceModel.EstadoReparacion">
+              <MappingFragment StoreEntitySet="EstadoReparacion">
+                <ScalarProperty Name="EstadoReparacionId" ColumnName="EstadoReparacionId" />
+                <ScalarProperty Name="nombre" ColumnName="nombre" />
+                <ScalarProperty Name="descripcion" ColumnName="descripcion" />
+                <ScalarProperty Name="categoria" ColumnName="categoria" />
+                <ScalarProperty Name="activo" ColumnName="activo" />
+                <ScalarProperty Name="modificadoEn" ColumnName="modificadoEn" />
+                <ScalarProperty Name="modificadoPor" ColumnName="modificadoPor" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="Factura">
+            <EntityTypeMapping TypeName="FastServiceModel.Factura">
+              <MappingFragment StoreEntitySet="Factura">
+                <ScalarProperty Name="FacturaId" ColumnName="FacturaId" />
+                <ScalarProperty Name="TipoFacturaId" ColumnName="TipoFacturaId" />
+                <ScalarProperty Name="NroFactura" ColumnName="NroFactura" />
+                <ScalarProperty Name="Media" ColumnName="Media" />
+                <ScalarProperty Name="ModificadoEn" ColumnName="ModificadoEn" />
+                <ScalarProperty Name="ModificadoPor" ColumnName="ModificadoPor" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="GlobalConfig">
+            <EntityTypeMapping TypeName="FastServiceModel.GlobalConfig">
+              <MappingFragment StoreEntitySet="GlobalConfig">
+                <ScalarProperty Name="GlobalConfigId" ColumnName="GlobalConfigId" />
+                <ScalarProperty Name="Key" ColumnName="Key" />
+                <ScalarProperty Name="Value" ColumnName="Value" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="ItemMenu">
+            <EntityTypeMapping TypeName="FastServiceModel.ItemMenu">
+              <MappingFragment StoreEntitySet="ItemMenu">
+                <ScalarProperty Name="ItemMenuId" ColumnName="ItemMenuId" />
+                <ScalarProperty Name="Name" ColumnName="Name" />
+                <ScalarProperty Name="Orden" ColumnName="Orden" />
+                <ScalarProperty Name="Estado" ColumnName="Estado" />
+                <ScalarProperty Name="ItemMenuPadreId" ColumnName="ItemMenuPadreId" />
+                <ScalarProperty Name="Controlador" ColumnName="Controlador" />
+                <ScalarProperty Name="Accion" ColumnName="Accion" />
+                <ScalarProperty Name="Parametros" ColumnName="Parametros" />
+                <ScalarProperty Name="Icon" ColumnName="Icon" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="Log">
+            <EntityTypeMapping TypeName="FastServiceModel.Log">
+              <MappingFragment StoreEntitySet="Log">
+                <ScalarProperty Name="Id" ColumnName="Id" />
+                <ScalarProperty Name="Application" ColumnName="Application" />
+                <ScalarProperty Name="Logged" ColumnName="Logged" />
+                <ScalarProperty Name="Level" ColumnName="Level" />
+                <ScalarProperty Name="Message" ColumnName="Message" />
+                <ScalarProperty Name="UserName" ColumnName="UserName" />
+                <ScalarProperty Name="ServerName" ColumnName="ServerName" />
+                <ScalarProperty Name="Port" ColumnName="Port" />
+                <ScalarProperty Name="Url" ColumnName="Url" />
+                <ScalarProperty Name="Https" ColumnName="Https" />
+                <ScalarProperty Name="ServerAddress" ColumnName="ServerAddress" />
+                <ScalarProperty Name="RemoteAddress" ColumnName="RemoteAddress" />
+                <ScalarProperty Name="Logger" ColumnName="Logger" />
+                <ScalarProperty Name="Callsite" ColumnName="Callsite" />
+                <ScalarProperty Name="Exception" ColumnName="Exception" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="Logs">
+            <EntityTypeMapping TypeName="FastServiceModel.Logs">
+              <MappingFragment StoreEntitySet="Logs">
+                <ScalarProperty Name="Id" ColumnName="Id" />
+                <ScalarProperty Name="EventDateTime" ColumnName="EventDateTime" />
+                <ScalarProperty Name="EventLevel" ColumnName="EventLevel" />
+                <ScalarProperty Name="UserName" ColumnName="UserName" />
+                <ScalarProperty Name="MachineName" ColumnName="MachineName" />
+                <ScalarProperty Name="EventMessage" ColumnName="EventMessage" />
+                <ScalarProperty Name="ErrorSource" ColumnName="ErrorSource" />
+                <ScalarProperty Name="ErrorClass" ColumnName="ErrorClass" />
+                <ScalarProperty Name="ErrorMethod" ColumnName="ErrorMethod" />
+                <ScalarProperty Name="ErrorMessage" ColumnName="ErrorMessage" />
+                <ScalarProperty Name="InnerErrorMessage" ColumnName="InnerErrorMessage" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="Marca">
+            <EntityTypeMapping TypeName="FastServiceModel.Marca">
+              <MappingFragment StoreEntitySet="Marca">
+                <ScalarProperty Name="MarcaId" ColumnName="MarcaId" />
+                <ScalarProperty Name="nombre" ColumnName="nombre" />
+                <ScalarProperty Name="descripcion" ColumnName="descripcion" />
+                <ScalarProperty Name="activo" ColumnName="activo" />
+                <ScalarProperty Name="modificadoEn" ColumnName="modificadoEn" />
+                <ScalarProperty Name="modificadoPor" ColumnName="modificadoPor" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="MetodoPago">
+            <EntityTypeMapping TypeName="FastServiceModel.MetodoPago">
+              <MappingFragment StoreEntitySet="MetodoPago">
+                <ScalarProperty Name="MetodoPagoId" ColumnName="MetodoPagoId" />
+                <ScalarProperty Name="Nombre" ColumnName="Nombre" />
+                <ScalarProperty Name="Descripcion" ColumnName="Descripcion" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="Modelo">
+            <EntityTypeMapping TypeName="FastServiceModel.Modelo">
+              <MappingFragment StoreEntitySet="Modelo">
+                <ScalarProperty Name="DispositivoModeloId" ColumnName="DispositivoModeloId" />
+                <ScalarProperty Name="MarcaId" ColumnName="MarcaId" />
+                <ScalarProperty Name="TipoId" ColumnName="TipoId" />
+                <ScalarProperty Name="Modelo1" ColumnName="Modelo" />
+                <ScalarProperty Name="Code" ColumnName="Code" />
+                <ScalarProperty Name="Descripcion" ColumnName="Descripcion" />
+                <ScalarProperty Name="activo" ColumnName="activo" />
+                <ScalarProperty Name="modificadoEn" ColumnName="modificadoEn" />
+                <ScalarProperty Name="modificadoPor" ColumnName="modificadoPor" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="Novedad">
+            <EntityTypeMapping TypeName="FastServiceModel.Novedad">
+              <MappingFragment StoreEntitySet="Novedad">
+                <ScalarProperty Name="novedadId" ColumnName="novedadId" />
+                <ScalarProperty Name="reparacionId" ColumnName="reparacionId" />
+                <ScalarProperty Name="UserId" ColumnName="UserId" />
+                <ScalarProperty Name="tipoNovedadId" ColumnName="tipoNovedadId" />
+                <ScalarProperty Name="monto" ColumnName="monto" />
+                <ScalarProperty Name="observacion" ColumnName="observacion" />
+                <ScalarProperty Name="modificadoEn" ColumnName="modificadoEn" />
+                <ScalarProperty Name="modificadoPor" ColumnName="modificadoPor" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="Pago">
+            <EntityTypeMapping TypeName="FastServiceModel.Pago">
+              <MappingFragment StoreEntitySet="Pago">
+                <ScalarProperty Name="PagoId" ColumnName="PagoId" />
+                <ScalarProperty Name="CompraId" ColumnName="CompraId" />
+                <ScalarProperty Name="Monto" ColumnName="Monto" />
+                <ScalarProperty Name="FechaDebito" ColumnName="FechaDebito" />
+                <ScalarProperty Name="FechaEmision" ColumnName="FechaEmision" />
+                <ScalarProperty Name="NroReferencia" ColumnName="NroReferencia" />
+                <ScalarProperty Name="Motivo" ColumnName="Motivo" />
+                <ScalarProperty Name="TipoTransaccionId" ColumnName="TipoTransaccionId" />
+                <ScalarProperty Name="FacturaId" ColumnName="FacturaId" />
+                <ScalarProperty Name="CreadoPor" ColumnName="CreadoPor" />
+                <ScalarProperty Name="FechaCreacion" ColumnName="FechaCreacion" />
+                <ScalarProperty Name="MetodoDePagoId" ColumnName="MetodoDePagoId" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="Proveedor">
+            <EntityTypeMapping TypeName="FastServiceModel.Proveedor">
+              <MappingFragment StoreEntitySet="Proveedor">
+                <ScalarProperty Name="ProveedorId" ColumnName="ProveedorId" />
+                <ScalarProperty Name="Nombre" ColumnName="Nombre" />
+                <ScalarProperty Name="Mail" ColumnName="Mail" />
+                <ScalarProperty Name="Contacto" ColumnName="Contacto" />
+                <ScalarProperty Name="Telefono1" ColumnName="Telefono1" />
+                <ScalarProperty Name="Telefono2" ColumnName="Telefono2" />
+                <ScalarProperty Name="Direccion" ColumnName="Direccion" />
+                <ScalarProperty Name="Localidad" ColumnName="Localidad" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="PuntoDeVenta">
+            <EntityTypeMapping TypeName="FastServiceModel.PuntoDeVenta">
+              <MappingFragment StoreEntitySet="PuntoDeVenta">
+                <ScalarProperty Name="PuntoDeVentaId" ColumnName="PuntoDeVentaId" />
+                <ScalarProperty Name="Nombre" ColumnName="Nombre" />
+                <ScalarProperty Name="Descripcion" ColumnName="Descripcion" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="Reparacion">
+            <EntityTypeMapping TypeName="FastServiceModel.Reparacion">
+              <MappingFragment StoreEntitySet="Reparacion">
+                <ScalarProperty Name="ReparacionId" ColumnName="ReparacionId" />
+                <ScalarProperty Name="ClienteId" ColumnName="ClienteId" />
+                <ScalarProperty Name="EmpleadoAsignadoId" ColumnName="EmpleadoAsignadoId" />
+                <ScalarProperty Name="TecnicoAsignadoId" ColumnName="TecnicoAsignadoId" />
+                <ScalarProperty Name="EstadoReparacionId" ColumnName="EstadoReparacionId" />
+                <ScalarProperty Name="ComercioId" ColumnName="ComercioId" />
+                <ScalarProperty Name="MarcaId" ColumnName="MarcaId" />
+                <ScalarProperty Name="TipoDispositivoId" ColumnName="TipoDispositivoId" />
+                <ScalarProperty Name="ReparacionDetalleId" ColumnName="ReparacionDetalleId" />
+                <ScalarProperty Name="FechaEntrega" ColumnName="FechaEntrega" />
+                <ScalarProperty Name="InformadoEn" ColumnName="InformadoEn" />
+                <ScalarProperty Name="InformadoPor" ColumnName="InformadoPor" />
+                <ScalarProperty Name="ModificadoEn" ColumnName="ModificadoEn" />
+                <ScalarProperty Name="ModificadoPor" ColumnName="ModificadoPor" />
+                <ScalarProperty Name="CreadoEn" ColumnName="CreadoEn" />
+                <ScalarProperty Name="CreadoPor" ColumnName="CreadoPor" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="ReparacionDetalle">
+            <EntityTypeMapping TypeName="FastServiceModel.ReparacionDetalle">
+              <MappingFragment StoreEntitySet="ReparacionDetalle">
+                <ScalarProperty Name="ReparacionDetalleId" ColumnName="ReparacionDetalleId" />
+                <ScalarProperty Name="EsGarantia" ColumnName="EsGarantia" />
+                <ScalarProperty Name="EsDomicilio" ColumnName="EsDomicilio" />
+                <ScalarProperty Name="NroReferencia" ColumnName="NroReferencia" />
+                <ScalarProperty Name="FechoCompra" ColumnName="FechoCompra" />
+                <ScalarProperty Name="NroFactura" ColumnName="NroFactura" />
+                <ScalarProperty Name="Presupuesto" ColumnName="Presupuesto" />
+                <ScalarProperty Name="PresupuestoFecha" ColumnName="PresupuestoFecha" />
+                <ScalarProperty Name="Precio" ColumnName="Precio" />
+                <ScalarProperty Name="Modelo" ColumnName="Modelo" />
+                <ScalarProperty Name="Serie" ColumnName="Serie" />
+                <ScalarProperty Name="Serbus" ColumnName="Serbus" />
+                <ScalarProperty Name="Unicacion" ColumnName="Unicacion" />
+                <ScalarProperty Name="Accesorios" ColumnName="Accesorios" />
+                <ScalarProperty Name="ReparacionDesc" ColumnName="ReparacionDesc" />
+                <ScalarProperty Name="ModificadoEn" ColumnName="ModificadoEn" />
+                <ScalarProperty Name="ModificadoPor" ColumnName="ModificadoPor" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="Role">
+            <EntityTypeMapping TypeName="FastServiceModel.Role">
+              <MappingFragment StoreEntitySet="Role">
+                <ScalarProperty Name="RolId" ColumnName="RolId" />
+                <ScalarProperty Name="Status" ColumnName="Status" />
+                <ScalarProperty Name="Nombre" ColumnName="Nombre" />
+                <ScalarProperty Name="Descripcion" ColumnName="Descripcion" />
+                <ScalarProperty Name="DefaultController" ColumnName="DefaultController" />
+                <ScalarProperty Name="DefaultAction" ColumnName="DefaultAction" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="TipoDispositivo">
+            <EntityTypeMapping TypeName="FastServiceModel.TipoDispositivo">
+              <MappingFragment StoreEntitySet="TipoDispositivo">
+                <ScalarProperty Name="TipoDispositivoId" ColumnName="TipoDispositivoId" />
+                <ScalarProperty Name="nombre" ColumnName="nombre" />
+                <ScalarProperty Name="descripcion" ColumnName="descripcion" />
+                <ScalarProperty Name="activo" ColumnName="activo" />
+                <ScalarProperty Name="modificadoEn" ColumnName="modificadoEn" />
+                <ScalarProperty Name="modificadoPor" ColumnName="modificadoPor" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="TipoFactura">
+            <EntityTypeMapping TypeName="FastServiceModel.TipoFactura">
+              <MappingFragment StoreEntitySet="TipoFactura">
+                <ScalarProperty Name="TipoFacturaId" ColumnName="TipoFacturaId" />
+                <ScalarProperty Name="Nombre" ColumnName="Nombre" />
+                <ScalarProperty Name="Descripcion" ColumnName="Descripcion" />
+                <ScalarProperty Name="ModificadoEn" ColumnName="ModificadoEn" />
+                <ScalarProperty Name="ModificadoPor" ColumnName="ModificadoPor" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="TipoNovedad">
+            <EntityTypeMapping TypeName="FastServiceModel.TipoNovedad">
+              <MappingFragment StoreEntitySet="TipoNovedad">
+                <ScalarProperty Name="TipoNovedadId" ColumnName="TipoNovedadId" />
+                <ScalarProperty Name="nombre" ColumnName="nombre" />
+                <ScalarProperty Name="descripcion" ColumnName="descripcion" />
+                <ScalarProperty Name="activo" ColumnName="activo" />
+                <ScalarProperty Name="modificadoEn" ColumnName="modificadoEn" />
+                <ScalarProperty Name="modificadoPor" ColumnName="modificadoPor" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="TipoTransaccion">
+            <EntityTypeMapping TypeName="FastServiceModel.TipoTransaccion">
+              <MappingFragment StoreEntitySet="TipoTransaccion">
+                <ScalarProperty Name="TipoTransaccionId" ColumnName="TipoTransaccionId" />
+                <ScalarProperty Name="Nombre" ColumnName="Nombre" />
+                <ScalarProperty Name="Descripcion" ColumnName="Descripcion" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="Usuario">
+            <EntityTypeMapping TypeName="FastServiceModel.Usuario">
+              <MappingFragment StoreEntitySet="Usuario">
+                <ScalarProperty Name="UserId" ColumnName="UserId" />
+                <ScalarProperty Name="Login" ColumnName="Login" />
+                <ScalarProperty Name="Email" ColumnName="Email" />
+                <ScalarProperty Name="Nombre" ColumnName="Nombre" />
+                <ScalarProperty Name="Apellido" ColumnName="Apellido" />
+                <ScalarProperty Name="Contraseña" ColumnName="Contraseña" />
+                <ScalarProperty Name="Direccion" ColumnName="Direccion" />
+                <ScalarProperty Name="Telefono1" ColumnName="Telefono1" />
+                <ScalarProperty Name="Telefono2" ColumnName="Telefono2" />
+                <ScalarProperty Name="Activo" ColumnName="Activo" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="Venta">
+            <EntityTypeMapping TypeName="FastServiceModel.Venta">
+              <MappingFragment StoreEntitySet="Venta">
+                <ScalarProperty Name="VentaId" ColumnName="VentaId" />
+                <ScalarProperty Name="ClienteId" ColumnName="ClienteId" />
+                <ScalarProperty Name="Monto" ColumnName="Monto" />
+                <ScalarProperty Name="Facturado" ColumnName="Facturado" />
+                <ScalarProperty Name="Descripcion" ColumnName="Descripcion" />
+                <ScalarProperty Name="FacturaId" ColumnName="FacturaId" />
+                <ScalarProperty Name="RefNumber" ColumnName="RefNumber" />
+                <ScalarProperty Name="PuntoDeVentaId" ColumnName="PuntoDeVentaId" />
+                <ScalarProperty Name="Fecha" ColumnName="Fecha" />
+                <ScalarProperty Name="Vendedor" ColumnName="Vendedor" />
+                <ScalarProperty Name="MetodoPagoId" ColumnName="MetodoPagoId" />
+                <ScalarProperty Name="TipoTransaccionId" ColumnName="TipoTransaccionId" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="RoleMenu">
+            <EntityTypeMapping TypeName="FastServiceModel.RoleMenu">
+              <MappingFragment StoreEntitySet="RoleMenu">
+                <ScalarProperty Name="id" ColumnName="id" />
+                <ScalarProperty Name="RolId" ColumnName="RolId" />
+                <ScalarProperty Name="ItemMenuId" ColumnName="ItemMenuId" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="UsuarioRol">
+            <EntityTypeMapping TypeName="FastServiceModel.UsuarioRol">
+              <MappingFragment StoreEntitySet="UsuarioRol">
+                <ScalarProperty Name="RolId" ColumnName="RolId" />
+                <ScalarProperty Name="UserId" ColumnName="UserId" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="vw_ComprasAPagar">
+            <EntityTypeMapping TypeName="FastServiceModel.vw_ComprasAPagar">
+              <MappingFragment StoreEntitySet="vw_ComprasAPagar">
+                <ScalarProperty Name="CompraId" ColumnName="CompraId" />
+                <ScalarProperty Name="ProveedorId" ColumnName="ProveedorId" />
+                <ScalarProperty Name="Monto" ColumnName="Monto" />
+                <ScalarProperty Name="Facturado" ColumnName="Facturado" />
+                <ScalarProperty Name="Descripcion" ColumnName="Descripcion" />
+                <ScalarProperty Name="PuntoDeVentaId" ColumnName="PuntoDeVentaId" />
+                <ScalarProperty Name="Estado" ColumnName="Estado" />
+                <ScalarProperty Name="FechaCreacion" ColumnName="FechaCreacion" />
+                <ScalarProperty Name="CreadoPor" ColumnName="CreadoPor" />
+                <ScalarProperty Name="saldo" ColumnName="saldo" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="vw_ProveedoresAcreedores">
+            <EntityTypeMapping TypeName="FastServiceModel.vw_ProveedoresAcreedores">
+              <MappingFragment StoreEntitySet="vw_ProveedoresAcreedores">
+                <ScalarProperty Name="ProveedorId" ColumnName="ProveedorId" />
+                <ScalarProperty Name="Nombre" ColumnName="Nombre" />
+                <ScalarProperty Name="Mail" ColumnName="Mail" />
+                <ScalarProperty Name="Contacto" ColumnName="Contacto" />
+                <ScalarProperty Name="Telefono1" ColumnName="Telefono1" />
+                <ScalarProperty Name="Telefono2" ColumnName="Telefono2" />
+                <ScalarProperty Name="Direccion" ColumnName="Direccion" />
+                <ScalarProperty Name="Localidad" ColumnName="Localidad" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="vw_ReparacionTiempos">
+            <EntityTypeMapping TypeName="FastServiceModel.vw_ReparacionTiempos">
+              <MappingFragment StoreEntitySet="vw_ReparacionTiempos">
+                <ScalarProperty Name="reparacionId" ColumnName="reparacionId" />
+                <ScalarProperty Name="DiasDesdeUltimaActividad" ColumnName="DiasDesdeUltimaActividad" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="vw_VentasAnuales">
+            <EntityTypeMapping TypeName="FastServiceModel.vw_VentasAnuales">
+              <MappingFragment StoreEntitySet="vw_VentasAnuales">
+                <ScalarProperty Name="Total" ColumnName="Total" />
+                <ScalarProperty Name="facturado" ColumnName="facturado" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="vw_VentasDiarias">
+            <EntityTypeMapping TypeName="FastServiceModel.vw_VentasDiarias">
+              <MappingFragment StoreEntitySet="vw_VentasDiarias">
+                <ScalarProperty Name="Total" ColumnName="Total" />
+                <ScalarProperty Name="facturado" ColumnName="facturado" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="vw_VentasMensuales">
+            <EntityTypeMapping TypeName="FastServiceModel.vw_VentasMensuales">
+              <MappingFragment StoreEntitySet="vw_VentasMensuales">
+                <ScalarProperty Name="Total" ColumnName="Total" />
+                <ScalarProperty Name="facturado" ColumnName="facturado" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="Producto">
+            <EntityTypeMapping TypeName="FastServiceModel.Producto">
+              <MappingFragment StoreEntitySet="Producto">
+                <ScalarProperty Name="utilidad" ColumnName="utilidad" />
+                <ScalarProperty Name="costo" ColumnName="costo" />
+                <ScalarProperty Name="minimo" ColumnName="minimo" />
+                <ScalarProperty Name="cantidad" ColumnName="cantidad" />
+                <ScalarProperty Name="categoria3" ColumnName="categoria3" />
+                <ScalarProperty Name="categoria2" ColumnName="categoria2" />
+                <ScalarProperty Name="categoria" ColumnName="categoria" />
+                <ScalarProperty Name="descripcion" ColumnName="descripcion" />
+                <ScalarProperty Name="nombre" ColumnName="nombre" />
+                <ScalarProperty Name="origenid" ColumnName="origenid" />
+                <ScalarProperty Name="id" ColumnName="id" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+        </EntityContainerMapping>
+      </Mapping>
+    </edmx:Mappings>
+  </edmx:Runtime>
+  <!-- EF Designer content (DO NOT EDIT MANUALLY BELOW HERE) -->
+  <Designer xmlns="http://schemas.microsoft.com/ado/2009/11/edmx">
+    <Connection>
+      <DesignerInfoPropertySet>
+        <DesignerProperty Name="MetadataArtifactProcessing" Value="EmbedInOutputAssembly" />
+      </DesignerInfoPropertySet>
+    </Connection>
+    <Options>
+      <DesignerInfoPropertySet>
+        <DesignerProperty Name="ValidateOnBuild" Value="true" />
+        <DesignerProperty Name="EnablePluralization" Value="false" />
+        <DesignerProperty Name="IncludeForeignKeysInModel" Value="true" />
+        <DesignerProperty Name="UseLegacyProvider" Value="false" />
+        <DesignerProperty Name="CodeGenerationStrategy" Value="Ninguno" />
+      </DesignerInfoPropertySet>
+    </Options>
+    <!-- Diagram content (shape and connector positions) -->
+    <Diagrams></Diagrams>
+  </Designer>
+</edmx:Edmx>

@@ -1,0 +1,35 @@
+﻿@model FastService.Models.Charts.IDrawable
+
+<div>
+    <canvas id="resumenChart" width="300" height="100"></canvas>
+</div>
+
+<script>
+    var ctx = $("#resumenChart");
+
+    var myChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: @Html.Raw(Model.ResumenActivo.Chart.Labels),
+            datasets: [
+            @foreach (var ds in Model.ResumenActivo.Chart.Datasets)
+            {
+                @Html.Raw(ds.Draw())
+            }
+            ]
+        },
+        options: {
+            scales: {
+                yAxes: [{
+                    ticks: {
+                        beginAtZero: false
+                    },
+                    scaleLabel: {
+                        display: true,
+                        labelString: 'Monto $'
+                    }
+                }]
+            }
+        }
+    });
+</script>

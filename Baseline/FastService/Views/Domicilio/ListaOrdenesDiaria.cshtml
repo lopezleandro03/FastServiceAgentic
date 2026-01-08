@@ -1,0 +1,56 @@
+﻿@model FastService.Models.DomicilioViewModel
+
+<th>
+    <h3>Hoja de ruta</h3>
+</th>
+
+<hr>
+
+<ul class="list-group ListaOrdenes">
+    @foreach (var r in Model.OrdenesDelDia)
+    {
+        <li id="@r.NroOrden" data-id="@r.NroOrden" class="list-group-item li-add-orden">
+            <div class="OrdenListNro">
+                <b> @Html.DisplayFor(x => r.NroOrden)</b>
+
+                @if (!r.Garantia)
+                {
+                    <span class="badge badge-info">C</span>
+                }
+                else
+                {
+                    <span class="badge badge-info">E</span>
+                }
+
+            </div>
+            <div class="OrdenListSummary">
+                @Html.DisplayFor(x => r.Cliente.PrettyName)
+
+                @if (r.EstadoDesc == "INGRESADO" || r.EstadoDesc == "REINGRESADO")
+                {
+                    <span class="badge badge-info">@r.EstadoDesc</span>
+                }
+                else
+                {
+                    <span class="badge badge-success">@r.EstadoDesc</span>
+                }
+            </div>
+
+            @Html.DisplayFor(x => r.Cliente.PrettyAddress)
+
+        </li>
+
+    }
+</ul>
+
+<script>
+    $(".li-rem-orden").click(function (e) {
+
+        $.ajax({
+            url: "@Url.Action("Remove")?id=" + $(this).data("id"),
+            success: function (data) {
+                $("#domicilioIndex").html(data);
+            }
+        })
+    });
+</script>

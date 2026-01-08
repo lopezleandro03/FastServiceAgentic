@@ -1,0 +1,118 @@
+﻿<div class="row">
+    @RenderPage("FilterBar.cshtml")
+</div>
+
+<hr>
+
+<div id="SeguimientoDiv" class="row">
+    <div data-estado="1" data-last="false" id="column-1" class="col-md-2 kanbanCol">
+
+    </div>
+
+    <div data-estado="2" data-last="false" id="column-2" class="col-md-2 kanbanCol">
+
+    </div>
+
+    <div data-estado="3" data-last="false" id="column-3" class="col-md-2 kanbanCol">
+
+    </div>
+
+    <div data-estado="4" data-last="false" id="column-4" class="col-md-2 kanbanCol">
+
+    </div>
+
+    <div data-estado="5" data-last="false" id="column-5" class="col-md-2 kanbanCol">
+
+    </div>
+
+    <div data-estado="6" data-last="true" id="column-6" class="col-md-2 kanbanCol">
+
+    </div>
+
+    @*<div data-estado="6" data-last="true" id="column-6" class="col-md-2 kanbanCol">
+
+    </div>*@
+
+</div>
+
+<script>
+    function LoadKanban() {
+        $(".spinner").show();
+
+        $(".kanbanCol").each(function () {
+            ajaxGetNoCustomErrorSyncNoLoading(
+                "@Url.Action("KanbanColumn","Seguimiento")/?id=" + $(this).data("estado")
+                + "&desde=" + $("#desde").val()
+                + "&hasta=" + $("#hasta").val()
+                + "&tecnicoid=" + $("#tecnicoid").val()
+                + "&comercioid=" + $("#comercioid").val()
+                + "&responsableid=" + $("#responsableid").val(),
+                function (data) {
+                    var column = data.substring(0, 8);
+                    var html = data.substring(8, data.length);
+                    $("#" + column).html(html);
+
+                    $("#" + column + " .li-ver-orden").click(function (e) {
+                        ajaxGetNoCustomError(
+                            $(this).data("url"),
+                            function (data) {
+                                $(".OrdenDetailBody").html(data);
+                                $("#ModalOrdenDetail").modal();
+                            }
+                        );
+                    });
+                }
+            );
+
+            if ($(this).data("last") == true){
+                $(".spinner").hide();
+            }
+        });
+
+    }
+
+    $("#FlagNuevaOrden").val(false);
+    LoadKanban();
+
+</script>
+
+<style>
+    .li-ver-orden {
+        margin-top: 5px;
+    }
+
+    .OrdenHeader {
+        font-size: large;
+        font-style: normal;
+    }
+
+    .OrdenListNro {
+        font-size: large;
+        font-style: normal;
+    }
+
+    .OrdenListSummary {
+        font-size: medium;
+        font-style: normal;
+    }
+
+    .OrdenListHints {
+        font-size: medium;
+        font-style: normal;
+    }
+
+    .li-add-orden {
+        font-size: large;
+        font-style: normal;
+    }
+
+    .ListaOrdenes {
+        max-height: 760px;
+        overflow-y: scroll;
+    }
+
+    .pac-container {
+        z-index: 100000;
+    }
+</style>
+

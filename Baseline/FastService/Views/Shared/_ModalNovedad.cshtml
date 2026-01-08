@@ -1,0 +1,31 @@
+﻿<div class="row">
+    <div class="col-lg-12">
+        <div id="modalNuevaNovedad" class="modal NovedadModal" aria-hidden="true" style="display: none;">
+
+        </div>
+    </div>
+</div>
+
+<style>
+    .NovedadModal {
+        z-index: 200000;
+        margin-top: 50px;
+    }
+</style>
+
+<script>
+    function OnBeginNovedad() {
+        $(".simplemodal-close").trigger("click");
+    }
+
+    function DoneNovedad(data) {
+        $("#modalSuccess").modal();
+        $("#modalNuevaNovedad").hide();
+        $("#modalNuevaNovedad").html("");
+        $(".OrdenDetailBody").html(data);
+    }
+
+    function OnErrorNovedad() {
+        $("#modalError").modal();
+    }
+</script>

@@ -1,0 +1,82 @@
+﻿@model FastService.Models.NovedadModel
+
+<div class="modal-header">
+    <button class="simplemodal-close close" aria-hidden="true" type="button" data-dismiss="modal"></button>
+    <h4 id="modalNuevaNovedadHeader" class="modal-title">Nueva Novedad</h4>
+</div>
+
+@using (Ajax.BeginForm("Create", "Novedad", new AjaxOptions { HttpMethod = "Post", OnBegin = "OnBeginNovedad", OnSuccess = "DoneNovedad(data)", OnFailure = "OnErrorNovedad", LoadingElementId = "spinner" }, new { @id = "novedadForm" }))
+{
+    <div id="modalNuevaNovedadBody" class="modal-body">
+
+        @Html.AntiForgeryToken()
+        @Html.ValidationSummary(true)
+
+        @Html.HiddenFor(model => model.Id)
+        @Html.HiddenFor(model => model.NroOrden)
+        @Html.HiddenFor(model => model.TipoNovedadId)
+        @Html.LabelFor(model => model.TecnicoNombre)
+        @Html.DropDownListFor(model => model.TecnicoId, (List<SelectListItem>)ViewBag.ListaTecnicos, new { @class = "form-control" })
+
+        @Html.LabelFor(model => model.ResponsableId)
+        @Html.DropDownListFor(model => model.ResponsableId, (List<SelectListItem>)ViewBag.ListaResponsables, new { @class = "form-control" })
+
+        @Html.LabelFor(model => model.Monto)
+        @Html.TextBoxFor(model => model.Monto, new { @class = "form-control" })
+
+        @Html.LabelFor(model => model.FechaEntrega)
+        @Html.TextBoxFor(model => model.FechaEntrega, "{0:dd/MM/yyyy}", new { @class = "form-control form-control-inline fechacoordinarentrega", @autocomplete = "off" })
+        @Html.LabelFor(model => model.Observacion)
+        @Html.TextAreaFor(model => model.Observacion, new { @class = "form-control" })
+
+        @Html.HiddenFor(model => model.Accion, new { @class = "form-control", @id = "accion" })
+    </div>
+
+    <div class="modal-footer">
+        <button id="btnSubmitNovedad" class="btn green" type="submit">Aceptar</button>
+    </div>
+}
+
+<style>
+    .fechacoordinarentrega {
+        z-index: 3000000 !important; /* has to be larger than 1050 */
+    }
+</style>
+
+<script src="~/Scripts/jquery.validate.min.js"></script>
+<script src="~/Scripts/jquery.validate.unobtrusive.min.js"></script>
+
+<script>
+    $(function () {
+        try {
+            $.validator.methods.date = function (value, element) {
+                //var valid = this.optional(element) || Globalize.parseDate(value, "dd MMM, yyyy") !== null;
+                //console.info(valid);
+                return true;
+            }
+        } catch (e) {
+            console.info(e)
+        }
+
+        $.datepicker.regional['es'] = {
+            closeText: 'Cerrar',
+            prevText: '< Ant',
+            nextText: 'Sig >',
+            currentText: 'Hoy',
+            monthNames: ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'],
+            monthNamesShort: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'],
+            dayNames: ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'],
+            dayNamesShort: ['Dom', 'Lun', 'Mar', 'Mié', 'Juv', 'Vie', 'Sáb'],
+            dayNamesMin: ['Do', 'Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sá'],
+            weekHeader: 'Sm',
+            dateFormat: 'dd/mm/yy',
+            firstDay: 1,
+            isRTL: false,
+            showMonthAfterYear: false,
+            yearSuffix: ''
+        };
+
+        $.datepicker.setDefaults($.datepicker.regional['es']);
+        $(".fechacoordinarentrega").datepicker();
+    })
+</script>

@@ -1,0 +1,49 @@
+﻿<div class="row">
+    <div class="col-md-7 divBuscar">
+        @RenderPage("Buscar.cshtml")
+    </div>
+
+
+    <div class="col-md-5">
+        <div class="col-md-10">
+            <h3 class="title-historia">Historial trabajos</h3>
+        </div>
+        <div class="col-md-2">
+            <button disabled class="btn btn-lg btn-info btn-md center-block align newOrderButton" type="button" title="Crear nueva orden" ><i class="fa fa-plus">  </i></button>
+        </div>
+        <div id="HistoriaClienteDiv">
+            @RenderPage("Historia.cshtml")
+        </div>
+    </div>
+</div>
+
+<style>
+    .title-historia {
+        padding-top: 1rem;
+    }
+
+    .divBuscar {
+        padding-top: 2rem;
+    }
+
+    .divHistorial {
+    }
+
+    .newOrderButton {
+        margin-right: 0rem;
+        margin-top: 2rem;
+        margin-bottom: 1rem;
+    }
+</style>
+
+<script>
+    $(".newOrderButton").click(function () {
+        ajaxGetNoCustomError(
+            "@Url.Action("CreateForClient","Ticket")" + "?id=" + $(".Cliente_Id").val(),
+            function (data) {
+                $(".OrdenDetailBody").html(data);
+                $("#ModalOrdenDetail").modal();
+            }
+        );
+    });
+</script>
