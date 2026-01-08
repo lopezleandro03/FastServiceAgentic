@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { Button } from '../ui/button';
+import { Textarea } from '../ui/textarea';
 
 interface MessageInputProps {
   onSendMessage: (message: string) => void;
@@ -16,32 +18,40 @@ const MessageInput: React.FC<MessageInputProps> = ({ onSendMessage, disabled = f
     }
   };
 
+  const handleSend = () => {
+    if (message.trim() && !disabled) {
+      onSendMessage(message.trim());
+      setMessage('');
+    }
+  };
+
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      handleSubmit(e);
+      handleSend();
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="border-t border-gray-200 p-4 bg-gray-50">
+    <form onSubmit={handleSubmit} className="border-t p-4 bg-background">
       <div className="flex gap-2">
-        <input
-          type="text"
+        <Textarea
           value={message}
           onChange={(e) => setMessage(e.target.value)}
-          onKeyPress={handleKeyPress}
+          onKeyDown={handleKeyPress}
           placeholder="Escribí tu consulta..."
           disabled={disabled}
-          className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+          className="flex-1 resize-none"
+          rows={2}
         />
-        <button
+        <Button
           type="submit"
+          onClick={handleSend}
           disabled={disabled || !message.trim()}
-          className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+          className="self-end"
         >
           Enviar
-        </button>
+        </Button>
       </div>
     </form>
   );

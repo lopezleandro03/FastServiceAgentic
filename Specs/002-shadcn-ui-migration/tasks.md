@@ -71,7 +71,7 @@
   - **Dependencies**: T007
   - **Parallel**: No
 
-- [ ] **T009**: Commit Phase 0 setup
+- [X] **T009**: Commit Phase 0 setup
   - **Files**: All Phase 0 files
   - **Command**: `git add . && git commit -m "feat(ui): configure shadcn-ui and TailwindCSS"`
   - **Validation**: Git commit successful
@@ -82,21 +82,21 @@
 
 ### Component Installation
 
-- [ ] **T010**: Install Button component via shadcn CLI
+- [X] **T010**: Install Button component via shadcn CLI
   - **Files**: `frontend/src/components/ui/button.tsx`
   - **Command**: `cd frontend && npx shadcn-ui@latest add button`
   - **Validation**: button.tsx exists in src/components/ui/
   - **Dependencies**: T009
   - **Parallel**: Yes [P]
 
-- [ ] **T011**: Install Input component via shadcn CLI
+- [X] **T011**: Install Input component via shadcn CLI
   - **Files**: `frontend/src/components/ui/input.tsx`
   - **Command**: `cd frontend && npx shadcn-ui@latest add input`
   - **Validation**: input.tsx exists in src/components/ui/
   - **Dependencies**: T009
   - **Parallel**: Yes [P]
 
-- [ ] **T012**: Install Textarea component via shadcn CLI
+- [X] **T012**: Install Textarea component via shadcn CLI
   - **Files**: `frontend/src/components/ui/textarea.tsx`
   - **Command**: `cd frontend && npx shadcn-ui@latest add textarea`
   - **Validation**: textarea.tsx exists in src/components/ui/
@@ -105,14 +105,14 @@
 
 ### Component Migration
 
-- [ ] **T013**: Migrate MessageInput to use shadcn Button and Textarea
+- [X] **T013**: Migrate MessageInput to use shadcn Button and Textarea
   - **Files**: `frontend/src/components/ChatPanel/MessageInput.tsx`
   - **Action**: Replace custom input/button with shadcn Textarea and Button components (see quickstart.md Phase 1 Step 2)
   - **Validation**: Component imports Button and Textarea from ../ui/
   - **Dependencies**: T010, T011, T012
   - **Parallel**: No
 
-- [ ] **T014**: Migrate MainPanel back button to shadcn Button
+- [X] **T014**: Migrate MainPanel back button to shadcn Button
   - **Files**: `frontend/src/components/MainPanel/MainPanel.tsx`
   - **Action**: Add Button import, replace back button with `<Button variant="outline">` (see quickstart.md Phase 1 Step 3)
   - **Validation**: Component imports Button from ../ui/button
@@ -121,7 +121,7 @@
 
 ### Testing
 
-- [ ] **T015**: Test MessageInput component functionality
+- [X] **T015**: Test MessageInput component functionality
   - **Files**: None (manual test)
   - **Actions**:
     - Start dev server
