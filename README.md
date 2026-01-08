@@ -187,10 +187,11 @@ Buscá órdenes del DNI 12345678
 - **Model Context Protocol 0.5.0-preview.1**: Arquitectura MCP
 
 ### Frontend
-- **React 18.3.1**: UI framework
-- **TypeScript 5.x**: Type safety
-- **TailwindCSS 3.x**: Styling
-- **React Scripts**: Build tooling
+- **React 19.x**: UI framework
+- **TypeScript 4.9+**: Type safety
+- **TailwindCSS 3.x**: Utility-first styling
+- **shadcn-ui + Radix primitives**: Accessible UI components
+- **React Scripts 5**: Build tooling
 
 ### Database
 - **Azure SQL Server**: Base de datos en la nube
@@ -232,6 +233,14 @@ FastServiceAgentic/
 │       └── tasks.md                # Task breakdown
 └── README.md
 ```
+## ✨ Sistema de UI
+
+- **SplitLayout 70/30**: El contenedor principal divide la pantalla en un panel de órdenes (70%) y el panel del asistente (30%) sin scroll global; cada panel maneja su propio overflow.
+- **Identidad "FastService AI"**: El ChatPanel usa encabezado fijo, badges y gradients consistentes; todos los textos del asistente se etiquetan como FastService AI.
+- **Componentes shadcn-ui**: Usa `npx shadcn-ui@latest add <component>` para extender la librería; los estilos viven en `frontend/src/components/ui` y siguen el tema actual.
+- **Tailwind + tokens**: Utiliza clases existentes (`text-slate-`, `bg-zinc-`, `border-border`) para mantener contraste AA en fondos oscuros.
+- **Condicionales en MainPanel**: La tabla de órdenes se oculta cuando se muestran detalles, lo que evita duplicar información en pantallas angostas.
+
 
 ## 🔍 Endpoints API
 

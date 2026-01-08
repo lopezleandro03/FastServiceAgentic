@@ -3,6 +3,7 @@ import { OrderSummary } from '../../types/order';
 import StatusBadge from './StatusBadge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 import { Input } from '../ui/input';
+import { cn } from '../../lib/utils';
 
 interface OrderListProps {
   orders: OrderSummary[];
@@ -114,30 +115,33 @@ const OrderList: React.FC<OrderListProps> = ({
   }
 
   return (
-    <div className="rounded-lg border bg-card shadow-sm">
+    <div className="rounded-[1.5rem] border border-white/60 bg-white/95 shadow-xl shadow-slate-200/70">
       {/* Filter Bar */}
-      <div className="p-4 border-b">
-        <div className="flex items-center space-x-2">
-          <svg className="w-5 h-5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div className="flex flex-col gap-3 border-b border-slate-100 px-5 py-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex items-center gap-3 flex-1">
+          <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
           <Input
             type="text"
-            placeholder="Filtrar órdenes..."
+            placeholder="Filtrar por cliente, dispositivo o estado"
             value={filterText}
             onChange={(e) => setFilterText(e.target.value)}
             className="flex-1"
           />
-          <span className="text-sm text-muted-foreground">
+        </div>
+        <div className="flex items-center gap-3 text-xs text-slate-500">
+          <span className="rounded-full bg-slate-100 px-3 py-1 font-semibold tracking-wide">
             {sortedAndFilteredOrders.length} de {orders.length}
           </span>
+          <span className="hidden lg:inline-flex">Ordenados por #{sortField === 'orderNumber' ? 'Número' : 'Campo seleccionado'}</span>
         </div>
       </div>
 
       {/* Table */}
       <div style={{ maxHeight, overflowY: 'auto' }}>
         <Table>
-          <TableHeader className="sticky top-0 bg-background">
+          <TableHeader className="sticky top-0 bg-white/95 backdrop-blur">
             <TableRow>
               <TableHead
                 className="cursor-pointer hover:bg-muted/50"
@@ -184,7 +188,10 @@ const OrderList: React.FC<OrderListProps> = ({
               <TableRow
                 key={order.orderNumber}
                 onClick={() => onOrderClick?.(order.orderNumber)}
-                className={onOrderClick ? 'cursor-pointer' : ''}
+                className={cn(
+                  onOrderClick ? 'cursor-pointer' : '',
+                  'transition-all duration-150 hover:-translate-y-[1px] hover:bg-slate-50'
+                )}
               >
                 <TableCell className="font-medium text-primary">
                   #{order.orderNumber}

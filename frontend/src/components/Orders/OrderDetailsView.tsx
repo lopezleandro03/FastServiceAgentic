@@ -3,6 +3,7 @@ import { OrderDetails } from '../../types/order';
 import StatusBadge from './StatusBadge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Separator } from '../ui/separator';
+import { Badge } from '../ui/badge';
 
 interface OrderDetailsViewProps {
   order: OrderDetails;
@@ -31,25 +32,40 @@ const OrderDetailsView: React.FC<OrderDetailsViewProps> = ({ order }) => {
     }).format(amount);
   };
 
+  const timeline = [
+    { label: 'Ingreso', value: formatDate(order.repair.entryDate) },
+    { label: 'Entrega Est.', value: formatDate(order.repair.estimatedDeliveryDate) },
+    { label: 'Estado', value: order.repair.status },
+  ];
+
   return (
     <div className="space-y-6">
       {/* Header Card */}
-      <Card>
+      <Card className="border-none bg-gradient-to-r from-slate-900 via-slate-900 to-indigo-900 text-white">
         <CardHeader>
-          <div className="flex justify-between items-start">
+          <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <CardTitle className="text-2xl">Orden #{order.orderNumber}</CardTitle>
-              <CardDescription>
-                Ingresado: {formatDate(order.repair.entryDate)}
+              <p className="text-xs uppercase tracking-[0.35em] text-white/60">Orden #{order.orderNumber}</p>
+              <CardTitle className="text-3xl text-white">{order.customer.fullName}</CardTitle>
+              <CardDescription className="text-white/70">
+                Ingresado el {formatDate(order.repair.entryDate)}
               </CardDescription>
             </div>
-            <StatusBadge status={order.repair.status} className="text-sm px-3 py-1" />
+            <StatusBadge status={order.repair.status} className="bg-white/10 text-white" />
           </div>
         </CardHeader>
+        <CardContent className="grid gap-4 sm:grid-cols-3">
+          {timeline.map((item) => (
+            <div key={item.label} className="rounded-2xl border border-white/15 bg-white/5 px-4 py-3">
+              <p className="text-xs uppercase tracking-[0.35em] text-white/60">{item.label}</p>
+              <p className="text-lg font-semibold text-white mt-1">{item.value}</p>
+            </div>
+          ))}
+        </CardContent>
       </Card>
 
       {/* Customer Information Card */}
-      <Card>
+      <Card className="border border-slate-200 bg-white/95">
         <CardHeader>
           <CardTitle className="flex items-center">
             <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -93,7 +109,7 @@ const OrderDetailsView: React.FC<OrderDetailsViewProps> = ({ order }) => {
       </Card>
 
       {/* Device Information Card */}
-      <Card>
+      <Card className="border border-slate-200 bg-white/95">
         <CardHeader>
           <CardTitle className="flex items-center">
             <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -123,7 +139,7 @@ const OrderDetailsView: React.FC<OrderDetailsViewProps> = ({ order }) => {
       </Card>
 
       {/* Repair Information Card */}
-      <Card>
+      <Card className="border border-slate-200 bg-white/95">
         <CardHeader>
           <CardTitle className="flex items-center">
             <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -151,7 +167,11 @@ const OrderDetailsView: React.FC<OrderDetailsViewProps> = ({ order }) => {
             )}
             <div>
               <p className="text-sm font-medium text-muted-foreground">Garantía</p>
-              <p className="mt-1">{order.repair.underWarranty ? 'Sí' : 'No'}</p>
+              <div className="mt-1">
+                <Badge variant={order.repair.underWarranty ? 'secondary' : 'outline'}>
+                  {order.repair.underWarranty ? 'Activa' : 'No aplica'}
+                </Badge>
+              </div>
             </div>
             {order.repair.estimatedPrice && (
               <div>
@@ -180,7 +200,7 @@ const OrderDetailsView: React.FC<OrderDetailsViewProps> = ({ order }) => {
 
       {/* Technician Information Card */}
       {order.technician && (
-        <Card>
+        <Card className="border border-slate-200 bg-white/95">
           <CardHeader>
             <CardTitle className="flex items-center">
               <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -214,7 +234,7 @@ const OrderDetailsView: React.FC<OrderDetailsViewProps> = ({ order }) => {
 
       {/* Repair Details Card */}
       {order.details && order.details.length > 0 && (
-        <Card>
+        <Card className="border border-slate-200 bg-white/95">
           <CardHeader>
             <CardTitle className="flex items-center">
               <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">

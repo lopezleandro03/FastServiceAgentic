@@ -1,38 +1,63 @@
-.App {
-  text-align: center;
-}
-
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
-}
-
-.App-header {
-  background-color: #282c34;
+.split-layout {
+  position: relative;
   min-height: 100vh;
+  width: 100%;
+  background: radial-gradient(circle at top left, rgba(14, 165, 233, 0.2), transparent 45%),
+    radial-gradient(circle at bottom right, rgba(79, 70, 229, 0.18), transparent 50%),
+    #edf2fb;
+  overflow: hidden;
+}
+
+.split-layout__container {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
-  color: white;
+  gap: clamp(1.25rem, 2vw, 2rem);
+  min-height: 100vh;
+  height: 100vh;
+  width: 100%;
 }
 
-.App-link {
-  color: #61dafb;
+.split-layout__main,
+.split-layout__chat {
+  border-radius: 0;
+  border: none;
+  background: rgba(255, 255, 255, 0.97);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
 }
 
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
+.split-layout__chat {
+  max-height: 100vh;
+  overflow: hidden;
+}
+
+.split-layout__main {
+  padding: clamp(1rem, 2vw, 2rem);
+}
+
+.split-layout__chat {
+  padding: clamp(1rem, 2vw, 1.5rem);
+}
+
+@media (min-width: 1024px) {
+  .split-layout__container {
+    flex-direction: row;
+    gap: 0;
   }
-  to {
-    transform: rotate(360deg);
+
+  .split-layout__main {
+    flex: 1 1 70%;
+    padding-right: clamp(1rem, 2vw, 2rem);
+  }
+
+  .split-layout__chat {
+    flex: 1 1 30%;
+    max-width: 30%;
+    padding-left: clamp(1rem, 2vw, 2rem);
+    border-left: 1px solid rgba(15, 23, 42, 0.08);
   }
 }

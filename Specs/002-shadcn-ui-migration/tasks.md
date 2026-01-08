@@ -294,14 +294,14 @@
 
 ### CSS Cleanup
 
-- [ ] **T032**: Remove unused custom CSS from App.css
+- [X] **T032**: Remove unused custom CSS from App.css
   - **Files**: `frontend/src/App.css`
   - **Action**: Remove any custom button, input, table styles replaced by shadcn; keep layout-specific styles (70/30 split)
   - **Validation**: File contains only essential non-shadcn styles
   - **Dependencies**: T031
   - **Parallel**: No
 
-- [ ] **T033**: Clean up component-level CSS (if any)
+- [X] **T033**: Clean up component-level CSS (if any)
   - **Files**: `frontend/src/components/**/*.css` (if they exist)
   - **Action**: Remove or consolidate any component-specific CSS files now replaced by shadcn Tailwind classes
   - **Validation**: No conflicting CSS remains
@@ -443,7 +443,7 @@
   - **Dependencies**: T046
   - **Parallel**: No
 
-- [ ] **T048**: Update README with shadcn-ui migration notes (if needed)
+- [X] **T048**: Update README with shadcn-ui migration notes (if needed)
   - **Files**: `README.md`
   - **Action**: Add note about UI design system if not already documented
   - **Validation**: README mentions shadcn-ui

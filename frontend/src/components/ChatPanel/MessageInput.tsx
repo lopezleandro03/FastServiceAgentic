@@ -33,25 +33,40 @@ const MessageInput: React.FC<MessageInputProps> = ({ onSendMessage, disabled = f
   };
 
   return (
-    <form onSubmit={handleSubmit} className="border-t p-4 bg-background">
-      <div className="flex gap-2">
-        <Textarea
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          onKeyDown={handleKeyPress}
-          placeholder="Escribí tu consulta..."
-          disabled={disabled}
-          className="flex-1 resize-none"
-          rows={2}
-        />
-        <Button
-          type="submit"
-          onClick={handleSend}
-          disabled={disabled || !message.trim()}
-          className="self-end"
-        >
-          Enviar
-        </Button>
+    <form onSubmit={handleSubmit} className="flex-shrink-0 border-t border-white/10 bg-slate-950/80 p-4">
+      <div className="rounded-2xl bg-white/95 shadow-2xl shadow-slate-900/10 p-3">
+        <div className="flex gap-3">
+          <Textarea
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            onKeyDown={handleKeyPress}
+            placeholder="Escribí tu consulta..."
+            disabled={disabled}
+            className="flex-1 resize-none border-none bg-transparent text-slate-900 placeholder-slate-400 focus-visible:ring-0"
+            rows={2}
+          />
+          <Button
+            type="submit"
+            onClick={handleSend}
+            disabled={disabled || !message.trim()}
+            className="self-end gap-2"
+          >
+            Enviar
+            <svg
+              className="h-4 w-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M5 12h14m0 0l-6-6m6 6l-6 6"
+              />
+            </svg>
+          </Button>
+        </div>
       </div>
     </form>
   );
