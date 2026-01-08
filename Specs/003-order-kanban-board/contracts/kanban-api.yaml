@@ -1,0 +1,337 @@
+openapi: 3.0.3
+info:
+  title: FastService Kanban API
+  description: API endpoint for Order Kanban Board feature
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:5207
+    description: Local development server
+
+paths:
+  /api/orders/kanban:
+    get:
+      operationId: getKanbanBoard
+      summary: Get orders grouped by status for Kanban board display
+      description: |
+        Returns orders grouped by repair status matching the baseline Kanban board.
+        
+        **Fixed Columns** (in order):
+        1. INGRESADO - New orders
+        2. PRESUPUESTADO - Quoted orders
+        3. ESP. REPUESTO - Waiting for parts
+        4. A REPARAR - Ready to repair (includes REINGRESADO orders, highlighted in red)
+        5. REPARADO - Repaired
+        6. RECHAZADO - Rejected
+        
+        Orders sorted by order number (newest first) within each column.
+        Default date range: last 100 days. Max 50 orders per column.
+      parameters:
+        - name: technicianId
+          in: query
+          required: false
+          description: Filter orders by assigned technician ID (TecnicoAsignadoId)
+          schema:
+            type: integer
+            example: 5
+        - name: responsibleId
+          in: query
+          required: false
+          description: Filter orders by responsible employee ID (EmpleadoAsignadoId)
+          schema:
+            type: integer
+            example: 3
+        - name: businessId
+          in: query
+          required: false
+          description: Filter orders by business/company ID (ComercioId)
+          schema:
+            type: integer
+            example: 1
+        - name: fromDate
+          in: query
+          required: false
+          description: Filter orders created on or after this date. Default is 100 days ago.
+          schema:
+            type: string
+            format: date
+            example: "2025-10-01"
+        - name: toDate
+          in: query
+          required: false
+          description: Filter orders created on or before this date. Default is today.
+          schema:
+            type: string
+            format: date
+            example: "2025-01-08"
+      responses:
+        '200':
+          description: Kanban board data successfully retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KanbanBoardData'
+              example:
+                columns:
+                  - columnId: "INGRESADO"
+                    displayName: "INGRESADO"
+                    orderCount: 8
+                    orders:
+                      - orderNumber: 128016
+                        customerName: "MELNIK, JORGE ALEJANDRO"
+                        deviceSummary: "MONITOR-SAMSUNG-LS19D300"
+                        technicianId: 3
+                        technicianName: "JUAN"
+                        responsibleName: "ROBERTO"
+                        isWarranty: false
+                        isDomicile: false
+                        isReentry: false
+                        daysSinceNotification: null
+                        lastActivityDate: "2025-01-08T10:30:00Z"
+                  - columnId: "PRESUPUESTADO"
+                    displayName: "PRESUPUESTADO"
+                    orderCount: 19
+                    orders: []
+                  - columnId: "ESP_REPUESTO"
+                    displayName: "ESP. REPUESTO"
+                    orderCount: 1
+                    orders: []
+                  - columnId: "A_REPARAR"
+                    displayName: "A REPARAR"
+                    orderCount: 4
+                    orders: []
+                  - columnId: "REPARADO"
+                    displayName: "REPARADO"
+                    orderCount: 16
+                    orders: []
+                  - columnId: "RECHAZADO"
+                    displayName: "RECHAZADO"
+                    orderCount: 19
+                    orders: []
+                totalOrders: 67
+                generatedAt: "2025-01-08T15:30:00Z"
+        '400':
+          description: Invalid filter parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/orders/statuses:
+    get:
+      operationId: getOrderStatuses
+      summary: Get all active order statuses
+      description: Returns list of active status values for filter dropdowns
+      responses:
+        '200':
+          description: Status list retrieved
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/OrderStatusInfo'
+
+  /api/technicians:
+    get:
+      operationId: getTechnicians
+      summary: Get all technicians for filter dropdown
+      description: Returns list of technicians (users who can be assigned to orders)
+      responses:
+        '200':
+          description: Technician list retrieved
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserInfo'
+
+  /api/responsibles:
+    get:
+      operationId: getResponsibles
+      summary: Get all responsible employees for filter dropdown
+      description: Returns list of employees who can be assigned as responsible for orders
+      responses:
+        '200':
+          description: Responsible list retrieved
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserInfo'
+
+  /api/businesses:
+    get:
+      operationId: getBusinesses
+      summary: Get all businesses/companies for filter dropdown
+      description: Returns list of businesses (comercios) for filtering orders
+      responses:
+        '200':
+          description: Business list retrieved
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BusinessInfo'
+
+components:
+  schemas:
+    KanbanBoardData:
+      type: object
+      required:
+        - columns
+        - totalOrders
+        - generatedAt
+      properties:
+        columns:
+          type: array
+          items:
+            $ref: '#/components/schemas/KanbanColumn'
+          description: Fixed array of 6 Kanban columns in display order
+          minItems: 6
+          maxItems: 6
+        totalOrders:
+          type: integer
+          description: Total count of orders across all columns
+        generatedAt:
+          type: string
+          format: date-time
+          description: Timestamp when data was generated
+
+    KanbanColumn:
+      type: object
+      required:
+        - columnId
+        - displayName
+        - orderCount
+        - orders
+      properties:
+        columnId:
+          type: string
+          enum: [INGRESADO, PRESUPUESTADO, ESP_REPUESTO, A_REPARAR, REPARADO, RECHAZADO]
+          description: Column identifier (matches baseline status grouping)
+        displayName:
+          type: string
+          description: Display name shown in column header
+        orderCount:
+          type: integer
+          description: Number of orders in this column
+        orders:
+          type: array
+          items:
+            $ref: '#/components/schemas/KanbanOrderCard'
+          maxItems: 50
+          description: Orders in this column (max 50 per column)
+
+    KanbanOrderCard:
+      type: object
+      required:
+        - orderNumber
+        - customerName
+        - deviceSummary
+        - technicianId
+        - technicianName
+        - responsibleName
+        - isWarranty
+        - isDomicile
+        - isReentry
+        - lastActivityDate
+      properties:
+        orderNumber:
+          type: integer
+          description: ReparacionId (order number)
+        customerName:
+          type: string
+          description: Customer name in "APELLIDO, NOMBRE" format (uppercase)
+          maxLength: 100
+        deviceSummary:
+          type: string
+          description: "Device summary: TYPE-BRAND-MODEL (e.g., MONITOR-SAMSUNG-LS19D300)"
+          maxLength: 80
+        technicianId:
+          type: integer
+          description: Assigned technician ID (for color coding)
+        technicianName:
+          type: string
+          description: Technician name
+        responsibleName:
+          type: string
+          description: Responsible employee name
+        isWarranty:
+          type: boolean
+          description: True if order is warranty service (shows "E" badge)
+        isDomicile:
+          type: boolean
+          description: True if order is domicile service (shows home icon)
+        isReentry:
+          type: boolean
+          description: True if order is REINGRESADO (shows red background in A REPARAR column)
+        daysSinceNotification:
+          type: integer
+          nullable: true
+          description: Days since last notification. Only shown for PRESUPUESTADO and REPARADO columns.
+          minimum: 0
+        lastActivityDate:
+          type: string
+          format: date-time
+          description: Last modification timestamp (for sorting)
+
+    OrderStatusInfo:
+      type: object
+      required:
+        - statusId
+        - name
+      properties:
+        statusId:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+
+    UserInfo:
+      type: object
+      required:
+        - userId
+        - name
+      properties:
+        userId:
+          type: integer
+        name:
+          type: string
+          description: Full name
+
+    BusinessInfo:
+      type: object
+      required:
+        - businessId
+        - name
+      properties:
+        businessId:
+          type: integer
+        name:
+          type: string
+          description: Business/company name
+
+    ErrorResponse:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
+          description: Error message
+        detail:
+          type: string
+          nullable: true
+          description: Additional error details
