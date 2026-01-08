@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { OrderSummary, OrderDetails } from '../../types/order';
 import { OrderList, OrderDetailsView } from '../Orders';
+import { KanbanBoard } from '../Kanban';
 import { Button } from '../ui/button';
-import { Badge } from '../ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
+import { Card, CardContent } from '../ui/card';
 
 interface MainPanelProps {
   orders?: OrderSummary[];
@@ -13,29 +13,6 @@ interface MainPanelProps {
 const MainPanel: React.FC<MainPanelProps> = ({ orders, selectedOrderDetails }) => {
   const [viewingOrderDetails, setViewingOrderDetails] = useState<OrderDetails | null>(null);
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
-
-  const statusSnapshot = useMemo(() => {
-    if (!orders?.length) {
-      return { total: 0, active: 0, awaiting: 0, completed: 0, escalated: 0 };
-    }
-
-    const completedStatuses = ['reparado', 'para entregar', 'retirado', 'informado', 'finalizado', 'entregado'];
-    const awaitingStatuses = ['esp. repuesto', 'presupuestado', 'a reparar'];
-    const escalatedStatuses = ['rechazado', 'rechazo presup.', 'fallo'];
-
-    return orders.reduce(
-      (acc, order) => {
-        const status = order.status?.toLowerCase() ?? '';
-        if (completedStatuses.includes(status)) acc.completed += 1;
-        else acc.active += 1;
-
-        if (awaitingStatuses.includes(status)) acc.awaiting += 1;
-        if (escalatedStatuses.includes(status)) acc.escalated += 1;
-        return acc;
-      },
-      { total: orders.length, active: 0, awaiting: 0, completed: 0, escalated: 0 }
-    );
-  }, [orders]);
 
   // When selectedOrderDetails changes from chat, update the view
   useEffect(() => {
@@ -112,86 +89,17 @@ const MainPanel: React.FC<MainPanelProps> = ({ orders, selectedOrderDetails }) =
       </div>
     );
   } else {
+    // Show Kanban board when no specific orders are searched
     mainBodyContent = (
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card className="border border-slate-200 bg-white/95">
-          <CardHeader>
-            <CardTitle className="text-2xl text-slate-900">Bienvenido a FastService</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4 text-slate-600">
-            <p>Utilizá el chat para acelerar tus búsquedas y mantener una vista consolidada de tus órdenes.</p>
-            <ul className="space-y-2 text-sm">
-              <li>• Buscar por número, cliente o DNI</li>
-              <li>• Ver estados y técnicos asignados</li>
-              <li>• Consultar dispositivos y fechas clave</li>
-            </ul>
-          </CardContent>
-        </Card>
-        <Card className="border-none bg-gradient-to-br from-slate-900 via-slate-900 to-slate-800 text-white">
-          <CardHeader>
-            <CardTitle className="text-xl">Ejemplos de consultas</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3 text-sm text-white/80">
-            {['Buscá la orden 12345', 'Mostrame órdenes de Juan Pérez', '¿Qué órdenes están pendientes?', 'Buscá órdenes de Samsung TV que estén rechazadas', '¿Cuáles son los estados disponibles?'].map((example) => (
-              <div key={example} className="rounded-xl border border-white/10 bg-white/5 px-4 py-2">{example}</div>
-            ))}
-          </CardContent>
-        </Card>
+      <div className="h-full min-w-0 overflow-hidden">
+        <KanbanBoard onOrderClick={handleOrderClick} />
       </div>
     );
   }
 
   return (
-    <div className="h-full flex flex-col gap-6">
-      {!isShowingOrderDetails && (
-        <section className="rounded-[1.5rem] border border-slate-100 bg-white/95 px-6 py-6 shadow-lg shadow-slate-200/60">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div>
-              <p className="text-[0.7rem] uppercase tracking-[0.4em] text-slate-400">Operaciones FastService</p>
-              <h1 className="text-4xl font-semibold text-slate-900 leading-tight mt-2">Tablero de órdenes</h1>
-              <p className="text-slate-500 mt-2">Usá FastService AI para filtrar órdenes, o explorá los resultados destacados.</p>
-            </div>
-            <Badge variant="secondary" className="bg-indigo-50 text-indigo-700 border border-indigo-100 px-4 py-2 rounded-full">
-              Actualizado {new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
-            </Badge>
-          </div>
-          <div className="grid gap-4 mt-6 sm:grid-cols-2 lg:grid-cols-4">
-            {[{
-              label: 'Órdenes activas',
-              value: statusSnapshot.active,
-              helper: 'requieren seguimiento',
-              accent: 'text-emerald-600'
-            }, {
-              label: 'Pendientes de repuesto',
-              value: statusSnapshot.awaiting,
-              helper: 'esperando confirmación',
-              accent: 'text-amber-600'
-            }, {
-              label: 'Completadas',
-              value: statusSnapshot.completed,
-              helper: 'listas para retiro',
-              accent: 'text-slate-700'
-            }, {
-              label: 'Alertas',
-              value: statusSnapshot.escalated,
-              helper: 'requieren revisión',
-              accent: 'text-rose-600'
-            }].map((card) => (
-              <Card key={card.label} className="border-none bg-slate-50/70 shadow-inner shadow-white">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm text-slate-500 font-medium">{card.label}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className={`text-3xl font-semibold tracking-tight ${card.accent}`}>{card.value}</p>
-                  <p className="text-xs text-slate-500 uppercase tracking-[0.3em] mt-2">{card.helper}</p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </section>
-      )}
-
-      <div className="flex-1 overflow-y-auto">
+    <div className="h-full flex flex-col min-w-0">
+      <div className="flex-1 min-w-0 overflow-auto">
         {mainBodyContent}
       </div>
     </div>

@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using FastService.McpServer.Data;
 using FastService.McpServer.Data.Entities;
 using FastService.McpServer.Dtos;
@@ -9,11 +10,42 @@ namespace FastService.McpServer.Services
     {
         private readonly FastServiceDbContext _context;
         private readonly ILogger<OrderService> _logger;
+        private readonly IMemoryCache _cache;
+        private readonly OrderCacheService _orderCacheService;
+        // Compiled query to avoid lambda compilation overhead on first run
+        private static readonly Func<FastServiceDbContext, int, System.Threading.Tasks.Task<ProjectedOrder?>> _compiledOrderQuery
+            = EF.CompileAsyncQuery((FastServiceDbContext ctx, int orderNumber) =>
+                ctx.Reparacions
+                   .AsNoTracking()
+                   .Where(r => r.ReparacionId == orderNumber)
+                   .Select(r => new ProjectedOrder
+                   {
+                       ReparacionId = r.ReparacionId,
+                       ClienteId = r.ClienteId,
+                       ClienteNombre = r.Cliente!.Nombre,
+                       ClienteApellido = r.Cliente.Apellido,
+                       ClienteDni = r.Cliente.Dni,
+                       ClienteMail = r.Cliente.Mail,
+                       ClienteTelefono = r.Cliente.Telefono1,
+                       ClienteDireccion = r.Cliente.Direccion,
+                       MarcaNombre = r.Marca!.Nombre,
+                       TipoDispositivoNombre = r.TipoDispositivo!.Nombre,
+                       EstadoNombre = r.EstadoReparacion!.Nombre,
+                       TecnicoId = r.TecnicoAsignadoId,
+                       TecnicoNombre = r.TecnicoAsignado!.Nombre,
+                       TecnicoApellido = r.TecnicoAsignado.Apellido,
+                       TecnicoEmail = r.TecnicoAsignado.Email,
+                       TecnicoTelefono = r.TecnicoAsignado.Telefono1,
+                       CreadoEn = r.CreadoEn,
+                       FechaEntrega = r.FechaEntrega
+                   }).FirstOrDefault());
 
-        public OrderService(FastServiceDbContext context, ILogger<OrderService> logger)
+        public OrderService(FastServiceDbContext context, ILogger<OrderService> logger, IMemoryCache cache, OrderCacheService orderCacheService)
         {
             _context = context;
             _logger = logger;
+            _cache = cache;
+            _orderCacheService = orderCacheService;
         }
 
         public async Task<List<OrderSummary>> SearchOrdersAsync(OrderSearchCriteria criteria)
@@ -102,62 +134,95 @@ namespace FastService.McpServer.Services
 
         public async Task<OrderDetails?> GetOrderDetailsAsync(int orderNumber)
         {
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+
+            // 1. Check pre-loaded startup cache first (last 100 orders with movements)
+            var cachedOrder = _orderCacheService.TryGetFromCache(orderNumber);
+            if (cachedOrder != null)
+            {
+                sw.Stop();
+                _logger.LogInformation("GetOrderDetails: order {OrderNumber} returned from startup cache in {Elapsed}ms", orderNumber, sw.ElapsedMilliseconds);
+                return cachedOrder.OrderDetails;
+            }
+
+            // 2. Check short-lived memory cache (for recently accessed orders not in startup cache)
+            var cacheKey = $"order:{orderNumber}";
+            if (_cache.TryGetValue(cacheKey, out var cachedObj))
+            {
+                if (cachedObj is OrderDetails cachedDetails)
+                {
+                    sw.Stop();
+                    _logger.LogInformation("GetOrderDetails: order {OrderNumber} returned from memory cache in {Elapsed}ms", orderNumber, sw.ElapsedMilliseconds);
+                    return cachedDetails;
+                }
+            }
             try
             {
-                var order = await _context.Reparacions
-                    .Include(r => r.Cliente)
-                    .Include(r => r.TecnicoAsignado)
-                    .Include(r => r.EstadoReparacion)
-                    .Include(r => r.Marca)
-                    .Include(r => r.TipoDispositivo)
-                    .Include(r => r.ReparacionDetalle)
-                    .FirstOrDefaultAsync(r => r.ReparacionId == orderNumber);
+                // Execute compiled query to avoid EF expression compilation cost
+                var projected = await _compiledOrderQuery(_context, orderNumber);
 
-                if (order == null)
-                    return null;
-
-                return new OrderDetails
+                sw.Stop();
+                if (projected == null)
                 {
-                    OrderNumber = order.ReparacionId,
+                    _logger.LogInformation("GetOrderDetails: order {OrderNumber} not found (db elapsed {Elapsed}ms)", orderNumber, sw.ElapsedMilliseconds);
+                    return null;
+                }
+
+                _logger.LogInformation("GetOrderDetails: order {OrderNumber} db projection elapsed {Elapsed}ms", orderNumber, sw.ElapsedMilliseconds);
+
+                // Map projection to DTO
+                var result = new OrderDetails
+                {
+                    OrderNumber = projected.ReparacionId,
                     Customer = new CustomerInfo
                     {
-                        CustomerId = order.ClienteId,
-                        FullName = $"{order.Cliente!.Nombre} {order.Cliente.Apellido}",
-                        DNI = order.Cliente.Dni?.ToString(),
-                        Email = order.Cliente.Mail,
-                        Phone = order.Cliente.Telefono1,
-                        Address = order.Cliente.Direccion
+                        CustomerId = projected.ClienteId ?? 0,
+                        FullName = $"{projected.ClienteNombre} {projected.ClienteApellido}",
+                        DNI = projected.ClienteDni?.ToString(),
+                        Email = projected.ClienteMail,
+                        Phone = projected.ClienteTelefono,
+                        Address = projected.ClienteDireccion
                     },
                     Device = new DeviceInfo
                     {
-                        Brand = order.Marca!.Nombre,
-                        DeviceType = order.TipoDispositivo!.Nombre,
-                        SerialNumber = null // Not available in current schema
+                        Brand = projected.MarcaNombre,
+                        DeviceType = projected.TipoDispositivoNombre,
+                        SerialNumber = null
                     },
                     Repair = new RepairInfo
                     {
-                        Status = order.EstadoReparacion!.Nombre,
-                        Observations = null, // Not available in current schema
-                        EntryDate = order.CreadoEn.ToString("yyyy-MM-dd"),
-                        ExitDate = order.FechaEntrega?.ToString("yyyy-MM-dd"),
-                        EstimatedDeliveryDate = order.FechaEntrega?.ToString("yyyy-MM-dd"),
+                        Status = projected.EstadoNombre,
+                        Observations = null,
+                        EntryDate = projected.CreadoEn.ToString("yyyy-MM-dd"),
+                        ExitDate = projected.FechaEntrega?.ToString("yyyy-MM-dd"),
+                        EstimatedDeliveryDate = projected.FechaEntrega?.ToString("yyyy-MM-dd"),
                         EstimatedPrice = null,
                         FinalPrice = null,
                         UnderWarranty = false
                     },
                     Technician = new UserInfo
                     {
-                        UserId = order.TecnicoAsignadoId,
-                        FullName = $"{order.TecnicoAsignado!.Nombre} {order.TecnicoAsignado.Apellido}".Trim(),
-                        Email = order.TecnicoAsignado.Email,
-                        Phone = order.TecnicoAsignado.Telefono1
+                        UserId = projected.TecnicoId ?? 0,
+                        FullName = $"{projected.TecnicoNombre} {projected.TecnicoApellido}".Trim(),
+                        Email = projected.TecnicoEmail,
+                        Phone = projected.TecnicoTelefono
                     },
-                    Details = new List<RepairDetailInfo>() // Will be populated when we have detail records
+                    Details = new List<RepairDetailInfo>()
                 };
+                _logger.LogInformation("GetOrderDetails: order {OrderNumber} mapped elapsed {Elapsed}ms (total)", orderNumber, sw.ElapsedMilliseconds);
+
+                // Cache successful lookups for a short period to reduce DB pressure on hot items
+                var cacheEntryOptions = new MemoryCacheEntryOptions
+                {
+                    AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(30)
+                };
+                _cache.Set(cacheKey, result, cacheEntryOptions);
+                return result;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting order details for order: {OrderNumber}", orderNumber);
+                sw.Stop();
+                _logger.LogError(ex, "Error getting order details for order: {OrderNumber} (elapsed {Elapsed}ms)", orderNumber, sw.ElapsedMilliseconds);
                 throw;
             }
         }
@@ -183,5 +248,251 @@ namespace FastService.McpServer.Services
                 throw;
             }
         }
+
+        /// <summary>
+        /// Get Kanban board data with orders grouped by repair status.
+        /// Returns 6 fixed columns: INGRESADO, PRESUPUESTADO, ESP_REPUESTO, A_REPARAR, REPARADO, RECHAZADO
+        /// </summary>
+        public async Task<KanbanBoardData> GetKanbanBoardAsync(
+            int? technicianId = null,
+            int? responsibleId = null,
+            int? businessId = null,
+            DateTime? fromDate = null,
+            DateTime? toDate = null)
+        {
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+
+            // Default date range: last 100 days (matching baseline)
+            var desde = fromDate ?? DateTime.Now.AddDays(-100);
+            var hasta = toDate ?? DateTime.Now.AddDays(1); // Include today
+
+            // Column definitions with status mappings (baseline compatible)
+            var columnDefinitions = new[]
+            {
+                ("INGRESADO", "INGRESADO", new[] { "INGRESADO" }),
+                ("PRESUPUESTADO", "PRESUPUESTADO", new[] { "PRESUPUESTADO" }),
+                ("ESP_REPUESTO", "ESP. REPUESTO", new[] { "ESP. REPUESTO" }),
+                ("A_REPARAR", "A REPARAR", new[] { "A REPARAR", "REINGRESADO" }), // Merged column
+                ("REPARADO", "REPARADO", new[] { "REPARADO" }),
+                ("RECHAZADO", "RECHAZADO", new[] { "RECHAZADO" })
+            };
+
+            try
+            {
+                // Build base query with filters
+                var baseQuery = _context.Reparacions
+                    .AsNoTracking()
+                    .Include(r => r.Cliente)
+                    .Include(r => r.EstadoReparacion)
+                    .Include(r => r.TecnicoAsignado)
+                    .Include(r => r.EmpleadoAsignado)
+                    .Include(r => r.Marca)
+                    .Include(r => r.TipoDispositivo)
+                    .Include(r => r.ReparacionDetalle)
+                    .Where(r => r.CreadoEn >= desde && r.CreadoEn <= hasta);
+
+                // Apply optional filters
+                if (technicianId.HasValue)
+                {
+                    baseQuery = baseQuery.Where(r => r.TecnicoAsignadoId == technicianId.Value);
+                }
+                if (responsibleId.HasValue)
+                {
+                    baseQuery = baseQuery.Where(r => r.EmpleadoAsignadoId == responsibleId.Value);
+                }
+                if (businessId.HasValue)
+                {
+                    baseQuery = baseQuery.Where(r => r.ComercioId == businessId.Value);
+                }
+
+                // Get all relevant orders in a single query
+                var allOrders = await baseQuery
+                    .Select(r => new
+                    {
+                        r.ReparacionId,
+                        StatusName = r.EstadoReparacion!.Nombre.ToUpper(),
+                        CustomerLastName = r.Cliente!.Apellido,
+                        CustomerFirstName = r.Cliente.Nombre,
+                        DeviceType = r.TipoDispositivo!.Nombre,
+                        BrandName = r.Marca!.Nombre,
+                        Model = r.ReparacionDetalle != null ? r.ReparacionDetalle.Modelo : null,
+                        TechId = r.TecnicoAsignadoId,
+                        TechName = r.TecnicoAsignado!.Nombre,
+                        ResponsibleName = r.EmpleadoAsignado!.Nombre,
+                        IsWarranty = r.ReparacionDetalle != null && r.ReparacionDetalle.EsGarantia,
+                        IsDomicile = r.ReparacionDetalle != null && r.ReparacionDetalle.EsDomicilio,
+                        r.InformadoEn,
+                        r.ModificadoEn
+                    })
+                    .ToListAsync();
+
+                _logger.LogInformation("GetKanbanBoard: fetched {Count} orders in {Elapsed}ms", 
+                    allOrders.Count, sw.ElapsedMilliseconds);
+
+                // Group orders by column
+                var columns = new List<KanbanColumn>();
+                var totalOrders = 0;
+
+                foreach (var (columnId, displayName, statusValues) in columnDefinitions)
+                {
+                    var columnOrders = allOrders
+                        .Where(o => statusValues.Contains(o.StatusName))
+                        .OrderByDescending(o => o.ReparacionId) // Newest first
+                        .ToList();
+
+                    var orderCount = columnOrders.Count;
+                    totalOrders += orderCount;
+
+                    // Take max 50 orders per column
+                    var cards = columnOrders
+                        .Take(50)
+                        .Select(o => new KanbanOrderCard
+                        {
+                            OrderNumber = o.ReparacionId,
+                            CustomerName = $"{o.CustomerLastName?.ToUpper()}, {o.CustomerFirstName?.ToUpper()}",
+                            DeviceSummary = BuildDeviceSummary(o.DeviceType, o.BrandName, o.Model),
+                            TechnicianId = o.TechId,
+                            TechnicianName = o.TechName ?? string.Empty,
+                            ResponsibleName = o.ResponsibleName ?? string.Empty,
+                            IsWarranty = o.IsWarranty,
+                            IsDomicile = o.IsDomicile,
+                            IsReentry = o.StatusName == "REINGRESADO",
+                            DaysSinceNotification = CalculateDaysSinceNotification(o.InformadoEn, columnId),
+                            LastActivityDate = o.ModificadoEn
+                        })
+                        .ToList();
+
+                    columns.Add(new KanbanColumn
+                    {
+                        ColumnId = columnId,
+                        DisplayName = displayName,
+                        OrderCount = orderCount,
+                        Orders = cards
+                    });
+                }
+
+                sw.Stop();
+                _logger.LogInformation("GetKanbanBoard: completed with {TotalOrders} total orders in {Elapsed}ms",
+                    totalOrders, sw.ElapsedMilliseconds);
+
+                return new KanbanBoardData
+                {
+                    Columns = columns,
+                    TotalOrders = totalOrders,
+                    GeneratedAt = DateTime.UtcNow
+                };
+            }
+            catch (Exception ex)
+            {
+                sw.Stop();
+                _logger.LogError(ex, "Error getting Kanban board data (elapsed {Elapsed}ms)", sw.ElapsedMilliseconds);
+                throw;
+            }
+        }
+
+        private static string BuildDeviceSummary(string? deviceType, string? brand, string? model)
+        {
+            var parts = new List<string>();
+            if (!string.IsNullOrWhiteSpace(deviceType)) parts.Add(deviceType.ToUpper());
+            if (!string.IsNullOrWhiteSpace(brand)) parts.Add(brand.ToUpper());
+            if (!string.IsNullOrWhiteSpace(model)) parts.Add(model.ToUpper());
+            return string.Join("-", parts);
+        }
+
+        private static int? CalculateDaysSinceNotification(DateTime? informadoEn, string columnId)
+        {
+            // Only show days since notification for PRESUPUESTADO and REPARADO columns
+            if (columnId != "PRESUPUESTADO" && columnId != "REPARADO")
+                return null;
+
+            if (!informadoEn.HasValue)
+                return null;
+
+            return (int)(DateTime.Now - informadoEn.Value).TotalDays;
+        }
+
+        /// <summary>
+        /// Get movements/comments (Novedades) for an order.
+        /// Checks startup cache first, then falls back to DB.
+        /// </summary>
+        public async Task<List<OrderMovement>> GetOrderMovementsAsync(int orderNumber)
+        {
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+
+            // 1. Check pre-loaded startup cache first
+            var cachedOrder = _orderCacheService.TryGetFromCache(orderNumber);
+            if (cachedOrder != null)
+            {
+                sw.Stop();
+                _logger.LogInformation("GetOrderMovements: order {OrderNumber} returned {Count} movements from startup cache in {Elapsed}ms",
+                    orderNumber, cachedOrder.Movements.Count, sw.ElapsedMilliseconds);
+                return cachedOrder.Movements;
+            }
+
+            // 2. Fall back to DB query
+            try
+            {
+                var tipoNovedadLookup = await _context.TipoNovedads
+                    .AsNoTracking()
+                    .ToDictionaryAsync(t => t.TipoNovedadId, t => t.Nombre);
+
+                var novedades = await _context.Novedads
+                    .AsNoTracking()
+                    .Where(n => n.ReparacionId == orderNumber)
+                    .OrderBy(n => n.ModificadoEn)
+                    .ToListAsync();
+
+                var userIds = novedades.Select(n => n.UserId).Distinct().ToList();
+                var userLookup = await _context.Usuarios
+                    .AsNoTracking()
+                    .Where(u => userIds.Contains(u.UserId))
+                    .ToDictionaryAsync(u => u.UserId, u => $"{u.Nombre} {u.Apellido}".Trim());
+
+                var movements = novedades.Select(n => new OrderMovement
+                {
+                    MovementId = n.NovedadId,
+                    Type = tipoNovedadLookup.GetValueOrDefault(n.TipoNovedadId, "Desconocido"),
+                    Description = n.Observacion ?? string.Empty,
+                    Amount = n.Monto,
+                    CreatedBy = userLookup.GetValueOrDefault(n.UserId, "Usuario"),
+                    CreatedAt = n.ModificadoEn
+                }).ToList();
+
+                sw.Stop();
+                _logger.LogInformation("GetOrderMovements: order {OrderNumber} loaded {Count} movements from DB in {Elapsed}ms",
+                    orderNumber, movements.Count, sw.ElapsedMilliseconds);
+
+                return movements;
+            }
+            catch (Exception ex)
+            {
+                sw.Stop();
+                _logger.LogError(ex, "Error getting movements for order: {OrderNumber} (elapsed {Elapsed}ms)", orderNumber, sw.ElapsedMilliseconds);
+                throw;
+            }
+        }
     }
+}
+
+// Local projected type used for compiled query mapping
+internal class ProjectedOrder
+{
+    public int ReparacionId { get; set; }
+    public int? ClienteId { get; set; }
+    public string ClienteNombre { get; set; } = string.Empty;
+    public string ClienteApellido { get; set; } = string.Empty;
+    public int? ClienteDni { get; set; }
+    public string? ClienteMail { get; set; }
+    public string? ClienteTelefono { get; set; }
+    public string? ClienteDireccion { get; set; }
+    public string MarcaNombre { get; set; } = string.Empty;
+    public string TipoDispositivoNombre { get; set; } = string.Empty;
+    public string EstadoNombre { get; set; } = string.Empty;
+    public int? TecnicoId { get; set; }
+    public string TecnicoNombre { get; set; } = string.Empty;
+    public string TecnicoApellido { get; set; } = string.Empty;
+    public string? TecnicoEmail { get; set; }
+    public string? TecnicoTelefono { get; set; }
+    public DateTime CreadoEn { get; set; }
+    public DateTime? FechaEntrega { get; set; }
 }
