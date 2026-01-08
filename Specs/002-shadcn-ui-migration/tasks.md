@@ -191,7 +191,7 @@
   - **Dependencies**: T019, T020
   - **Parallel**: No
 
-- [ ] **T022**: Commit Phase 2 status components
+- [X] **T022**: Commit Phase 2 status components
   - **Files**: All Phase 2 files
   - **Command**: `git add . && git commit -m "feat(ui): migrate Badge and Skeleton components (Phase 2)"`
   - **Validation**: Git commit successful
@@ -202,14 +202,14 @@
 
 ### Component Installation
 
-- [ ] **T023**: Install Card component via shadcn CLI
+- [X] **T023**: Install Card component via shadcn CLI
   - **Files**: `frontend/src/components/ui/card.tsx`
   - **Command**: `cd frontend && npx shadcn-ui@latest add card`
   - **Validation**: card.tsx exists in src/components/ui/
   - **Dependencies**: T022
   - **Parallel**: Yes [P]
 
-- [ ] **T024**: Install Separator component via shadcn CLI
+- [X] **T024**: Install Separator component via shadcn CLI
   - **Files**: `frontend/src/components/ui/separator.tsx`
   - **Command**: `cd frontend && npx shadcn-ui@latest add separator`
   - **Validation**: separator.tsx exists in src/components/ui/
@@ -218,7 +218,7 @@
 
 ### Component Migration
 
-- [ ] **T025**: Migrate OrderDetailsView to use shadcn Card and Separator
+- [X] **T025**: Migrate OrderDetailsView to use shadcn Card and Separator
   - **Files**: `frontend/src/components/Orders/OrderDetailsView.tsx`
   - **Action**: Replace entire component with Card-based layout (see quickstart.md Phase 3 Step 2)
   - **Validation**: Component imports Card, CardContent, CardHeader, CardTitle, CardDescription, Separator from ../ui/
@@ -227,7 +227,7 @@
 
 ### Testing
 
-- [ ] **T026**: Test OrderDetailsView layout
+- [X] **T026**: Test OrderDetailsView layout
   - **Files**: None (manual test)
   - **Actions**:
     - Click on an order to view details
