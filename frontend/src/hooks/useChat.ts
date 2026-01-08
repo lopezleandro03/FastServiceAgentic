@@ -11,6 +11,7 @@ interface UseChatReturn {
   orders: OrderSummary[];
   selectedOrderDetails: OrderDetails | null;
   sendMessage: (content: string) => Promise<void>;
+  addMessage: (message: { role: 'assistant' | 'user'; content: string }) => void;
   clearMessages: () => void;
 }
 
@@ -170,6 +171,16 @@ export const useChat = (): UseChatReturn => {
     setSelectedOrderDetails(null);
   }, []);
 
+  const addMessage = useCallback((message: { role: 'assistant' | 'user'; content: string }) => {
+    const newMessage: ChatMessage = {
+      id: Date.now().toString(),
+      content: message.content,
+      role: message.role,
+      timestamp: new Date(),
+    };
+    setMessages((prev) => [...prev, newMessage]);
+  }, []);
+
   return {
     messages,
     isLoading,
@@ -177,6 +188,7 @@ export const useChat = (): UseChatReturn => {
     orders,
     selectedOrderDetails,
     sendMessage,
+    addMessage,
     clearMessages,
   };
 };

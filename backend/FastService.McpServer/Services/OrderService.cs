@@ -26,17 +26,43 @@ namespace FastService.McpServer.Services
                        ClienteApellido = r.Cliente.Apellido,
                        ClienteDni = r.Cliente.Dni,
                        ClienteMail = r.Cliente.Mail,
-                       ClienteTelefono = r.Cliente.Telefono1,
+                       ClienteTelefono1 = r.Cliente.Telefono1,
+                       ClienteTelefono2 = r.Cliente.Telefono2,
                        ClienteDireccion = r.Cliente.Direccion,
+                       // Direccion structured fields
+                       DireccionCalle = r.Cliente.DireccionNavigation != null ? r.Cliente.DireccionNavigation.Calle : null,
+                       DireccionAltura = r.Cliente.DireccionNavigation != null ? r.Cliente.DireccionNavigation.Altura : null,
+                       DireccionCalle2 = r.Cliente.DireccionNavigation != null ? r.Cliente.DireccionNavigation.Calle2 : null,
+                       DireccionCalle3 = r.Cliente.DireccionNavigation != null ? r.Cliente.DireccionNavigation.Calle3 : null,
+                       DireccionCiudad = r.Cliente.DireccionNavigation != null ? r.Cliente.DireccionNavigation.Ciudad : null,
+                       DireccionCodigoPostal = r.Cliente.DireccionNavigation != null ? r.Cliente.DireccionNavigation.CodigoPostal : null,
                        MarcaNombre = r.Marca!.Nombre,
                        TipoDispositivoNombre = r.TipoDispositivo!.Nombre,
                        EstadoNombre = r.EstadoReparacion!.Nombre,
+                       // ReparacionDetalle fields
+                       DetalleModelo = r.ReparacionDetalle != null ? r.ReparacionDetalle.Modelo : null,
+                       DetalleSerie = r.ReparacionDetalle != null ? r.ReparacionDetalle.Serie : null,
+                       DetalleUbicacion = r.ReparacionDetalle != null ? r.ReparacionDetalle.Unicacion : null,
+                       DetalleAccesorios = r.ReparacionDetalle != null ? r.ReparacionDetalle.Accesorios : null,
+                       EsGarantia = r.ReparacionDetalle != null && r.ReparacionDetalle.EsGarantia,
+                       EsDomicilio = r.ReparacionDetalle != null && r.ReparacionDetalle.EsDomicilio,
+                       Presupuesto = r.ReparacionDetalle != null ? r.ReparacionDetalle.Presupuesto : null,
+                       Precio = r.ReparacionDetalle != null ? r.ReparacionDetalle.Precio : null,
+                       // Technician
                        TecnicoId = r.TecnicoAsignadoId,
                        TecnicoNombre = r.TecnicoAsignado!.Nombre,
                        TecnicoApellido = r.TecnicoAsignado.Apellido,
                        TecnicoEmail = r.TecnicoAsignado.Email,
                        TecnicoTelefono = r.TecnicoAsignado.Telefono1,
+                       // Responsable (EmpleadoAsignado)
+                       ResponsableId = r.EmpleadoAsignadoId,
+                       ResponsableNombre = r.EmpleadoAsignado != null ? r.EmpleadoAsignado.Nombre : null,
+                       ResponsableApellido = r.EmpleadoAsignado != null ? r.EmpleadoAsignado.Apellido : null,
+                       ResponsableEmail = r.EmpleadoAsignado != null ? r.EmpleadoAsignado.Email : null,
+                       ResponsableTelefono = r.EmpleadoAsignado != null ? r.EmpleadoAsignado.Telefono1 : null,
+                       // Dates
                        CreadoEn = r.CreadoEn,
+                       ModificadoEn = r.ModificadoEn,
                        FechaEntrega = r.FechaEntrega
                    }).FirstOrDefault());
 
@@ -170,24 +196,50 @@ namespace FastService.McpServer.Services
 
                 _logger.LogInformation("GetOrderDetails: order {OrderNumber} db projection elapsed {Elapsed}ms", orderNumber, sw.ElapsedMilliseconds);
 
+                // Fetch Novedades for this order
+                var novedades = await GetNovedadesForOrderAsync(orderNumber);
+
                 // Map projection to DTO
                 var result = new OrderDetails
                 {
                     OrderNumber = projected.ReparacionId,
+                    Status = projected.EstadoNombre,
+                    StatusDate = projected.ModificadoEn,
+                    Presupuesto = projected.Presupuesto,
+                    MontoFinal = projected.Precio,
+                    IsDomicilio = projected.EsDomicilio,
+                    IsGarantia = projected.EsGarantia,
+                    EntryDate = projected.CreadoEn,
                     Customer = new CustomerInfo
                     {
                         CustomerId = projected.ClienteId ?? 0,
+                        FirstName = projected.ClienteNombre,
+                        LastName = projected.ClienteApellido,
                         FullName = $"{projected.ClienteNombre} {projected.ClienteApellido}",
                         DNI = projected.ClienteDni?.ToString(),
                         Email = projected.ClienteMail,
-                        Phone = projected.ClienteTelefono,
-                        Address = projected.ClienteDireccion
+                        Phone = projected.ClienteTelefono1,
+                        Celular = projected.ClienteTelefono2,
+                        Address = projected.ClienteDireccion,
+                        AddressDetails = new AddressInfo
+                        {
+                            FullAddress = projected.ClienteDireccion,
+                            Calle = projected.DireccionCalle,
+                            Altura = projected.DireccionAltura,
+                            EntreCalle1 = projected.DireccionCalle2,
+                            EntreCalle2 = projected.DireccionCalle3,
+                            Ciudad = projected.DireccionCiudad,
+                            CodigoPostal = projected.DireccionCodigoPostal
+                        }
                     },
                     Device = new DeviceInfo
                     {
                         Brand = projected.MarcaNombre,
                         DeviceType = projected.TipoDispositivoNombre,
-                        SerialNumber = null
+                        SerialNumber = projected.DetalleSerie,
+                        Model = projected.DetalleModelo,
+                        Ubicacion = projected.DetalleUbicacion,
+                        Accesorios = projected.DetalleAccesorios
                     },
                     Repair = new RepairInfo
                     {
@@ -196,10 +248,17 @@ namespace FastService.McpServer.Services
                         EntryDate = projected.CreadoEn.ToString("yyyy-MM-dd"),
                         ExitDate = projected.FechaEntrega?.ToString("yyyy-MM-dd"),
                         EstimatedDeliveryDate = projected.FechaEntrega?.ToString("yyyy-MM-dd"),
-                        EstimatedPrice = null,
-                        FinalPrice = null,
-                        UnderWarranty = false
+                        EstimatedPrice = projected.Presupuesto,
+                        FinalPrice = projected.Precio,
+                        UnderWarranty = projected.EsGarantia
                     },
+                    Responsable = projected.ResponsableId.HasValue ? new UserInfo
+                    {
+                        UserId = projected.ResponsableId.Value,
+                        FullName = $"{projected.ResponsableNombre} {projected.ResponsableApellido}".Trim(),
+                        Email = projected.ResponsableEmail,
+                        Phone = projected.ResponsableTelefono
+                    } : null,
                     Technician = new UserInfo
                     {
                         UserId = projected.TecnicoId ?? 0,
@@ -207,7 +266,8 @@ namespace FastService.McpServer.Services
                         Email = projected.TecnicoEmail,
                         Phone = projected.TecnicoTelefono
                     },
-                    Details = new List<RepairDetailInfo>()
+                    Details = new List<RepairDetailInfo>(),
+                    Novedades = novedades
                 };
                 _logger.LogInformation("GetOrderDetails: order {OrderNumber} mapped elapsed {Elapsed}ms (total)", orderNumber, sw.ElapsedMilliseconds);
 
@@ -224,6 +284,50 @@ namespace FastService.McpServer.Services
                 sw.Stop();
                 _logger.LogError(ex, "Error getting order details for order: {OrderNumber} (elapsed {Elapsed}ms)", orderNumber, sw.ElapsedMilliseconds);
                 throw;
+            }
+        }
+
+        /// <summary>
+        /// Get Novedades (order history events) for a specific order
+        /// </summary>
+        private async Task<List<NovedadInfo>> GetNovedadesForOrderAsync(int orderNumber)
+        {
+            try
+            {
+                // First get raw novedades
+                var novedadesRaw = await _context.Novedads
+                    .AsNoTracking()
+                    .Where(n => n.ReparacionId == orderNumber)
+                    .OrderByDescending(n => n.ModificadoEn)
+                    .ToListAsync();
+
+                if (!novedadesRaw.Any())
+                    return new List<NovedadInfo>();
+
+                // Get tipo novedad lookup
+                var tipoIds = novedadesRaw.Select(n => n.TipoNovedadId).Distinct().ToList();
+                var tipoNovedadLookup = await _context.TipoNovedads
+                    .AsNoTracking()
+                    .Where(t => tipoIds.Contains(t.TipoNovedadId))
+                    .ToDictionaryAsync(t => t.TipoNovedadId, t => t.Nombre);
+
+                // Map to DTOs
+                var novedades = novedadesRaw.Select(n => new NovedadInfo
+                {
+                    Id = n.NovedadId,
+                    Fecha = n.ModificadoEn,
+                    Tipo = tipoNovedadLookup.GetValueOrDefault(n.TipoNovedadId, "Desconocido"),
+                    Monto = n.Monto,
+                    Observacion = n.Observacion,
+                    UsuarioId = n.UserId
+                }).ToList();
+
+                return novedades;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting novedades for order: {OrderNumber}", orderNumber);
+                return new List<NovedadInfo>();
             }
         }
 
@@ -483,16 +587,41 @@ internal class ProjectedOrder
     public string ClienteApellido { get; set; } = string.Empty;
     public int? ClienteDni { get; set; }
     public string? ClienteMail { get; set; }
-    public string? ClienteTelefono { get; set; }
+    public string? ClienteTelefono1 { get; set; }
+    public string? ClienteTelefono2 { get; set; }
     public string? ClienteDireccion { get; set; }
+    // Direccion structured fields
+    public string? DireccionCalle { get; set; }
+    public string? DireccionAltura { get; set; }
+    public string? DireccionCalle2 { get; set; }
+    public string? DireccionCalle3 { get; set; }
+    public string? DireccionCiudad { get; set; }
+    public string? DireccionCodigoPostal { get; set; }
     public string MarcaNombre { get; set; } = string.Empty;
     public string TipoDispositivoNombre { get; set; } = string.Empty;
     public string EstadoNombre { get; set; } = string.Empty;
+    // ReparacionDetalle fields
+    public string? DetalleModelo { get; set; }
+    public string? DetalleSerie { get; set; }
+    public string? DetalleUbicacion { get; set; }
+    public string? DetalleAccesorios { get; set; }
+    public bool EsGarantia { get; set; }
+    public bool EsDomicilio { get; set; }
+    public decimal? Presupuesto { get; set; }
+    public decimal? Precio { get; set; }
+    // User fields
     public int? TecnicoId { get; set; }
     public string TecnicoNombre { get; set; } = string.Empty;
     public string TecnicoApellido { get; set; } = string.Empty;
     public string? TecnicoEmail { get; set; }
     public string? TecnicoTelefono { get; set; }
+    public int? ResponsableId { get; set; }
+    public string? ResponsableNombre { get; set; }
+    public string? ResponsableApellido { get; set; }
+    public string? ResponsableEmail { get; set; }
+    public string? ResponsableTelefono { get; set; }
+    // Dates
     public DateTime CreadoEn { get; set; }
+    public DateTime ModificadoEn { get; set; }
     public DateTime? FechaEntrega { get; set; }
 }

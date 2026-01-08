@@ -5,14 +5,22 @@ import MainPanel from './components/MainPanel/MainPanel';
 import ChatPanel from './components/ChatPanel/ChatPanel';
 import MessageList from './components/ChatPanel/MessageList';
 import MessageInput from './components/ChatPanel/MessageInput';
+import ActionSuggestions from './components/ChatPanel/ActionSuggestions';
 import { LoadingIndicator } from './components/ChatPanel/LoadingIndicator';
 import { useChat } from './hooks/useChat';
 
 function App() {
-  const { messages, isLoading, error, orders, selectedOrderDetails, sendMessage } = useChat();
+  const { messages, isLoading, error, orders, selectedOrderDetails, sendMessage, addMessage } = useChat();
 
   const chatPanelContent = (
     <>
+      {/* Action suggestions when viewing an order */}
+      {selectedOrderDetails && (
+        <ActionSuggestions
+          orderNumber={selectedOrderDetails.orderNumber}
+          onAddMessage={addMessage}
+        />
+      )}
       <div className="flex flex-1 min-h-0 flex-col">
         <div className="flex-1 min-h-0 overflow-y-auto">
           <MessageList messages={messages} />

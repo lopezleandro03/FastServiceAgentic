@@ -24,26 +24,61 @@ export interface OrderSummary {
 
 export interface OrderDetails {
   orderNumber: number;
+  status: string;
+  statusDate?: string;
+  responsable?: UserInfo;
+  technician?: UserInfo;
+  presupuesto?: number;
+  montoFinal?: number;
+  isDomicilio: boolean;
+  isGarantia: boolean;
+  entryDate?: string;
   customer: CustomerInfo;
   device: DeviceInfo;
   repair: RepairInfo;
-  technician: UserInfo;
   details: RepairDetailInfo[];
+  novedades: NovedadInfo[];
 }
 
 export interface CustomerInfo {
   customerId: number;
+  firstName: string;
+  lastName: string;
   fullName: string;
   dni?: string;
   email?: string;
   phone?: string;
+  celular?: string;
   address?: string;
+  addressDetails?: AddressInfo;
+}
+
+export interface AddressInfo {
+  fullAddress?: string;
+  calle?: string;
+  altura?: string;
+  entreCalle1?: string;
+  entreCalle2?: string;
+  ciudad?: string;
+  codigoPostal?: string;
 }
 
 export interface DeviceInfo {
   brand: string;
   deviceType: string;
   serialNumber?: string;
+  model?: string;
+  ubicacion?: string;
+  accesorios?: string;
+}
+
+export interface NovedadInfo {
+  id: number;
+  fecha: string;
+  tipo: string;
+  monto?: number;
+  observacion?: string;
+  usuarioId: number;
 }
 
 export interface RepairInfo {

@@ -1,0 +1,285 @@
+openapi: 3.0.3
+info:
+  title: FastService Order Details API
+  description: Extended order details endpoint with Novedades history
+  version: 1.1.0
+
+paths:
+  /api/orders/{orderNumber}:
+    get:
+      summary: Get extended order details with Novedades
+      description: Returns complete order information including customer, device, and history
+      operationId: getOrderDetails
+      parameters:
+        - name: orderNumber
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: The order number (ReparacionId)
+      responses:
+        '200':
+          description: Order details retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderDetails'
+        '404':
+          description: Order not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  schemas:
+    OrderDetails:
+      type: object
+      required:
+        - orderNumber
+        - status
+        - customer
+        - device
+      properties:
+        orderNumber:
+          type: integer
+          description: Unique order identifier
+          example: 128001
+        status:
+          type: string
+          description: Current status name
+          example: "PRESUPUESTADO"
+        statusDate:
+          type: string
+          format: date-time
+          description: When status was last changed
+          example: "2026-01-08T18:47:36"
+        responsable:
+          $ref: '#/components/schemas/UserInfo'
+        technician:
+          $ref: '#/components/schemas/UserInfo'
+        presupuesto:
+          type: number
+          format: decimal
+          nullable: true
+          description: Estimated budget
+          example: 0
+        montoFinal:
+          type: number
+          format: decimal
+          nullable: true
+          description: Final price
+          example: 0
+        isDomicilio:
+          type: boolean
+          description: Home service flag
+          example: false
+        isGarantia:
+          type: boolean
+          description: Warranty flag
+          example: false
+        entryDate:
+          type: string
+          format: date-time
+          description: Order creation date
+        customer:
+          $ref: '#/components/schemas/CustomerInfo'
+        device:
+          $ref: '#/components/schemas/DeviceInfo'
+        repair:
+          $ref: '#/components/schemas/RepairInfo'
+        novedades:
+          type: array
+          items:
+            $ref: '#/components/schemas/NovedadInfo'
+          description: Order history entries, sorted by date descending
+
+    CustomerInfo:
+      type: object
+      required:
+        - customerId
+        - firstName
+        - lastName
+      properties:
+        customerId:
+          type: integer
+          example: 12345
+        dni:
+          type: string
+          nullable: true
+          example: "41877462"
+        firstName:
+          type: string
+          example: "FRANCISCO"
+        lastName:
+          type: string
+          example: "FELIPPELLI"
+        fullName:
+          type: string
+          description: Computed firstName + lastName
+          example: "FRANCISCO FELIPPELLI"
+        email:
+          type: string
+          nullable: true
+          example: "noaplica@noaplica.com"
+        phone:
+          type: string
+          nullable: true
+          example: "1538136603"
+        celular:
+          type: string
+          nullable: true
+          description: Mobile phone number
+        address:
+          $ref: '#/components/schemas/AddressInfo'
+
+    AddressInfo:
+      type: object
+      properties:
+        fullAddress:
+          type: string
+          description: Complete address string
+          example: "Avenida Monteverde 6312, Gobernador Costa, Florencio Varela, Pr"
+        calle:
+          type: string
+          nullable: true
+          example: "Avenida Gobern"
+        altura:
+          type: string
+          nullable: true
+          example: "6312"
+        entreCalle1:
+          type: string
+          nullable: true
+        entreCalle2:
+          type: string
+          nullable: true
+        ciudad:
+          type: string
+          nullable: true
+          example: "Gobernador Cos"
+        codigoPostal:
+          type: string
+          nullable: true
+
+    DeviceInfo:
+      type: object
+      required:
+        - deviceType
+        - brand
+      properties:
+        deviceType:
+          type: string
+          example: "LED TV"
+        brand:
+          type: string
+          example: "LG"
+        serialNumber:
+          type: string
+          nullable: true
+          example: "708NSAC0L232"
+        model:
+          type: string
+          nullable: true
+          example: "49lj5500"
+        ubicacion:
+          type: string
+          nullable: true
+          description: Device location/placement
+        accesorios:
+          type: string
+          nullable: true
+          description: Included accessories
+          example: "lineas- se mojo"
+
+    RepairInfo:
+      type: object
+      properties:
+        status:
+          type: string
+        observations:
+          type: string
+          nullable: true
+        entryDate:
+          type: string
+          format: date-time
+        exitDate:
+          type: string
+          format: date-time
+          nullable: true
+        estimatedDeliveryDate:
+          type: string
+          format: date-time
+          nullable: true
+        estimatedPrice:
+          type: number
+          format: decimal
+          nullable: true
+        finalPrice:
+          type: number
+          format: decimal
+          nullable: true
+        underWarranty:
+          type: boolean
+
+    NovedadInfo:
+      type: object
+      required:
+        - id
+        - fecha
+        - tipo
+      properties:
+        id:
+          type: integer
+          description: Novedad ID
+          example: 1001
+        fecha:
+          type: string
+          format: date-time
+          description: Event timestamp
+          example: "2026-01-08T18:47:36"
+        tipo:
+          type: string
+          description: Event type name
+          example: "INFORMADO"
+        monto:
+          type: number
+          format: decimal
+          nullable: true
+          description: Amount if applicable
+          example: 168000.00
+        observacion:
+          type: string
+          nullable: true
+          description: Event description/notes
+          example: "transfer $168.000"
+        usuarioId:
+          type: integer
+          description: User who created the event
+
+    UserInfo:
+      type: object
+      required:
+        - userId
+        - fullName
+      properties:
+        userId:
+          type: integer
+          example: 5
+        fullName:
+          type: string
+          example: "ROBERTO"
+        email:
+          type: string
+          nullable: true
+        phone:
+          type: string
+          nullable: true
+
+    Error:
+      type: object
+      properties:
+        message:
+          type: string
+        code:
+          type: string

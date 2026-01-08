@@ -2,8 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { OrderSummary, OrderDetails } from '../../types/order';
 import { OrderList, OrderDetailsView } from '../Orders';
 import { KanbanBoard } from '../Kanban';
-import { Button } from '../ui/button';
-import { Card, CardContent } from '../ui/card';
 
 interface MainPanelProps {
   orders?: OrderSummary[];
@@ -45,22 +43,12 @@ const MainPanel: React.FC<MainPanelProps> = ({ orders, selectedOrderDetails }) =
 
   if (isShowingOrderDetails && viewingOrderDetails) {
     mainBodyContent = (
-      <div className="space-y-6">
-        <Card className="border border-slate-200 bg-white/90">
-          <CardContent className="flex flex-wrap items-center justify-between gap-4 py-5">
-            <div>
-              <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Detalle de orden</p>
-              <h2 className="text-2xl font-semibold text-slate-900">#{viewingOrderDetails.orderNumber}</h2>
-            </div>
-            <Button variant="outline" onClick={handleBackToList} className="gap-2">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
-              Volver al listado
-            </Button>
-          </CardContent>
-        </Card>
-        <OrderDetailsView order={viewingOrderDetails} />
+      <div className="p-4">
+        <OrderDetailsView 
+          order={viewingOrderDetails} 
+          isLoading={isLoadingDetails}
+          onBack={handleBackToList}
+        />
       </div>
     );
   } else if (isLoadingDetails) {
