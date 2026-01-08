@@ -134,7 +134,7 @@
   - **Dependencies**: T013, T014
   - **Parallel**: No
 
-- [ ] **T016**: Commit Phase 1 foundation components
+- [X] **T016**: Commit Phase 1 foundation components
   - **Files**: All Phase 1 files
   - **Command**: `git add . && git commit -m "feat(ui): migrate Button and Input components (Phase 1)"`
   - **Validation**: Git commit successful
@@ -145,14 +145,14 @@
 
 ### Component Installation
 
-- [ ] **T017**: Install Badge component via shadcn CLI
+- [X] **T017**: Install Badge component via shadcn CLI
   - **Files**: `frontend/src/components/ui/badge.tsx`
   - **Command**: `cd frontend && npx shadcn-ui@latest add badge`
   - **Validation**: badge.tsx exists in src/components/ui/
   - **Dependencies**: T016
   - **Parallel**: Yes [P]
 
-- [ ] **T018**: Install Skeleton component via shadcn CLI
+- [X] **T018**: Install Skeleton component via shadcn CLI
   - **Files**: `frontend/src/components/ui/skeleton.tsx`
   - **Command**: `cd frontend && npx shadcn-ui@latest add skeleton`
   - **Validation**: skeleton.tsx exists in src/components/ui/
@@ -161,14 +161,14 @@
 
 ### Component Migration
 
-- [ ] **T019**: Migrate StatusBadge to use shadcn Badge
+- [X] **T019**: Migrate StatusBadge to use shadcn Badge
   - **Files**: `frontend/src/components/Orders/StatusBadge.tsx`
   - **Action**: Replace entire component with shadcn Badge-based implementation (see quickstart.md Phase 2 Step 2)
   - **Validation**: Component imports Badge from ../ui/badge; includes getStatusVariant and getStatusClassName helpers
   - **Dependencies**: T017
   - **Parallel**: No
 
-- [ ] **T020**: Create OrderListSkeleton component (optional enhancement)
+- [X] **T020**: Create OrderListSkeleton component (optional enhancement)
   - **Files**: `frontend/src/components/Orders/OrderListSkeleton.tsx` (new file)
   - **Action**: Create skeleton loading component (see quickstart.md Phase 2 Step 3)
   - **Validation**: Component exists and uses Skeleton from ../ui/skeleton
@@ -177,7 +177,7 @@
 
 ### Testing
 
-- [ ] **T021**: Test StatusBadge color mapping
+- [X] **T021**: Test StatusBadge color mapping
   - **Files**: None (manual test)
   - **Actions**:
     - Search for orders with different statuses
