@@ -283,7 +283,7 @@
   - **Dependencies**: T029
   - **Parallel**: No
 
-- [ ] **T031**: Commit Phase 4 table component
+- [X] **T031**: Commit Phase 4 table component
   - **Files**: All Phase 4 files
   - **Command**: `git add . && git commit -m "feat(ui): migrate Table component (Phase 4)"`
   - **Validation**: Git commit successful
