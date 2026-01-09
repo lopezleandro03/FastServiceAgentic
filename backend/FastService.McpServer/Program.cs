@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using FastService.McpServer.Data;
+using FastService.McpServer.Data.Entities;
 using FastService.McpServer.Services;
 using FastService.McpServer.Tools;
 using FastService.McpServer.Dtos;
@@ -18,11 +19,6 @@ builder.Services.AddDbContext<FastServiceDbContext>(options =>
 builder.Services.AddScoped<OrderService>();
 builder.Services.AddScoped<OrderSearchTools>();
 builder.Services.AddScoped<AgentService>();
-// In-memory cache for short-lived caching of hot reads
-builder.Services.AddMemoryCache();
-// Pre-load last 100 orders on startup for fast lookups
-builder.Services.AddSingleton<OrderCacheService>();
-builder.Services.AddHostedService(sp => sp.GetRequiredService<OrderCacheService>());
 
 // Configure CORS for frontend
 builder.Services.AddCors(options =>
@@ -51,6 +47,30 @@ app.UseCors("AllowFrontend");
 
 // Basic health check endpoint
 app.MapGet("/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }));
+
+// Login endpoint - authenticates against Usuario table
+app.MapPost("/api/auth/login", async (LoginRequest request, FastServiceDbContext db) =>
+{
+    try
+    {
+        var user = await db.Usuarios
+            .Where(u => (u.Email == request.Login || u.Login == request.Login)
+                       && u.Contraseña == request.Password
+                       && u.Activo)
+            .FirstOrDefaultAsync();
+
+        if (user == null)
+        {
+            return Results.Unauthorized();
+        }
+
+        return Results.Ok(new LoginResponse(user.UserId, user.Login, user.Email, user.Nombre, user.Apellido));
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(detail: ex.Message, statusCode: 500);
+    }
+}).WithName("Login").WithOpenApi();
 
 // Chat endpoint for basic interaction
 app.MapPost("/api/chat", async (ChatRequest request, AgentService agentService) =>
@@ -84,6 +104,39 @@ app.MapGet("/api/orders/{orderNumber:int}", async (int orderNumber, OrderService
     }
 }).WithName("GetOrderDetails").WithOpenApi();
 
+// Create new order endpoint
+app.MapPost("/api/orders", async (CreateOrderRequest request, OrderService orderService) =>
+{
+    try
+    {
+        var order = await orderService.CreateOrderAsync(request);
+        return Results.Created($"/api/orders/{order.OrderNumber}", order);
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(detail: ex.Message, statusCode: 500);
+    }
+}).WithName("CreateOrder").WithOpenApi();
+
+// Update existing order endpoint
+app.MapPut("/api/orders/{orderNumber:int}", async (int orderNumber, UpdateOrderRequest request, OrderService orderService) =>
+{
+    try
+    {
+        request.OrderNumber = orderNumber; // Ensure consistency
+        var order = await orderService.UpdateOrderAsync(request);
+        return Results.Ok(order);
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.NotFound(new { error = ex.Message });
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(detail: ex.Message, statusCode: 500);
+    }
+}).WithName("UpdateOrder").WithOpenApi();
+
 // Order movements/comments endpoint
 app.MapGet("/api/orders/{orderNumber:int}/movements", async (int orderNumber, OrderService orderService) =>
 {
@@ -97,6 +150,58 @@ app.MapGet("/api/orders/{orderNumber:int}/movements", async (int orderNumber, Or
         return Results.Problem(detail: ex.Message, statusCode: 500);
     }
 }).WithName("GetOrderMovements").WithOpenApi();
+
+// Add novedad (note/movement) to an order
+app.MapPost("/api/orders/{orderNumber:int}/novedades", async (int orderNumber, AddNovedadRequest request, OrderService orderService) =>
+{
+    try
+    {
+        request.OrderNumber = orderNumber; // Ensure consistency
+        var movement = await orderService.AddNovedadAsync(request);
+        return Results.Created($"/api/orders/{orderNumber}/movements", movement);
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.NotFound(new { error = ex.Message });
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(detail: ex.Message, statusCode: 500);
+    }
+}).WithName("AddNovedad").WithOpenApi();
+
+// Process Retira (withdrawal) action on an order
+app.MapPost("/api/orders/{orderNumber:int}/retira", async (int orderNumber, ProcessRetiraRequest request, OrderService orderService) =>
+{
+    try
+    {
+        request.OrderNumber = orderNumber; // Ensure consistency
+        var result = await orderService.ProcessRetiraAsync(request);
+        return Results.Ok(result);
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.NotFound(new { error = ex.Message });
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(detail: ex.Message, statusCode: 500);
+    }
+}).WithName("ProcessRetira").WithOpenApi();
+
+// Get all payment methods
+app.MapGet("/api/payment-methods", async (OrderService orderService) =>
+{
+    try
+    {
+        var methods = await orderService.GetMetodosPagoAsync();
+        return Results.Ok(methods);
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(detail: ex.Message, statusCode: 500);
+    }
+}).WithName("GetPaymentMethods").WithOpenApi();
 
 // Kanban board endpoint - returns orders grouped by status
 app.MapGet("/api/orders/kanban", async (
@@ -175,9 +280,65 @@ app.MapGet("/api/businesses", async (FastServiceDbContext db) =>
     }
 }).WithName("GetBusinesses").WithOpenApi();
 
+// T023: Device Types endpoint - returns active device types
+app.MapGet("/api/device-types", async (FastServiceDbContext db) =>
+{
+    try
+    {
+        var deviceTypes = await db.TipoDispositivos
+            .Where(t => t.Activo && t.Nombre.Trim() != string.Empty)
+            .OrderBy(t => t.Nombre)
+            .Select(t => new DropdownItemDto(t.TipoDispositivoId, t.Nombre))
+            .ToListAsync();
+        return Results.Ok(deviceTypes);
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(detail: ex.Message, statusCode: 500);
+    }
+}).WithName("GetDeviceTypes").WithOpenApi();
+
+// T024: Brands endpoint - returns active brands
+app.MapGet("/api/brands", async (FastServiceDbContext db) =>
+{
+    try
+    {
+        var brands = await db.Marcas
+            .Where(m => m.Activo && m.Nombre.Trim() != string.Empty)
+            .OrderBy(m => m.Nombre)
+            .Select(m => new DropdownItemDto(m.MarcaId, m.Nombre))
+            .ToListAsync();
+        return Results.Ok(brands);
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(detail: ex.Message, statusCode: 500);
+    }
+}).WithName("GetBrands").WithOpenApi();
+
+// T025: Comercios endpoint - returns active comercios for warranty cases
+app.MapGet("/api/comercios", async (FastServiceDbContext db) =>
+{
+    try
+    {
+        var comercios = await db.Comercios
+            .Where(c => c.Activo && c.Code != null && c.Code.Trim() != string.Empty)
+            .OrderBy(c => c.Code)
+            .Select(c => new ComercioDto(c.ComercioId, c.Code!, c.Telefono))
+            .ToListAsync();
+        return Results.Ok(comercios);
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(detail: ex.Message, statusCode: 500);
+    }
+}).WithName("GetComercios").WithOpenApi();
+
 app.Run();
 
 record ChatRequest(string Message, List<ConversationMessage>? ConversationHistory = null);
 record ChatResponse(string Message);
 record UserInfoDto(int Id, string Name);
 record BusinessInfoDto(int Id, string Name);
+record DropdownItemDto(int Id, string Name);
+record ComercioDto(int Id, string Code, string? Telefono);

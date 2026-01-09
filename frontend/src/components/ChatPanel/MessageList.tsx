@@ -7,6 +7,59 @@ interface MessageListProps {
   messages: ChatMessage[];
 }
 
+/**
+ * Simple markdown parser for chat messages
+ * Supports: **bold**, *italic*, and preserves line breaks
+ */
+const parseMarkdown = (text: string): React.ReactNode => {
+  // Split by line breaks first
+  const lines = text.split('\n');
+  
+  return lines.map((line, lineIndex) => {
+    // Parse bold and italic within each line
+    const parts: React.ReactNode[] = [];
+    let remaining = line;
+    let keyIndex = 0;
+    
+    while (remaining.length > 0) {
+      // Check for bold (**text**)
+      const boldMatch = remaining.match(/\*\*(.+?)\*\*/);
+      // Check for italic (*text*)
+      const italicMatch = remaining.match(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/);
+      
+      if (boldMatch && (!italicMatch || boldMatch.index! <= italicMatch.index!)) {
+        // Add text before bold
+        if (boldMatch.index! > 0) {
+          parts.push(remaining.substring(0, boldMatch.index));
+        }
+        // Add bold text
+        parts.push(<strong key={`b-${lineIndex}-${keyIndex++}`}>{boldMatch[1]}</strong>);
+        remaining = remaining.substring(boldMatch.index! + boldMatch[0].length);
+      } else if (italicMatch) {
+        // Add text before italic
+        if (italicMatch.index! > 0) {
+          parts.push(remaining.substring(0, italicMatch.index));
+        }
+        // Add italic text
+        parts.push(<em key={`i-${lineIndex}-${keyIndex++}`}>{italicMatch[1]}</em>);
+        remaining = remaining.substring(italicMatch.index! + italicMatch[0].length);
+      } else {
+        // No more matches, add remaining text
+        parts.push(remaining);
+        break;
+      }
+    }
+    
+    // Return line with line break (except for last line)
+    return (
+      <React.Fragment key={`line-${lineIndex}`}>
+        {parts}
+        {lineIndex < lines.length - 1 && <br />}
+      </React.Fragment>
+    );
+  });
+};
+
 const MessageList: React.FC<MessageListProps> = ({ messages }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -79,7 +132,7 @@ const MessageList: React.FC<MessageListProps> = ({ messages }) => {
               </span>
             </div>
             <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">
-              {msg.content}
+              {parseMarkdown(msg.content)}
             </p>
           </div>
         </div>

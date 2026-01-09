@@ -5,9 +5,10 @@ import { Textarea } from '../ui/textarea';
 interface MessageInputProps {
   onSendMessage: (message: string) => void;
   disabled?: boolean;
+  placeholder?: string;
 }
 
-const MessageInput: React.FC<MessageInputProps> = ({ onSendMessage, disabled = false }) => {
+const MessageInput: React.FC<MessageInputProps> = ({ onSendMessage, disabled = false, placeholder }) => {
   const [message, setMessage] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -40,7 +41,7 @@ const MessageInput: React.FC<MessageInputProps> = ({ onSendMessage, disabled = f
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             onKeyDown={handleKeyPress}
-            placeholder="Escribí tu consulta..."
+            placeholder={placeholder || "Escribí tu consulta..."}
             disabled={disabled}
             className="flex-1 resize-none border-none bg-transparent text-slate-900 placeholder-slate-400 focus-visible:ring-0"
             rows={2}

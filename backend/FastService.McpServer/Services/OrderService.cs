@@ -1,5 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Memory;
 using FastService.McpServer.Data;
 using FastService.McpServer.Data.Entities;
 using FastService.McpServer.Dtos;
@@ -10,8 +9,6 @@ namespace FastService.McpServer.Services
     {
         private readonly FastServiceDbContext _context;
         private readonly ILogger<OrderService> _logger;
-        private readonly IMemoryCache _cache;
-        private readonly OrderCacheService _orderCacheService;
         // Compiled query to avoid lambda compilation overhead on first run
         private static readonly Func<FastServiceDbContext, int, System.Threading.Tasks.Task<ProjectedOrder?>> _compiledOrderQuery
             = EF.CompileAsyncQuery((FastServiceDbContext ctx, int orderNumber) =>
@@ -66,12 +63,10 @@ namespace FastService.McpServer.Services
                        FechaEntrega = r.FechaEntrega
                    }).FirstOrDefault());
 
-        public OrderService(FastServiceDbContext context, ILogger<OrderService> logger, IMemoryCache cache, OrderCacheService orderCacheService)
+        public OrderService(FastServiceDbContext context, ILogger<OrderService> logger)
         {
             _context = context;
             _logger = logger;
-            _cache = cache;
-            _orderCacheService = orderCacheService;
         }
 
         public async Task<List<OrderSummary>> SearchOrdersAsync(OrderSearchCriteria criteria)
@@ -162,26 +157,6 @@ namespace FastService.McpServer.Services
         {
             var sw = System.Diagnostics.Stopwatch.StartNew();
 
-            // 1. Check pre-loaded startup cache first (last 100 orders with movements)
-            var cachedOrder = _orderCacheService.TryGetFromCache(orderNumber);
-            if (cachedOrder != null)
-            {
-                sw.Stop();
-                _logger.LogInformation("GetOrderDetails: order {OrderNumber} returned from startup cache in {Elapsed}ms", orderNumber, sw.ElapsedMilliseconds);
-                return cachedOrder.OrderDetails;
-            }
-
-            // 2. Check short-lived memory cache (for recently accessed orders not in startup cache)
-            var cacheKey = $"order:{orderNumber}";
-            if (_cache.TryGetValue(cacheKey, out var cachedObj))
-            {
-                if (cachedObj is OrderDetails cachedDetails)
-                {
-                    sw.Stop();
-                    _logger.LogInformation("GetOrderDetails: order {OrderNumber} returned from memory cache in {Elapsed}ms", orderNumber, sw.ElapsedMilliseconds);
-                    return cachedDetails;
-                }
-            }
             try
             {
                 // Execute compiled query to avoid EF expression compilation cost
@@ -270,13 +245,6 @@ namespace FastService.McpServer.Services
                     Novedades = novedades
                 };
                 _logger.LogInformation("GetOrderDetails: order {OrderNumber} mapped elapsed {Elapsed}ms (total)", orderNumber, sw.ElapsedMilliseconds);
-
-                // Cache successful lookups for a short period to reduce DB pressure on hot items
-                var cacheEntryOptions = new MemoryCacheEntryOptions
-                {
-                    AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(30)
-                };
-                _cache.Set(cacheKey, result, cacheEntryOptions);
                 return result;
             }
             catch (Exception ex)
@@ -304,11 +272,9 @@ namespace FastService.McpServer.Services
                 if (!novedadesRaw.Any())
                     return new List<NovedadInfo>();
 
-                // Get tipo novedad lookup
-                var tipoIds = novedadesRaw.Select(n => n.TipoNovedadId).Distinct().ToList();
+                // Get tipo novedad lookup - load all types (small table) to avoid OPENJSON issues
                 var tipoNovedadLookup = await _context.TipoNovedads
                     .AsNoTracking()
-                    .Where(t => tipoIds.Contains(t.TipoNovedadId))
                     .ToDictionaryAsync(t => t.TipoNovedadId, t => t.Nombre);
 
                 // Map to DTOs
@@ -516,24 +482,229 @@ namespace FastService.McpServer.Services
         }
 
         /// <summary>
+        /// Add a new novedad (note/movement) to an order
+        /// </summary>
+        public async Task<OrderMovement> AddNovedadAsync(AddNovedadRequest request)
+        {
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+
+            try
+            {
+                // Verify order exists
+                var order = await _context.Reparacions.FindAsync(request.OrderNumber);
+                if (order == null)
+                {
+                    throw new InvalidOperationException($"Order #{request.OrderNumber} not found");
+                }
+
+                // Get the user ID (default to technician if not provided)
+                var userId = request.UserId ?? order.TecnicoAsignadoId;
+
+                // Create the novedad
+                var novedad = new Novedad
+                {
+                    ReparacionId = request.OrderNumber,
+                    TipoNovedadId = request.TipoNovedadId,
+                    Observacion = request.Observacion,
+                    Monto = request.Monto,
+                    UserId = userId,
+                    ModificadoEn = DateTime.Now,
+                    ModificadoPor = userId
+                };
+
+                _context.Novedads.Add(novedad);
+                await _context.SaveChangesAsync();
+
+                // Get type name for response
+                var tipoNombre = await _context.TipoNovedads
+                    .Where(t => t.TipoNovedadId == request.TipoNovedadId)
+                    .Select(t => t.Nombre)
+                    .FirstOrDefaultAsync() ?? "Desconocido";
+
+                // Get user name for response
+                var userName = await _context.Usuarios
+                    .Where(u => u.UserId == userId)
+                    .Select(u => $"{u.Nombre} {u.Apellido}".Trim())
+                    .FirstOrDefaultAsync() ?? "Usuario";
+
+                sw.Stop();
+                _logger.LogInformation("AddNovedad: Added {Type} to order #{OrderNumber} in {Elapsed}ms",
+                    tipoNombre, request.OrderNumber, sw.ElapsedMilliseconds);
+
+                return new OrderMovement
+                {
+                    MovementId = novedad.NovedadId,
+                    Type = tipoNombre,
+                    Description = novedad.Observacion ?? string.Empty,
+                    Amount = novedad.Monto,
+                    CreatedBy = userName,
+                    CreatedAt = novedad.ModificadoEn
+                };
+            }
+            catch (Exception ex)
+            {
+                sw.Stop();
+                _logger.LogError(ex, "Error adding novedad to order #{OrderNumber} (elapsed {Elapsed}ms)", 
+                    request.OrderNumber, sw.ElapsedMilliseconds);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Process a "Retira" (withdrawal) action on an order.
+        /// This marks the order as withdrawn, records the payment, and creates accounting entries.
+        /// </summary>
+        public async Task<ProcessRetiraResponse> ProcessRetiraAsync(ProcessRetiraRequest request)
+        {
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+
+            using var transaction = await _context.Database.BeginTransactionAsync();
+
+            try
+            {
+                // Get the order with its detail
+                var order = await _context.Reparacions
+                    .Include(r => r.ReparacionDetalle)
+                    .FirstOrDefaultAsync(r => r.ReparacionId == request.OrderNumber);
+
+                if (order == null)
+                {
+                    throw new InvalidOperationException($"Order #{request.OrderNumber} not found");
+                }
+
+                // Get the "RETIRADO" status ID
+                var retiradoEstado = await _context.EstadoReparacions
+                    .FirstOrDefaultAsync(e => e.Nombre.ToUpper() == ReparacionEstado.RETIRADO);
+
+                if (retiradoEstado == null)
+                {
+                    throw new InvalidOperationException("Estado 'RETIRADO' not found in database");
+                }
+
+                // Get payment method name for response
+                var metodoPago = await _context.MetodoPagos
+                    .FirstOrDefaultAsync(m => m.MetodoPagoId == request.MetodoPagoId);
+
+                var metodoPagoNombre = metodoPago?.Nombre ?? "Desconocido";
+
+                // Get user ID
+                var userId = request.UserId ?? order.TecnicoAsignadoId;
+
+                // 1. Create Novedad (RETIRA type = 5)
+                var novedad = new Data.Entities.Novedad
+                {
+                    ReparacionId = request.OrderNumber,
+                    TipoNovedadId = NovedadTipoIds.RETIRA,
+                    Observacion = $"Retiro - Monto: ${request.Monto:N2} - Método: {metodoPagoNombre}",
+                    Monto = request.Monto,
+                    UserId = userId,
+                    ModificadoEn = DateTime.Now,
+                    ModificadoPor = userId
+                };
+                _context.Novedads.Add(novedad);
+
+                // 2. Update order status to RETIRADO
+                order.EstadoReparacionId = retiradoEstado.EstadoReparacionId;
+                order.ModificadoPor = userId;
+                order.ModificadoEn = DateTime.Now;
+
+                // 3. Update ReparacionDetalle.Precio
+                if (order.ReparacionDetalle != null)
+                {
+                    order.ReparacionDetalle.Precio = request.Monto;
+                }
+
+                // 4. Create accounting entry (Venta) if Monto > 0
+                int? ventaId = null;
+                if (request.Monto > 0)
+                {
+                    int? facturaId = null;
+
+                    // Create Factura record if facturado
+                    if (request.Facturado && request.TipoFacturaId.HasValue)
+                    {
+                        var factura = new Data.Entities.Factura
+                        {
+                            NroFactura = request.NroFactura,
+                            TipoFacturaId = request.TipoFacturaId.Value,
+                            ModificadoEn = DateTime.Now,
+                            ModificadoPor = userId
+                        };
+                        _context.Facturas.Add(factura);
+                        await _context.SaveChangesAsync();
+                        facturaId = factura.FacturaId;
+                    }
+
+                    // Create Venta record
+                    var venta = new Data.Entities.Ventum
+                    {
+                        Descripcion = $"Pago por servicio de FastService orden {order.ReparacionId}",
+                        ClienteId = order.ClienteId,
+                        Monto = request.Monto,
+                        RefNumber = order.ReparacionId.ToString(),
+                        PuntoDeVentaId = 1, // Default punto de venta
+                        FacturaId = facturaId,
+                        MetodoPagoId = request.MetodoPagoId,
+                        TipoTransaccionId = request.Facturado ? 1 : 2, // 1 = facturado, 2 = no facturado
+                        Fecha = DateTime.Now,
+                        Vendedor = order.EmpleadoAsignadoId,
+                        Facturado = request.Facturado
+                    };
+                    _context.Venta.Add(venta);
+                    await _context.SaveChangesAsync();
+                    ventaId = venta.VentaId;
+                }
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                sw.Stop();
+                _logger.LogInformation("ProcessRetira: Order #{OrderNumber} withdrawn successfully in {Elapsed}ms", 
+                    request.OrderNumber, sw.ElapsedMilliseconds);
+
+                return new ProcessRetiraResponse
+                {
+                    OrderNumber = request.OrderNumber,
+                    NewStatus = ReparacionEstado.RETIRADO,
+                    MontoRegistrado = request.Monto,
+                    MetodoPago = metodoPagoNombre,
+                    Facturado = request.Facturado,
+                    VentaId = ventaId,
+                    ProcessedAt = DateTime.Now
+                };
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                sw.Stop();
+                _logger.LogError(ex, "Error processing retira for order #{OrderNumber} (elapsed {Elapsed}ms)", 
+                    request.OrderNumber, sw.ElapsedMilliseconds);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Get all active payment methods
+        /// </summary>
+        public async Task<List<MetodoPagoDto>> GetMetodosPagoAsync()
+        {
+            return await _context.MetodoPagos
+                .OrderBy(m => m.Nombre)
+                .Select(m => new MetodoPagoDto
+                {
+                    Id = m.MetodoPagoId,
+                    Nombre = m.Nombre ?? "Sin nombre"
+                })
+                .ToListAsync();
+        }
+
+        /// <summary>
         /// Get movements/comments (Novedades) for an order.
-        /// Checks startup cache first, then falls back to DB.
         /// </summary>
         public async Task<List<OrderMovement>> GetOrderMovementsAsync(int orderNumber)
         {
             var sw = System.Diagnostics.Stopwatch.StartNew();
 
-            // 1. Check pre-loaded startup cache first
-            var cachedOrder = _orderCacheService.TryGetFromCache(orderNumber);
-            if (cachedOrder != null)
-            {
-                sw.Stop();
-                _logger.LogInformation("GetOrderMovements: order {OrderNumber} returned {Count} movements from startup cache in {Elapsed}ms",
-                    orderNumber, cachedOrder.Movements.Count, sw.ElapsedMilliseconds);
-                return cachedOrder.Movements;
-            }
-
-            // 2. Fall back to DB query
             try
             {
                 var tipoNovedadLookup = await _context.TipoNovedads
@@ -572,6 +743,338 @@ namespace FastService.McpServer.Services
             {
                 sw.Stop();
                 _logger.LogError(ex, "Error getting movements for order: {OrderNumber} (elapsed {Elapsed}ms)", orderNumber, sw.ElapsedMilliseconds);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Creates a new repair order with customer, device, and detail information
+        /// </summary>
+        public async Task<OrderDetails> CreateOrderAsync(CreateOrderRequest request)
+        {
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                // 1. Find or create customer
+                var customer = await FindOrCreateCustomerAsync(request.Customer);
+
+                // 2. Create ReparacionDetalle first
+                var detalle = new ReparacionDetalle
+                {
+                    EsGarantia = request.Garantia,
+                    EsDomicilio = request.Domicilio,
+                    Modelo = request.Device.Modelo,
+                    Serie = request.Device.NroSerie,
+                    Serbus = request.Device.SerBus,
+                    Unicacion = request.Device.Ubicacion,
+                    Accesorios = request.Device.Accesorios,
+                    Presupuesto = ParseDecimalValue(request.Presupuesto),
+                    Precio = ParseDecimalValue(request.MontoFinal),
+                    FechoCompra = ParseDateValue(request.FechaCompra),
+                    ModificadoEn = DateTime.Now,
+                    ModificadoPor = request.ResponsableId > 0 ? request.ResponsableId : 1
+                };
+                _context.ReparacionDetalles.Add(detalle);
+                await _context.SaveChangesAsync();
+
+                // 3. Get next order number (Reparacion table does NOT use identity column)
+                var nextOrderId = await GetNextOrderNumberAsync();
+
+                // 4. Create Reparacion (main order)
+                var reparacion = new Reparacion
+                {
+                    ReparacionId = nextOrderId, // Manually assign ID (not auto-generated)
+                    ClienteId = customer.ClienteId,
+                    EmpleadoAsignadoId = request.ResponsableId > 0 ? request.ResponsableId : 1,
+                    TecnicoAsignadoId = request.TecnicoId > 0 ? request.TecnicoId : 1,
+                    EstadoReparacionId = 1, // Initial state: "Ingresado"
+                    ComercioId = request.Garantia && request.Comercio.ComercioId > 0 ? request.Comercio.ComercioId : null,
+                    MarcaId = request.Device.MarcaId > 0 ? request.Device.MarcaId : 1,
+                    TipoDispositivoId = request.Device.TipoId > 0 ? request.Device.TipoId : 1,
+                    ReparacionDetalleId = detalle.ReparacionDetalleId,
+                    CreadoEn = DateTime.Now,
+                    CreadoPor = request.ResponsableId > 0 ? request.ResponsableId : 1,
+                    ModificadoEn = DateTime.Now,
+                    ModificadoPor = request.ResponsableId > 0 ? request.ResponsableId : 1
+                };
+                _context.Reparacions.Add(reparacion);
+                await _context.SaveChangesAsync();
+
+                // 5. Create initial Novedad (INGRESO = 1) - mirrors baseline OrdenHelper behavior
+                var novedad = new Novedad
+                {
+                    ReparacionId = reparacion.ReparacionId,
+                    Monto = detalle.Presupuesto,
+                    UserId = reparacion.TecnicoAsignadoId,
+                    TipoNovedadId = 1, // INGRESO
+                    Observacion = "Ingresado a sistema",
+                    ModificadoEn = DateTime.Now,
+                    ModificadoPor = request.ResponsableId > 0 ? request.ResponsableId : 1
+                };
+                _context.Novedads.Add(novedad);
+                await _context.SaveChangesAsync();
+
+                await transaction.CommitAsync();
+
+                _logger.LogInformation("Created order #{OrderNumber} for customer {CustomerName}", 
+                    reparacion.ReparacionId, $"{customer.Nombre} {customer.Apellido}");
+
+                // Return the created order details
+                return await GetOrderDetailsAsync(reparacion.ReparacionId) 
+                    ?? throw new InvalidOperationException("Failed to retrieve created order");
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                _logger.LogError(ex, "Failed to create order");
+                throw;
+            }
+        }
+
+        private async Task<Cliente> FindOrCreateCustomerAsync(CustomerData customerData)
+        {
+            // Try to find existing customer by DNI or ID
+            Cliente? customer = null;
+            
+            if (customerData.ClienteId > 0)
+            {
+                customer = await _context.Clientes.FindAsync(customerData.ClienteId);
+            }
+            
+            if (customer == null && !string.IsNullOrWhiteSpace(customerData.Dni) && int.TryParse(customerData.Dni, out var dniNum))
+            {
+                customer = await _context.Clientes.FirstOrDefaultAsync(c => c.Dni == dniNum);
+            }
+
+            if (customer != null)
+            {
+                // Update existing customer with new data
+                customer.Nombre = customerData.FirstName;
+                customer.Apellido = customerData.LastName;
+                customer.Mail = customerData.Email;
+                customer.Telefono1 = customerData.Phone;
+                customer.Telefono2 = customerData.Celular;
+                customer.Direccion = customerData.Direccion;
+                customer.Localidad = customerData.Ciudad;
+                
+                // Validate coordinates are within valid ranges
+                var validLat = ParseValidLatitude(customerData.Latitud);
+                var validLng = ParseValidLongitude(customerData.Longitud);
+                if (validLat.HasValue) customer.Latitud = (double)validLat.Value;
+                if (validLng.HasValue) customer.Longitud = (double)validLng.Value;
+
+                // Update or create address
+                await UpdateCustomerAddressAsync(customer, customerData);
+                
+                await _context.SaveChangesAsync();
+                return customer;
+            }
+
+            // Create new customer
+            var validNewLat = ParseValidLatitude(customerData.Latitud);
+            var validNewLng = ParseValidLongitude(customerData.Longitud);
+            var newCustomer = new Cliente
+            {
+                Dni = int.TryParse(customerData.Dni, out var dni) ? dni : null,
+                Nombre = customerData.FirstName,
+                Apellido = customerData.LastName,
+                Mail = customerData.Email,
+                Telefono1 = customerData.Phone,
+                Telefono2 = customerData.Celular,
+                Direccion = customerData.Direccion,
+                Localidad = customerData.Ciudad,
+                Latitud = validNewLat.HasValue ? (double)validNewLat.Value : null,
+                Longitud = validNewLng.HasValue ? (double)validNewLng.Value : null
+            };
+
+            _context.Clientes.Add(newCustomer);
+            await _context.SaveChangesAsync();
+
+            // Create address for new customer
+            await UpdateCustomerAddressAsync(newCustomer, customerData);
+            await _context.SaveChangesAsync();
+
+            return newCustomer;
+        }
+
+        private async Task UpdateCustomerAddressAsync(Cliente customer, CustomerData customerData)
+        {
+            Direccion? address;
+            
+            if (customer.DireccionId.HasValue)
+            {
+                address = await _context.Direccions.FindAsync(customer.DireccionId.Value);
+                if (address == null)
+                {
+                    address = new Direccion();
+                    _context.Direccions.Add(address);
+                }
+            }
+            else
+            {
+                address = new Direccion();
+                _context.Direccions.Add(address);
+            }
+
+            address.Calle = customerData.Calle;
+            address.Altura = customerData.Altura;
+            address.Calle2 = customerData.EntreCalle1;
+            address.Calle3 = customerData.EntreCalle2;
+            address.Ciudad = customerData.Ciudad;
+            address.CodigoPostal = customerData.CodigoPostal;
+            address.Provincia = customerData.Provincia;
+            address.Pais = customerData.Pais;
+            // Validate coordinates are within valid ranges before saving
+            address.Latitud = ParseValidLatitude(customerData.Latitud);
+            address.Longitud = ParseValidLongitude(customerData.Longitud);
+            address.ChangedOn = DateTime.Now;
+            address.ChangedBy = 1;
+
+            await _context.SaveChangesAsync();
+            
+            customer.DireccionId = address.DireccionId;
+        }
+
+        private static decimal? ParseDecimalValue(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value)) return null;
+            return decimal.TryParse(value, out var result) ? result : null;
+        }
+
+        private static DateTime? ParseDateValue(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value)) return null;
+            return DateTime.TryParse(value, out var result) ? result : null;
+        }
+
+        /// <summary>
+        /// Parse and validate latitude value (must be between -90 and 90)
+        /// </summary>
+        private static decimal? ParseValidLatitude(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value)) return null;
+            // Use InvariantCulture to handle both comma and dot as decimal separator
+            var normalizedValue = value.Replace(',', '.');
+            if (decimal.TryParse(normalizedValue, System.Globalization.NumberStyles.Any, 
+                System.Globalization.CultureInfo.InvariantCulture, out var result))
+            {
+                // Latitude must be between -90 and 90
+                if (result >= -90m && result <= 90m)
+                    return result;
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Parse and validate longitude value (must be between -180 and 180)
+        /// </summary>
+        private static decimal? ParseValidLongitude(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value)) return null;
+            // Use InvariantCulture to handle both comma and dot as decimal separator
+            var normalizedValue = value.Replace(',', '.');
+            if (decimal.TryParse(normalizedValue, System.Globalization.NumberStyles.Any, 
+                System.Globalization.CultureInfo.InvariantCulture, out var result))
+            {
+                // Longitude must be between -180 and 180
+                if (result >= -180m && result <= 180m)
+                    return result;
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Gets the next available order number.
+        /// The Reparacion table does NOT use an identity column for ReparacionId,
+        /// so we must manually compute MAX(ReparacionId) + 1.
+        /// This mirrors the baseline OrdenHelper.GetNextOrderNro() behavior.
+        /// </summary>
+        private async Task<int> GetNextOrderNumberAsync()
+        {
+            var maxId = await _context.Reparacions
+                .Select(r => (int?)r.ReparacionId)
+                .MaxAsync() ?? 0;
+            return maxId + 1;
+        }
+
+        /// <summary>
+        /// Updates an existing repair order with customer, device, and detail information
+        /// </summary>
+        public async Task<OrderDetails> UpdateOrderAsync(UpdateOrderRequest request)
+        {
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                // 1. Find existing order
+                var reparacion = await _context.Reparacions
+                    .Include(r => r.ReparacionDetalle)
+                    .Include(r => r.Cliente)
+                    .FirstOrDefaultAsync(r => r.ReparacionId == request.OrderNumber);
+
+                if (reparacion == null)
+                {
+                    throw new InvalidOperationException($"Order #{request.OrderNumber} not found");
+                }
+
+                // 2. Update or find customer
+                var customer = await FindOrCreateCustomerAsync(request.Customer);
+
+                // 3. Update ReparacionDetalle
+                if (reparacion.ReparacionDetalle != null)
+                {
+                    reparacion.ReparacionDetalle.EsGarantia = request.Garantia;
+                    reparacion.ReparacionDetalle.EsDomicilio = request.Domicilio;
+                    reparacion.ReparacionDetalle.Modelo = request.Device.Modelo;
+                    reparacion.ReparacionDetalle.Serie = request.Device.NroSerie;
+                    reparacion.ReparacionDetalle.Serbus = request.Device.SerBus;
+                    reparacion.ReparacionDetalle.Unicacion = request.Device.Ubicacion;
+                    reparacion.ReparacionDetalle.Accesorios = request.Device.Accesorios;
+                    reparacion.ReparacionDetalle.Presupuesto = ParseDecimalValue(request.Presupuesto);
+                    reparacion.ReparacionDetalle.Precio = ParseDecimalValue(request.MontoFinal);
+                    reparacion.ReparacionDetalle.FechoCompra = ParseDateValue(request.FechaCompra);
+                    reparacion.ReparacionDetalle.ModificadoEn = DateTime.Now;
+                    reparacion.ReparacionDetalle.ModificadoPor = request.ResponsableId > 0 ? request.ResponsableId : 1;
+                }
+
+                // 4. Update Reparacion (main order)
+                reparacion.ClienteId = customer.ClienteId;
+                reparacion.EmpleadoAsignadoId = request.ResponsableId > 0 ? request.ResponsableId : reparacion.EmpleadoAsignadoId;
+                reparacion.TecnicoAsignadoId = request.TecnicoId > 0 ? request.TecnicoId : reparacion.TecnicoAsignadoId;
+                reparacion.ComercioId = request.Garantia && request.Comercio.ComercioId > 0 ? request.Comercio.ComercioId : null;
+                reparacion.MarcaId = request.Device.MarcaId > 0 ? request.Device.MarcaId : reparacion.MarcaId;
+                reparacion.TipoDispositivoId = request.Device.TipoId > 0 ? request.Device.TipoId : reparacion.TipoDispositivoId;
+                reparacion.ModificadoEn = DateTime.Now;
+                reparacion.ModificadoPor = request.ResponsableId > 0 ? request.ResponsableId : 1;
+
+                await _context.SaveChangesAsync();
+
+                // 5. Create modification Novedad
+                var novedad = new Novedad
+                {
+                    ReparacionId = reparacion.ReparacionId,
+                    Monto = reparacion.ReparacionDetalle?.Presupuesto,
+                    UserId = reparacion.TecnicoAsignadoId,
+                    TipoNovedadId = 5, // MODIFICACION
+                    Observacion = "Orden modificada",
+                    ModificadoEn = DateTime.Now,
+                    ModificadoPor = request.ResponsableId > 0 ? request.ResponsableId : 1
+                };
+                _context.Novedads.Add(novedad);
+                await _context.SaveChangesAsync();
+
+                await transaction.CommitAsync();
+
+                _logger.LogInformation("Updated order #{OrderNumber} for customer {CustomerName}", 
+                    reparacion.ReparacionId, $"{customer.Nombre} {customer.Apellido}");
+
+                // Return the updated order details
+                return await GetOrderDetailsAsync(reparacion.ReparacionId) 
+                    ?? throw new InvalidOperationException("Failed to retrieve updated order");
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                _logger.LogError(ex, "Failed to update order #{OrderNumber}", request.OrderNumber);
                 throw;
             }
         }
@@ -624,4 +1127,15 @@ internal class ProjectedOrder
     public DateTime CreadoEn { get; set; }
     public DateTime ModificadoEn { get; set; }
     public DateTime? FechaEntrega { get; set; }
+}
+
+/// <summary>
+/// Estado names matching baseline application
+/// </summary>
+public static class ReparacionEstado
+{
+    public const string RETIRADO = "RETIRADO";
+    public const string PRESUPUESTADO = "PRESUPUESTADO";
+    public const string REPARADO = "REPARADO";
+    public const string INGRESADO = "INGRESADO";
 }

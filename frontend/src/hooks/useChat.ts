@@ -10,9 +10,28 @@ interface UseChatReturn {
   error: string | null;
   orders: OrderSummary[];
   selectedOrderDetails: OrderDetails | null;
+  isCreatingOrder: boolean;
+  isEditingOrder: boolean;
+  editingOrderDetails: OrderDetails | null;
+  pendingNotaOrderNumber: number | null;
+  pendingRetiraOrderNumber: number | null;
+  retiraStep: 'monto' | 'metodo' | null;
+  retiraMonto: number | null;
+  paymentMethods: { id: number; nombre: string }[];
   sendMessage: (content: string) => Promise<void>;
   addMessage: (message: { role: 'assistant' | 'user'; content: string }) => void;
   clearMessages: () => void;
+  startOrderCreation: () => void;
+  cancelOrderCreation: () => void;
+  exitOrderCreation: () => void;
+  setSelectedOrder: (order: OrderDetails | null) => void;
+  startOrderEdit: (order: OrderDetails) => void;
+  cancelOrderEdit: () => void;
+  exitOrderEdit: () => void;
+  startAddNota: (orderNumber: number) => void;
+  cancelAddNota: () => void;
+  startRetira: (orderNumber: number) => void;
+  cancelRetira: () => void;
 }
 
 export const useChat = (): UseChatReturn => {
@@ -21,6 +40,14 @@ export const useChat = (): UseChatReturn => {
   const [error, setError] = useState<string | null>(null);
   const [orders, setOrders] = useState<OrderSummary[]>([]);
   const [selectedOrderDetails, setSelectedOrderDetails] = useState<OrderDetails | null>(null);
+  const [isCreatingOrder, setIsCreatingOrder] = useState(false);
+  const [isEditingOrder, setIsEditingOrder] = useState(false);
+  const [editingOrderDetails, setEditingOrderDetails] = useState<OrderDetails | null>(null);
+  const [pendingNotaOrderNumber, setPendingNotaOrderNumber] = useState<number | null>(null);
+  const [pendingRetiraOrderNumber, setPendingRetiraOrderNumber] = useState<number | null>(null);
+  const [retiraStep, setRetiraStep] = useState<'monto' | 'metodo' | null>(null);
+  const [retiraMonto, setRetiraMonto] = useState<number | null>(null);
+  const [paymentMethods, setPaymentMethods] = useState<{ id: number; nombre: string }[]>([]);
 
   const extractOrdersFromMessage = (message: string): OrderSummary[] => {
     // Try to extract JSON from the message
@@ -86,6 +113,63 @@ export const useChat = (): UseChatReturn => {
     setMessages((prev) => [...prev, userMessage]);
     setIsLoading(true);
     setError(null);
+
+    // Check if we're in pending nota mode
+    if (pendingNotaOrderNumber !== null) {
+      try {
+        // Add nota via API
+        const response = await fetch(`${API_BASE_URL}/api/orders/${pendingNotaOrderNumber}/novedades`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            tipoNovedadId: 17, // NOTA type
+            observacion: content.trim(),
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error('Error al guardar la nota');
+        }
+
+        const newMovement = await response.json();
+
+        // Add success message
+        const successMessage: ChatMessage = {
+          id: (Date.now() + 1).toString(),
+          content: `✅ **Nota agregada exitosamente** a la orden #${pendingNotaOrderNumber}\n\n> ${content.trim()}\n\n*Registrada por ${newMovement.createdBy} el ${new Date(newMovement.createdAt).toLocaleString('es-AR')}*`,
+          role: 'assistant',
+          timestamp: new Date(),
+        };
+        setMessages((prev) => [...prev, successMessage]);
+
+        // Refresh order details to update novedades table
+        if (selectedOrderDetails && selectedOrderDetails.orderNumber === pendingNotaOrderNumber) {
+          const orderResponse = await fetch(`${API_BASE_URL}/api/orders/${pendingNotaOrderNumber}`);
+          if (orderResponse.ok) {
+            const updatedOrder = await orderResponse.json();
+            setSelectedOrderDetails(updatedOrder);
+          }
+        }
+
+        // Clear pending nota state
+        setPendingNotaOrderNumber(null);
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : 'Error desconocido';
+        const errorResponseMessage: ChatMessage = {
+          id: (Date.now() + 1).toString(),
+          content: `❌ Error al agregar la nota: ${errorMessage}`,
+          role: 'assistant',
+          timestamp: new Date(),
+        };
+        setMessages((prev) => [...prev, errorResponseMessage]);
+        setPendingNotaOrderNumber(null);
+      } finally {
+        setIsLoading(false);
+      }
+      return;
+    }
 
     try {
       const response = await fetch(`${API_BASE_URL}/api/chat`, {
@@ -162,13 +246,15 @@ export const useChat = (): UseChatReturn => {
       setIsLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLoading]);
+  }, [isLoading, pendingNotaOrderNumber, selectedOrderDetails]);
 
   const clearMessages = useCallback(() => {
     setMessages([]);
     setError(null);
     setOrders([]);
     setSelectedOrderDetails(null);
+    setIsCreatingOrder(false);
+    setPendingNotaOrderNumber(null);
   }, []);
 
   const addMessage = useCallback((message: { role: 'assistant' | 'user'; content: string }) => {
@@ -181,14 +267,124 @@ export const useChat = (): UseChatReturn => {
     setMessages((prev) => [...prev, newMessage]);
   }, []);
 
+  const startOrderCreation = useCallback(() => {
+    // Add user message
+    const userMessage: ChatMessage = {
+      id: Date.now().toString(),
+      content: 'Quiero crear una nueva orden de reparación',
+      role: 'user',
+      timestamp: new Date(),
+    };
+
+    // Add assistant response
+    const assistantMessage: ChatMessage = {
+      id: (Date.now() + 1).toString(),
+      content: '¡Claro! Ingresa los datos de la nueva orden en el formulario. Completa la información del cliente, dispositivo y opciones de la orden.',
+      role: 'assistant',
+      timestamp: new Date(),
+    };
+
+    setMessages((prev) => [...prev, userMessage, assistantMessage]);
+    setOrders([]);
+    setSelectedOrderDetails(null);
+    setIsCreatingOrder(true);
+  }, []);
+
+  const cancelOrderCreation = useCallback(() => {
+    setIsCreatingOrder(false);
+    
+    // Add cancellation message
+    const assistantMessage: ChatMessage = {
+      id: Date.now().toString(),
+      content: 'Creación de orden cancelada. ¿En qué más puedo ayudarte?',
+      role: 'assistant',
+      timestamp: new Date(),
+    };
+    setMessages((prev) => [...prev, assistantMessage]);
+  }, []);
+
+  // Exit creation mode silently (used after successful save)
+  const exitOrderCreation = useCallback(() => {
+    setIsCreatingOrder(false);
+  }, []);
+
+  // Start editing an existing order
+  const startOrderEdit = useCallback((order: OrderDetails) => {
+    setEditingOrderDetails(order);
+    setIsEditingOrder(true);
+    setSelectedOrderDetails(null);
+  }, []);
+
+  // Cancel order editing with message
+  const cancelOrderEdit = useCallback(() => {
+    setIsEditingOrder(false);
+    setEditingOrderDetails(null);
+    
+    const assistantMessage: ChatMessage = {
+      id: Date.now().toString(),
+      content: 'Edición de orden cancelada. ¿En qué más puedo ayudarte?',
+      role: 'assistant',
+      timestamp: new Date(),
+    };
+    setMessages((prev) => [...prev, assistantMessage]);
+  }, []);
+
+  // Exit edit mode silently (used after successful save)
+  const exitOrderEdit = useCallback(() => {
+    setIsEditingOrder(false);
+    setEditingOrderDetails(null);
+  }, []);
+
+  // Allow external components to set the selected order (for action suggestions)
+  const setSelectedOrder = useCallback((order: OrderDetails | null) => {
+    setSelectedOrderDetails(order);
+  }, []);
+
+  // Start adding a nota (conversational flow)
+  const startAddNota = useCallback((orderNumber: number) => {
+    setPendingNotaOrderNumber(orderNumber);
+  }, []);
+
+  // Cancel adding nota
+  const cancelAddNota = useCallback(() => {
+    setPendingNotaOrderNumber(null);
+    
+    const assistantMessage: ChatMessage = {
+      id: Date.now().toString(),
+      content: 'Nota cancelada. ¿En qué más puedo ayudarte?',
+      role: 'assistant',
+      timestamp: new Date(),
+    };
+    setMessages((prev) => [...prev, assistantMessage]);
+  }, []);
+
   return {
     messages,
     isLoading,
     error,
     orders,
     selectedOrderDetails,
+    isCreatingOrder,
+    isEditingOrder,
+    editingOrderDetails,
+    pendingNotaOrderNumber,
+    pendingRetiraOrderNumber,
+    retiraStep,
+    retiraMonto,
+    paymentMethods,
     sendMessage,
     addMessage,
     clearMessages,
+    startOrderCreation,
+    cancelOrderCreation,
+    exitOrderCreation,
+    setSelectedOrder,
+    startOrderEdit,
+    cancelOrderEdit,
+    exitOrderEdit,
+    startAddNota,
+    cancelAddNota,
+    startRetira: () => {}, // Placeholder, not implemented yet
+    cancelRetira: () => {}, // Placeholder, not implemented yet
   };
 };

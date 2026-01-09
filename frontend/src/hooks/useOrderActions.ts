@@ -1,9 +1,9 @@
 import { useCallback } from 'react';
 
 export type OrderActionType =
+  | 'edit'
   | 'print_dorso'
   | 'print'
-  | 'nueva'
   | 'informar_presupuesto'
   | 'nota_reclamo'
   | 'reingreso'
@@ -17,9 +17,17 @@ export interface OrderAction {
   description: string;
   requiresInput?: boolean;
   inputLabel?: string;
+  isSpecial?: boolean; // For actions that require custom handling (like edit)
 }
 
 export const ORDER_ACTIONS: OrderAction[] = [
+  {
+    type: 'edit',
+    label: 'Editar',
+    icon: '✏️',
+    description: 'Editar datos de la orden',
+    isSpecial: true,
+  },
   {
     type: 'print_dorso',
     label: 'Imprimir Dorso',
@@ -33,12 +41,6 @@ export const ORDER_ACTIONS: OrderAction[] = [
     description: 'Imprimir formulario de orden',
   },
   {
-    type: 'nueva',
-    label: 'Nueva',
-    icon: '➕',
-    description: 'Crear nueva orden de reparación',
-  },
-  {
     type: 'informar_presupuesto',
     label: 'Inform. Presup.',
     icon: '💰',
@@ -49,8 +51,7 @@ export const ORDER_ACTIONS: OrderAction[] = [
     label: 'Nota/Reclamo',
     icon: '📝',
     description: 'Agregar nota o registrar reclamo',
-    requiresInput: true,
-    inputLabel: 'Ingrese el texto de la nota o reclamo',
+    isSpecial: true, // Conversational flow
   },
   {
     type: 'reingreso',
@@ -63,6 +64,7 @@ export const ORDER_ACTIONS: OrderAction[] = [
     label: 'Retira',
     icon: '✅',
     description: 'Marcar orden como retirada',
+    isSpecial: true, // Conversational flow - requires monto and payment method
   },
   {
     type: 'sena',
@@ -111,10 +113,6 @@ export const useOrderActions = ({
 
         case 'print':
           resultMessage = `📄 **Imprimiendo orden...**\n\nFormulario de orden #${orderNumber} enviado a la impresora.\n\n*(Simulación - integración pendiente)*`;
-          break;
-
-        case 'nueva':
-          resultMessage = `➕ **Creando nueva orden...**\n\nNueva orden de reparación iniciada basada en orden #${orderNumber}.\n\n*(Simulación - integración pendiente)*`;
           break;
 
         case 'informar_presupuesto':

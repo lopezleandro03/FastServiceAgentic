@@ -15,6 +15,8 @@ import { ORDER_ACTIONS, OrderActionType, useOrderActions } from '../../hooks/use
 interface ActionSuggestionsProps {
   orderNumber: number;
   onAddMessage: (message: { role: 'assistant' | 'user'; content: string }) => void;
+  onEditOrder?: () => void;
+  onStartAddNota?: () => void;
   className?: string;
 }
 
@@ -25,6 +27,8 @@ interface ActionSuggestionsProps {
 const ActionSuggestions: React.FC<ActionSuggestionsProps> = ({
   orderNumber,
   onAddMessage,
+  onEditOrder,
+  onStartAddNota,
   className,
 }) => {
   const { executeAction } = useOrderActions({ orderNumber, onAddMessage });
@@ -36,6 +40,38 @@ const ActionSuggestions: React.FC<ActionSuggestionsProps> = ({
   const handleActionClick = async (actionType: OrderActionType) => {
     const action = ORDER_ACTIONS.find((a) => a.type === actionType);
     if (!action) return;
+
+    // Handle edit action specially
+    if (actionType === 'edit') {
+      if (onEditOrder) {
+        onAddMessage({
+          role: 'user',
+          content: `Quiero editar la orden #${orderNumber}`,
+        });
+        onAddMessage({
+          role: 'assistant',
+          content: '✏️ Puedes modificar los datos de la orden en el formulario. Haz los cambios necesarios y guarda cuando estés listo.',
+        });
+        onEditOrder();
+      }
+      return;
+    }
+
+    // Handle nota/reclamo conversationally
+    if (actionType === 'nota_reclamo') {
+      if (onStartAddNota) {
+        onAddMessage({
+          role: 'user',
+          content: `Quiero agregar una nota a la orden #${orderNumber}`,
+        });
+        onAddMessage({
+          role: 'assistant',
+          content: '📝 ¿Qué nota deseas agregar a esta orden? Escribe el texto de la nota y lo registraré en el sistema.',
+        });
+        onStartAddNota();
+      }
+      return;
+    }
 
     // If action requires input, open dialog
     if (action.requiresInput) {
@@ -72,58 +108,31 @@ const ActionSuggestions: React.FC<ActionSuggestionsProps> = ({
     ? ORDER_ACTIONS.find((a) => a.type === currentAction)
     : null;
 
-  // Group actions logically
-  const printActions = ORDER_ACTIONS.filter((a) =>
-    ['print_dorso', 'print'].includes(a.type)
-  );
-  const orderActions = ORDER_ACTIONS.filter((a) =>
-    ['nueva', 'reingreso'].includes(a.type)
-  );
-  const statusActions = ORDER_ACTIONS.filter((a) =>
-    ['informar_presupuesto', 'nota_reclamo', 'retira', 'sena'].includes(a.type)
-  );
-
-  const ActionGroup: React.FC<{ actions: typeof ORDER_ACTIONS; label: string }> = ({
-    actions,
-    label,
-  }) => (
-    <div className="flex flex-wrap items-center gap-1.5">
-      <span className="text-[10px] text-white/40 uppercase tracking-wider mr-1">
-        {label}
-      </span>
-      {actions.map((action) => (
-        <Button
-          key={action.type}
-          variant="outline"
-          size="sm"
-          onClick={() => handleActionClick(action.type)}
-          disabled={isExecuting !== null}
-          className="h-7 px-2.5 text-xs bg-white/5 border-white/20 text-white/80 hover:bg-white/15 hover:text-white hover:border-white/40 transition-colors"
-          title={action.description}
-          aria-label={`${action.label} - ${action.description}`}
-        >
-          <span className="mr-1">{action.icon}</span>
-          {action.label}
-          {isExecuting === action.type && (
-            <span className="ml-1 animate-spin">⏳</span>
-          )}
-        </Button>
-      ))}
-    </div>
+  // Filter out print actions (they will be in OrderDetailsView header)
+  const conversationActions = ORDER_ACTIONS.filter((a) =>
+    !['print_dorso', 'print'].includes(a.type)
   );
 
   return (
     <>
-      <div className={className}>
-        <div className="px-4 py-3 border-b border-white/10">
-          <p className="text-[10px] uppercase tracking-wider text-white/50 mb-2">
-            Acciones rápidas para Orden #{orderNumber}
-          </p>
-          <div className="flex flex-col gap-2">
-            <ActionGroup actions={printActions} label="Imprimir" />
-            <ActionGroup actions={orderActions} label="Orden" />
-            <ActionGroup actions={statusActions} label="Estado" />
-          </div>
+      <div className={`flex-shrink-0 px-4 py-2 ${className || ''}`}>
+        <div className="flex flex-wrap gap-2">
+          {conversationActions.map((action) => (
+            <button
+              key={action.type}
+              onClick={() => handleActionClick(action.type)}
+              disabled={isExecuting !== null}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-white/10 hover:bg-white/20 border border-white/20 hover:border-white/30 text-white/90 transition-all disabled:opacity-50"
+              title={action.description}
+              aria-label={`${action.label}: ${action.description}`}
+            >
+              <span className="text-base">{action.icon}</span>
+              <span>{action.label}</span>
+              {isExecuting === action.type && (
+                <span className="animate-spin text-sm">⏳</span>
+              )}
+            </button>
+          ))}
         </div>
       </div>
 

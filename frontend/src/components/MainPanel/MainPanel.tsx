@@ -1,14 +1,37 @@
 import React, { useState, useEffect } from 'react';
 import { OrderSummary, OrderDetails } from '../../types/order';
-import { OrderList, OrderDetailsView } from '../Orders';
+import { OrderList, OrderDetailsView, OrderCreateView } from '../Orders';
 import { KanbanBoard } from '../Kanban';
 
 interface MainPanelProps {
   orders?: OrderSummary[];
   selectedOrderDetails?: OrderDetails | null;
+  isCreatingOrder?: boolean;
+  isEditingOrder?: boolean;
+  editingOrderDetails?: OrderDetails | null;
+  onCancelCreate?: () => void;
+  onExitCreate?: () => void;
+  onOrderSaved?: () => void;
+  onOrderSelected?: (order: OrderDetails | null) => void;
+  onCancelEdit?: () => void;
+  onExitEdit?: () => void;
+  onOrderUpdated?: () => void;
 }
 
-const MainPanel: React.FC<MainPanelProps> = ({ orders, selectedOrderDetails }) => {
+const MainPanel: React.FC<MainPanelProps> = ({ 
+  orders, 
+  selectedOrderDetails, 
+  isCreatingOrder,
+  isEditingOrder,
+  editingOrderDetails,
+  onCancelCreate,
+  onExitCreate,
+  onOrderSaved,
+  onOrderSelected,
+  onCancelEdit,
+  onExitEdit,
+  onOrderUpdated,
+}) => {
   const [viewingOrderDetails, setViewingOrderDetails] = useState<OrderDetails | null>(null);
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
 
@@ -26,6 +49,10 @@ const MainPanel: React.FC<MainPanelProps> = ({ orders, selectedOrderDetails }) =
       if (response.ok) {
         const orderDetails = await response.json();
         setViewingOrderDetails(orderDetails);
+        // Notify parent so action suggestions appear in chat
+        if (onOrderSelected) {
+          onOrderSelected(orderDetails);
+        }
       }
     } catch (error) {
       console.error('Failed to fetch order details:', error);
@@ -36,18 +63,133 @@ const MainPanel: React.FC<MainPanelProps> = ({ orders, selectedOrderDetails }) =
 
   const handleBackToList = () => {
     setViewingOrderDetails(null);
+    // Clear selected order in chat
+    if (onOrderSelected) {
+      onOrderSelected(null);
+    }
+  };
+
+  const handlePrint = () => {
+    if (viewingOrderDetails) {
+      console.log(`Printing order #${viewingOrderDetails.orderNumber}`);
+      // TODO: Integrate with actual print functionality
+      alert(`📄 Imprimiendo formulario de orden #${viewingOrderDetails.orderNumber}`);
+    }
+  };
+
+  const handlePrintDorso = () => {
+    if (viewingOrderDetails) {
+      console.log(`Printing dorso for order #${viewingOrderDetails.orderNumber}`);
+      // TODO: Integrate with actual print functionality
+      alert(`🖨️ Imprimiendo dorso de orden #${viewingOrderDetails.orderNumber}`);
+    }
+  };
+
+  const handleSaveNewOrder = async (orderData: any) => {
+    // Send the order data to the API
+    const response = await fetch('http://localhost:5207/api/orders', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(orderData),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(errorText || 'Error al guardar la orden');
+    }
+
+    const createdOrder = await response.json();
+    
+    // Exit creation mode silently (without cancellation message)
+    if (onExitCreate) {
+      onExitCreate();
+    }
+    
+    // Navigate to the created order details view
+    setViewingOrderDetails(createdOrder);
+    
+    // Notify parent so action suggestions appear in chat
+    if (onOrderSelected) {
+      onOrderSelected(createdOrder);
+    }
+    
+    // Notify parent (adds success message to chat)
+    if (onOrderSaved) {
+      onOrderSaved();
+    }
+  };
+
+  const handleUpdateOrder = async (orderData: any, orderNumber: number) => {
+    // Send the order data to the API
+    const response = await fetch(`http://localhost:5207/api/orders/${orderNumber}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(orderData),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(errorText || 'Error al actualizar la orden');
+    }
+
+    const updatedOrder = await response.json();
+    
+    // Exit edit mode silently
+    if (onExitEdit) {
+      onExitEdit();
+    }
+    
+    // Navigate to the updated order details view
+    setViewingOrderDetails(updatedOrder);
+    
+    // Notify parent so action suggestions appear in chat
+    if (onOrderSelected) {
+      onOrderSelected(updatedOrder);
+    }
+    
+    // Notify parent (adds success message to chat)
+    if (onOrderUpdated) {
+      onOrderUpdated();
+    }
   };
 
   const isShowingOrderDetails = Boolean(viewingOrderDetails);
   let mainBodyContent: React.ReactNode;
 
-  if (isShowingOrderDetails && viewingOrderDetails) {
+  // Priority: Edit mode > Create mode > Order details > Order list > Kanban
+  if (isEditingOrder && editingOrderDetails) {
+    mainBodyContent = (
+      <div className="p-4">
+        <OrderCreateView 
+          onCancel={onCancelEdit || (() => {})}
+          onSave={(orderData) => handleUpdateOrder(orderData, editingOrderDetails.orderNumber)}
+          editMode={true}
+          existingOrder={editingOrderDetails}
+        />
+      </div>
+    );
+  } else if (isCreatingOrder) {
+    mainBodyContent = (
+      <div className="p-4">
+        <OrderCreateView 
+          onCancel={onCancelCreate || (() => {})}
+          onSave={handleSaveNewOrder}
+        />
+      </div>
+    );
+  } else if (isShowingOrderDetails && viewingOrderDetails) {
     mainBodyContent = (
       <div className="p-4">
         <OrderDetailsView 
           order={viewingOrderDetails} 
           isLoading={isLoadingDetails}
           onBack={handleBackToList}
+          onPrint={handlePrint}
+          onPrintDorso={handlePrintDorso}
         />
       </div>
     );

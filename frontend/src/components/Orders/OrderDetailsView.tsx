@@ -6,12 +6,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { Skeleton } from '../ui/skeleton';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Printer } from 'lucide-react';
 
 interface OrderDetailsViewProps {
   order: OrderDetails | null;
   isLoading?: boolean;
   onBack?: () => void;
+  onPrint?: () => void;
+  onPrintDorso?: () => void;
 }
 
 // Compact field component for dense layout
@@ -55,7 +57,7 @@ const OrderDetailsSkeleton: React.FC = () => (
   </div>
 );
 
-const OrderDetailsView: React.FC<OrderDetailsViewProps> = ({ order, isLoading, onBack }) => {
+const OrderDetailsView: React.FC<OrderDetailsViewProps> = ({ order, isLoading, onBack, onPrint, onPrintDorso }) => {
   const formatDate = (dateString?: string | null): string => {
     if (!dateString) return '-';
     try {
@@ -139,6 +141,32 @@ const OrderDetailsView: React.FC<OrderDetailsViewProps> = ({ order, isLoading, o
               </Badge>
             )}
           </div>
+        </div>
+        <div className="flex items-center gap-2">
+          {onPrint && (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={onPrint}
+              className="h-9 px-3"
+              title="Imprimir formulario de orden"
+            >
+              <Printer className="h-4 w-4 mr-2" />
+              Imprimir
+            </Button>
+          )}
+          {onPrintDorso && (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={onPrintDorso}
+              className="h-9 px-3"
+              title="Imprimir etiqueta del dorso"
+            >
+              <Printer className="h-4 w-4 mr-2" />
+              Imprimir Dorso
+            </Button>
+          )}
         </div>
       </div>
 
