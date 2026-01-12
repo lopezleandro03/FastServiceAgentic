@@ -1,7 +1,6 @@
 import React from 'react';
-import { ChevronRight, Trash2, LogOut } from 'lucide-react';
+import { ChevronRight, Trash2 } from 'lucide-react';
 import { Button } from '../ui/button';
-import { useAuth } from '../../contexts/AuthContext';
 
 interface ChatPanelProps {
   children?: React.ReactNode;
@@ -10,8 +9,6 @@ interface ChatPanelProps {
 }
 
 const ChatPanel: React.FC<ChatPanelProps> = ({ children, onCollapse, onClearChat }) => {
-  const { user, logout } = useAuth();
-  const operatorName = user ? `${user.nombre} ${user.apellido}` : 'Operador';
 
   return (
     <div className="relative h-full max-h-full flex flex-col overflow-hidden bg-slate-950 text-white">
@@ -19,8 +16,8 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ children, onCollapse, onClearChat
         <div className="w-full h-full bg-gradient-to-b from-indigo-900/70 via-slate-950 to-slate-950" />
       </div>
 
-      {/* Header */}
-      <div className="relative flex-shrink-0 border-b border-white/10 px-4 py-4 bg-gradient-to-r from-indigo-600 via-blue-600 to-cyan-500">
+      {/* Header with FastService AI branding */}
+      <div className="relative flex-shrink-0 border-b border-white/10 px-4 py-3 bg-gradient-to-r from-indigo-600 via-blue-600 to-cyan-500">
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2 rounded-full border border-white/40 bg-white/20 px-2 py-0.5 text-xs font-semibold tracking-wide">
@@ -30,7 +27,6 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ children, onCollapse, onClearChat
             <h2 className="text-lg font-semibold leading-tight">FastService AI</h2>
           </div>
           <div className="flex items-center gap-1">
-            <span className="text-sm text-white/80 mr-2">{operatorName}</span>
             {onClearChat && (
               <Button
                 variant="ghost"
@@ -40,17 +36,6 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ children, onCollapse, onClearChat
                 title="Limpiar chat"
               >
                 <Trash2 className="w-4 h-4" />
-              </Button>
-            )}
-            {user && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={logout}
-                className="h-8 w-8 p-0 text-white/80 hover:text-white hover:bg-white/20"
-                title="Cerrar sesión"
-              >
-                <LogOut className="w-4 h-4" />
               </Button>
             )}
             {onCollapse && (

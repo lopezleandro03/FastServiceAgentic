@@ -17,3 +17,29 @@ export interface AuthState {
   user: User | null;
   isAuthenticated: boolean;
 }
+
+// Permission types
+
+export interface UserRole {
+  roleId: number;
+  name: string;
+}
+
+export interface MenuItem {
+  itemMenuId: number;
+  name: string;
+  controller: string | null;
+  action: string | null;
+  icon: string | null;
+  order: number;
+}
+
+export interface UserPermissions {
+  userId: number;
+  userName: string;
+  roles: UserRole[];
+  allowedMenuItems: MenuItem[];
+  canAccessAccounting: boolean;
+  canAccessOrders: boolean;
+  canAccessKanban: boolean;
+}

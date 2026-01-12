@@ -41,7 +41,7 @@ const MessageInput: React.FC<MessageInputProps> = ({ onSendMessage, disabled = f
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             onKeyDown={handleKeyPress}
-            placeholder={placeholder || "Escribí tu consulta..."}
+            placeholder={placeholder || "Escribí tu consulta... (Tip: #128001 para búsqueda rápida)"}
             disabled={disabled}
             className="flex-1 resize-none border-none bg-transparent text-slate-900 placeholder-slate-400 focus-visible:ring-0"
             rows={2}

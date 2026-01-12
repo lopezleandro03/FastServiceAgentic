@@ -2,6 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { OrderSummary, OrderDetails } from '../../types/order';
 import { OrderList, OrderDetailsView, OrderCreateView } from '../Orders';
 import { KanbanBoard } from '../Kanban';
+import { AccountingDashboard } from '../Accounting';
+import { ClientsModule } from '../Clients';
+import { LoadingSpinner } from '../ui/loading-spinner';
+
+export type MainView = 'kanban' | 'orders' | 'accounting' | 'clients';
 
 interface MainPanelProps {
   orders?: OrderSummary[];
@@ -9,6 +14,7 @@ interface MainPanelProps {
   isCreatingOrder?: boolean;
   isEditingOrder?: boolean;
   editingOrderDetails?: OrderDetails | null;
+  activeView?: MainView;
   onCancelCreate?: () => void;
   onExitCreate?: () => void;
   onOrderSaved?: () => void;
@@ -16,6 +22,7 @@ interface MainPanelProps {
   onCancelEdit?: () => void;
   onExitEdit?: () => void;
   onOrderUpdated?: () => void;
+  onViewChange?: (view: MainView) => void;
 }
 
 const MainPanel: React.FC<MainPanelProps> = ({ 
@@ -24,6 +31,7 @@ const MainPanel: React.FC<MainPanelProps> = ({
   isCreatingOrder,
   isEditingOrder,
   editingOrderDetails,
+  activeView = 'kanban',
   onCancelCreate,
   onExitCreate,
   onOrderSaved,
@@ -31,16 +39,35 @@ const MainPanel: React.FC<MainPanelProps> = ({
   onCancelEdit,
   onExitEdit,
   onOrderUpdated,
+  onViewChange,
 }) => {
   const [viewingOrderDetails, setViewingOrderDetails] = useState<OrderDetails | null>(null);
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
+  const [isTransitioning, setIsTransitioning] = useState(false);
 
-  // When selectedOrderDetails changes from chat, update the view
+  // When selectedOrderDetails changes from chat, update the view with visual feedback
   useEffect(() => {
     if (selectedOrderDetails) {
-      setViewingOrderDetails(selectedOrderDetails);
+      // If we're already viewing an order, show a brief transition
+      if (viewingOrderDetails && viewingOrderDetails.orderNumber !== selectedOrderDetails.orderNumber) {
+        setIsTransitioning(true);
+        // Brief delay to show loading state, making the change perceptible
+        setTimeout(() => {
+          setViewingOrderDetails(selectedOrderDetails);
+          setIsTransitioning(false);
+        }, 150);
+      } else {
+        setViewingOrderDetails(selectedOrderDetails);
+      }
     }
   }, [selectedOrderDetails]);
+
+  // When activeView changes to a non-orders view, clear order details
+  useEffect(() => {
+    if (activeView === 'accounting' || activeView === 'clients' || activeView === 'kanban') {
+      setViewingOrderDetails(null);
+    }
+  }, [activeView]);
 
   const handleOrderClick = async (orderNumber: number) => {
     setIsLoadingDetails(true);
@@ -160,7 +187,7 @@ const MainPanel: React.FC<MainPanelProps> = ({
   const isShowingOrderDetails = Boolean(viewingOrderDetails);
   let mainBodyContent: React.ReactNode;
 
-  // Priority: Edit mode > Create mode > Order details > Order list > Kanban
+  // Priority: Edit mode > Create mode > Order details > Order list > Accounting > Kanban
   if (isEditingOrder && editingOrderDetails) {
     mainBodyContent = (
       <div className="p-4">
@@ -181,6 +208,13 @@ const MainPanel: React.FC<MainPanelProps> = ({
         />
       </div>
     );
+  } else if (isTransitioning) {
+    // Show brief loading state during order transition
+    mainBodyContent = (
+      <div className="p-4">
+        <LoadingSpinner size="md" message="Cargando orden..." />
+      </div>
+    );
   } else if (isShowingOrderDetails && viewingOrderDetails) {
     mainBodyContent = (
       <div className="p-4">
@@ -195,12 +229,7 @@ const MainPanel: React.FC<MainPanelProps> = ({
     );
   } else if (isLoadingDetails) {
     mainBodyContent = (
-      <div className="flex items-center justify-center py-16">
-        <div className="flex flex-col items-center space-y-4">
-          <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-gray-600">Loading order details...</p>
-        </div>
-      </div>
+      <LoadingSpinner size="lg" message="Cargando detalles de orden..." />
     );
   } else if (orders && orders.length > 0) {
     mainBodyContent = (
@@ -216,6 +245,20 @@ const MainPanel: React.FC<MainPanelProps> = ({
           </div>
         </div>
         <OrderList orders={orders} onOrderClick={handleOrderClick} />
+      </div>
+    );
+  } else if (activeView === 'accounting') {
+    // Show Accounting dashboard
+    mainBodyContent = (
+      <div className="h-full min-w-0 overflow-hidden">
+        <AccountingDashboard />
+      </div>
+    );
+  } else if (activeView === 'clients') {
+    // Show Clients module
+    mainBodyContent = (
+      <div className="h-full min-w-0 overflow-hidden">
+        <ClientsModule onViewOrder={handleOrderClick} />
       </div>
     );
   } else {

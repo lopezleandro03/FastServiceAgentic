@@ -100,6 +100,14 @@ export const useChat = (): UseChatReturn => {
     return null;
   };
 
+  // Check if input is a # prefixed order number (fast lookup shortcut)
+  const isOrderNumberShortcut = (input: string): number | null => {
+    const trimmed = input.trim();
+    // Match # followed by 4-7 digits (e.g., #128001)
+    const match = trimmed.match(/^#(\d{4,7})$/);
+    return match ? parseInt(match[1], 10) : null;
+  };
+
   const sendMessage = useCallback(async (content: string) => {
     if (!content.trim() || isLoading) return;
 
@@ -113,6 +121,49 @@ export const useChat = (): UseChatReturn => {
     setMessages((prev) => [...prev, userMessage]);
     setIsLoading(true);
     setError(null);
+
+    // Fast path: if input starts with #, bypass LLM and fetch order directly
+    const orderNumberShortcut = isOrderNumberShortcut(content);
+    if (orderNumberShortcut !== null) {
+      try {
+        const orderResponse = await fetch(`${API_BASE_URL}/api/orders/${orderNumberShortcut}`);
+        if (orderResponse.ok) {
+          const orderDetails = await orderResponse.json();
+          setSelectedOrderDetails(orderDetails);
+          setOrders([]);
+          
+          const assistantMessage: ChatMessage = {
+            id: (Date.now() + 1).toString(),
+            content: `✅ Orden #${orderNumberShortcut} encontrada.\n\n**Cliente:** ${orderDetails.customer?.fullName || 'N/A'}\n**Equipo:** ${orderDetails.device?.brand || ''} ${orderDetails.device?.deviceType || ''}\n**Estado:** ${orderDetails.status || 'N/A'}`,
+            role: 'assistant',
+            timestamp: new Date(),
+          };
+          setMessages((prev) => [...prev, assistantMessage]);
+        } else if (orderResponse.status === 404) {
+          const notFoundMessage: ChatMessage = {
+            id: (Date.now() + 1).toString(),
+            content: `❌ No se encontró la orden #${orderNumberShortcut}`,
+            role: 'assistant',
+            timestamp: new Date(),
+          };
+          setMessages((prev) => [...prev, notFoundMessage]);
+        } else {
+          throw new Error(`HTTP error: ${orderResponse.status}`);
+        }
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : 'Error desconocido';
+        const errorResponseMessage: ChatMessage = {
+          id: (Date.now() + 1).toString(),
+          content: `❌ Error al buscar la orden: ${errorMessage}`,
+          role: 'assistant',
+          timestamp: new Date(),
+        };
+        setMessages((prev) => [...prev, errorResponseMessage]);
+      } finally {
+        setIsLoading(false);
+      }
+      return;
+    }
 
     // Check if we're in pending nota mode
     if (pendingNotaOrderNumber !== null) {

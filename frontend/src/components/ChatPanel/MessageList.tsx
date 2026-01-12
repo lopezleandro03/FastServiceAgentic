@@ -5,6 +5,7 @@ import { cn } from '../../lib/utils';
 
 interface MessageListProps {
   messages: ChatMessage[];
+  userName?: string;
 }
 
 /**
@@ -60,7 +61,7 @@ const parseMarkdown = (text: string): React.ReactNode => {
   });
 };
 
-const MessageList: React.FC<MessageListProps> = ({ messages }) => {
+const MessageList: React.FC<MessageListProps> = ({ messages, userName }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -121,7 +122,7 @@ const MessageList: React.FC<MessageListProps> = ({ messages }) => {
                     msg.role === 'user' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'
                   )}
                 >
-                  {msg.role === 'user' ? 'Operador' : 'FastService AI'}
+                  {msg.role === 'user' ? (userName || 'Operador') : 'AI'}
                 </Badge>
               </div>
               <span className={cn('text-[0.7rem]', msg.role === 'user' ? 'text-white/80' : 'text-slate-500')}>

@@ -3,8 +3,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
-import { ArrowLeft, Save, X, Search, Ban, Pencil } from 'lucide-react';
+import { ArrowLeft, Save, X, Search, Ban, Pencil, Loader2, CheckCircle } from 'lucide-react';
 import { OrderDetails } from '../../types/order';
+import { getClientByDni } from '../../services/clientsApi';
 
 const API_BASE_URL = 'http://localhost:5207';
 const GOOGLE_MAPS_API_KEY = 'AIzaSyAF44JdvJ96J5WyhIwxFRc646TTjhQ2dIY';
@@ -208,6 +209,11 @@ const OrderCreateView: React.FC<OrderCreateViewProps> = ({ onCancel, onSave, edi
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [googleLoaded, setGoogleLoaded] = useState(false);
+
+  // DNI autocomplete state
+  const [isSearchingDni, setIsSearchingDni] = useState(false);
+  const [dniFound, setDniFound] = useState(false);
+  const dniSearchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Dropdown options
   const [tipoOptions, setTipoOptions] = useState<DropdownOption[]>([]);
@@ -435,6 +441,77 @@ const OrderCreateView: React.FC<OrderCreateViewProps> = ({ onCancel, onSave, edi
     initializeAutocomplete();
   }, [initializeAutocomplete]);
 
+  // DNI autocomplete function
+  const handleDniLookup = useCallback(async (dni: string) => {
+    if (!dni || dni.length < 7) {
+      setDniFound(false);
+      return;
+    }
+
+    setIsSearchingDni(true);
+    setDniFound(false);
+
+    try {
+      const client = await getClientByDni(dni);
+      if (client) {
+        // Auto-fill customer data from found client
+        setFormData((prev) => ({
+          ...prev,
+          customer: {
+            clienteId: client.clienteId,
+            firstName: client.nombre,
+            lastName: client.apellido,
+            dni: client.dni?.toString() || dni,
+            email: client.email || '',
+            phone: client.telefono || '',
+            celular: client.celular || '',
+            direccion: client.direccion,
+            calle: client.addressDetails?.calle || '',
+            altura: client.addressDetails?.altura || '',
+            entreCalle1: client.addressDetails?.entreCalle1 || '',
+            entreCalle2: client.addressDetails?.entreCalle2 || '',
+            ciudad: client.addressDetails?.ciudad || client.localidad || '',
+            codigoPostal: client.addressDetails?.codigoPostal || '',
+            provincia: client.addressDetails?.provincia || '',
+            pais: client.addressDetails?.pais || '',
+            latitud: client.latitud?.toString() || '',
+            longitud: client.longitud?.toString() || '',
+          },
+        }));
+        setDniFound(true);
+      }
+    } catch (error) {
+      console.error('Error looking up DNI:', error);
+    } finally {
+      setIsSearchingDni(false);
+    }
+  }, []);
+
+  // Handle DNI change with debounced lookup
+  const handleDniChange = (value: string) => {
+    updateCustomer('dni', value);
+    setDniFound(false);
+
+    // Clear existing timeout
+    if (dniSearchTimeoutRef.current) {
+      clearTimeout(dniSearchTimeoutRef.current);
+    }
+
+    // Debounce the search (wait 500ms after user stops typing)
+    if (value.length >= 7) {
+      dniSearchTimeoutRef.current = setTimeout(() => {
+        handleDniLookup(value);
+      }, 500);
+    }
+  };
+
+  // Manual DNI search button click
+  const handleDniSearchClick = () => {
+    if (formData.customer.dni) {
+      handleDniLookup(formData.customer.dni);
+    }
+  };
+
   const updateCustomer = (field: keyof CustomerData, value: string) => {
     setFormData((prev) => ({
       ...prev,
@@ -598,17 +675,42 @@ const OrderCreateView: React.FC<OrderCreateViewProps> = ({ onCancel, onSave, edi
         </CardHeader>
         <CardContent className="py-3 px-4">
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-x-4 gap-y-3">
-            <EditableField
-              label="DNI"
-              value={formData.customer.dni}
-              onChange={(val) => updateCustomer('dni', val)}
-              required
-              actionButton={
-                <Button type="button" variant="outline" size="sm" className="h-8 px-2" title="Buscar cliente">
-                  <Search className="h-4 w-4" />
+            <div className="space-y-1">
+              <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                DNI <span className="text-red-500">*</span>
+              </Label>
+              <div className="flex gap-1">
+                <Input
+                  type="text"
+                  value={formData.customer.dni}
+                  onChange={(e) => handleDniChange(e.target.value)}
+                  placeholder="DNI"
+                  className={`h-8 text-sm flex-1 ${dniFound ? 'border-green-500 bg-green-50' : ''}`}
+                  required
+                  autoComplete="off"
+                />
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  size="sm" 
+                  className={`h-8 px-2 ${dniFound ? 'text-green-600 border-green-500' : ''}`}
+                  title={dniFound ? "Cliente encontrado" : "Buscar cliente"}
+                  onClick={handleDniSearchClick}
+                  disabled={isSearchingDni || !formData.customer.dni}
+                >
+                  {isSearchingDni ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : dniFound ? (
+                    <CheckCircle className="h-4 w-4" />
+                  ) : (
+                    <Search className="h-4 w-4" />
+                  )}
                 </Button>
-              }
-            />
+              </div>
+              {dniFound && (
+                <p className="text-xs text-green-600">✓ Cliente encontrado, datos autocompletados</p>
+              )}
+            </div>
             <EditableField
               label="Nombre"
               value={formData.customer.firstName}

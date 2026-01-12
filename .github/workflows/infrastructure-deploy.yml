@@ -1,0 +1,145 @@
+# ===========================================================================
+# FastService Infrastructure - Provision Azure Resources
+# ===========================================================================
+
+name: Infrastructure Deployment
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'infra/**'
+      - '.github/workflows/infrastructure-deploy.yml'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+          - staging
+          - prod
+      action:
+        description: 'Deployment action'
+        required: true
+        default: 'deploy'
+        type: choice
+        options:
+          - what-if
+          - deploy
+
+env:
+  AZURE_RESOURCE_GROUP: fastservice-app
+  LOCATION: eastus2
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Validate Bicep Templates
+  # ---------------------------------------------------------------------------
+  validate:
+    name: Validate Templates
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Validate Bicep
+        run: az bicep build --file infra/main.bicep
+
+  # ---------------------------------------------------------------------------
+  # What-If Analysis
+  # ---------------------------------------------------------------------------
+  what-if:
+    name: What-If Analysis
+    runs-on: ubuntu-latest
+    needs: validate
+    if: github.event.inputs.action == 'what-if' || github.event_name == 'pull_request'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Create Resource Group
+        run: |
+          az group create --name ${{ env.AZURE_RESOURCE_GROUP }} --location ${{ env.LOCATION }} || true
+
+      - name: What-If Analysis
+        run: |
+          az deployment group what-if \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --template-file infra/main.bicep \
+            --parameters infra/main.bicepparam \
+            --parameters sqlConnectionString='${{ secrets.SQL_CONNECTION_STRING }}' \
+            --parameters azureOpenAIApiKey='${{ secrets.AZURE_OPENAI_API_KEY }}' \
+            --parameters dockerHubImage='${{ secrets.DOCKERHUB_USERNAME }}/fastservice-api'
+
+  # ---------------------------------------------------------------------------
+  # Deploy Infrastructure
+  # ---------------------------------------------------------------------------
+  deploy:
+    name: Deploy Infrastructure
+    runs-on: ubuntu-latest
+    needs: validate
+    if: github.event.inputs.action == 'deploy' && github.event_name != 'pull_request'
+    environment:
+      name: ${{ github.event.inputs.environment || 'dev' }}
+
+    outputs:
+      acrLoginServer: ${{ steps.deployment.outputs.acrLoginServer }}
+      backendUrl: ${{ steps.deployment.outputs.backendUrl }}
+      frontendUrl: ${{ steps.deployment.outputs.frontendUrl }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Create Resource Group
+        run: |
+          az group create --name ${{ env.AZURE_RESOURCE_GROUP }} --location ${{ env.LOCATION }}
+
+      - name: Deploy Bicep Template
+        id: deployment
+        run: |
+          result=$(az deployment group create \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --template-file infra/main.bicep \
+            --parameters infra/main.bicepparam \
+            --parameters sqlConnectionString='${{ secrets.SQL_CONNECTION_STRING }}' \
+            --parameters azureOpenAIApiKey='${{ secrets.AZURE_OPENAI_API_KEY }}' \
+            --parameters dockerHubImage='${{ secrets.DOCKERHUB_USERNAME }}/fastservice-api' \
+            --parameters repositoryUrl='${{ github.server_url }}/${{ github.repository }}' \
+            --query 'properties.outputs' -o json)
+          
+          echo "backendUrl=$(echo $result | jq -r '.backendUrl.value')" >> $GITHUB_OUTPUT
+          echo "frontendUrl=$(echo $result | jq -r '.frontendUrl.value')" >> $GITHUB_OUTPUT
+
+      - name: Display Deployment Outputs
+        run: |
+          echo "## Deployment Complete! 🚀" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Resource | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Backend URL | ${{ steps.deployment.outputs.backendUrl }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Frontend URL | ${{ steps.deployment.outputs.frontendUrl }} |" >> $GITHUB_STEP_SUMMARY
+
+      - name: Azure Logout
+        run: az logout
+        if: always()

@@ -4,12 +4,14 @@ using FastService.McpServer.Data.Entities;
 using FastService.McpServer.Services;
 using FastService.McpServer.Tools;
 using FastService.McpServer.Dtos;
+using ModelContextProtocol.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddControllers();
 
 // Configure DbContext
 builder.Services.AddDbContext<FastServiceDbContext>(options =>
@@ -18,21 +20,33 @@ builder.Services.AddDbContext<FastServiceDbContext>(options =>
 // Register application services
 builder.Services.AddScoped<OrderService>();
 builder.Services.AddScoped<OrderSearchTools>();
+builder.Services.AddScoped<CustomerTools>();
+builder.Services.AddScoped<AccountingTools>();
 builder.Services.AddScoped<AgentService>();
+builder.Services.AddScoped<AccountingService>();
+builder.Services.AddScoped<ClientService>();
 
 // Configure CORS for frontend
+// Supports: AllowedOrigins config array, ALLOWED_ORIGINS env var (comma-separated), or defaults to localhost
+var allowedOrigins = builder.Configuration.GetSection("AllowedOrigins").Get<string[]>()
+    ?? Environment.GetEnvironmentVariable("ALLOWED_ORIGINS")?.Split(',', StringSplitOptions.RemoveEmptyEntries)
+    ?? new[] { "http://localhost:3000" };
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.WithOrigins("http://localhost:3000")
+        policy.WithOrigins(allowedOrigins)
               .AllowAnyMethod()
               .AllowAnyHeader()
               .AllowCredentials();
     });
 });
 
-// MCP Server configuration will be added in later phases
+// MCP Server configuration - expose tools via HTTP/SSE transport
+builder.Services.AddMcpServer()
+    .WithHttpTransport()
+    .WithToolsFromAssembly();
 
 var app = builder.Build();
 
@@ -44,6 +58,12 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors("AllowFrontend");
+
+// Map MCP endpoint for external clients (Claude Desktop, VS Code, etc.)
+app.MapMcp("/mcp");
+
+// Map controllers (AccountingController, etc.)
+app.MapControllers();
 
 // Basic health check endpoint
 app.MapGet("/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }));
@@ -71,6 +91,81 @@ app.MapPost("/api/auth/login", async (LoginRequest request, FastServiceDbContext
         return Results.Problem(detail: ex.Message, statusCode: 500);
     }
 }).WithName("Login").WithOpenApi();
+
+// Get user permissions endpoint - returns roles and allowed menu items
+app.MapGet("/api/auth/permissions/{userId:int}", async (int userId, FastServiceDbContext db) =>
+{
+    try
+    {
+        var user = await db.Usuarios
+            .Where(u => u.UserId == userId && u.Activo)
+            .FirstOrDefaultAsync();
+
+        if (user == null)
+        {
+            return Results.NotFound("Usuario no encontrado");
+        }
+
+        // Get user roles
+        var userRoles = await (
+            from ur in db.UsuarioRols
+            join r in db.Roles on ur.RolId equals r.RolId
+            where ur.UserId == userId
+            select new UserRoleDto
+            {
+                RoleId = r.RolId,
+                Name = r.Nombre
+            }
+        ).ToListAsync();
+
+        // Get allowed menu items based on roles using subquery
+        var allowedMenuItems = await (
+            from rm in db.RoleMenus
+            join im in db.ItemMenus on rm.ItemMenuId equals im.ItemMenuId
+            where db.UsuarioRols.Any(ur => ur.UserId == userId && ur.RolId == rm.RolId)
+                  && im.Estado
+            select new MenuItemDto
+            {
+                ItemMenuId = im.ItemMenuId,
+                Name = im.Name,
+                Controller = im.Controlador,
+                Action = im.Accion,
+                Icon = im.Icon,
+                Order = im.Orden
+            }
+        ).Distinct().OrderBy(m => m.Order).ToListAsync();
+
+        // Determine access to specific modules based on controller names
+        var controllerNames = allowedMenuItems
+            .Where(m => m.Controller != null)
+            .Select(m => m.Controller!.ToLower())
+            .ToHashSet();
+
+        var roleNames = userRoles.Select(r => r.Name.ToUpper()).ToHashSet();
+
+        // Check if user has access to accounting:
+        // 1. Has "Contabilidad" controller in menu items, OR
+        // 2. Has any admin-like role (contains "admin" in name)
+        var hasAdminRole = roleNames.Any(r => r.Contains("ADMIN"));
+
+        var response = new UserPermissionsResponse
+        {
+            UserId = userId,
+            UserName = $"{user.Nombre} {user.Apellido}".Trim(),
+            Roles = userRoles,
+            AllowedMenuItems = allowedMenuItems,
+            CanAccessAccounting = controllerNames.Contains("contabilidad") || hasAdminRole,
+            CanAccessOrders = true, // All authenticated users can access orders
+            CanAccessKanban = true  // All authenticated users can access kanban
+        };
+
+        return Results.Ok(response);
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(detail: ex.Message, statusCode: 500);
+    }
+}).WithName("GetUserPermissions").WithOpenApi();
 
 // Chat endpoint for basic interaction
 app.MapPost("/api/chat", async (ChatRequest request, AgentService agentService) =>
@@ -333,6 +428,81 @@ app.MapGet("/api/comercios", async (FastServiceDbContext db) =>
         return Results.Problem(detail: ex.Message, statusCode: 500);
     }
 }).WithName("GetComercios").WithOpenApi();
+
+// =============================================================================
+// Client endpoints
+// =============================================================================
+
+// Get clients list with pagination and search
+app.MapGet("/api/clients", async (
+    string? search,
+    int? page,
+    int? pageSize,
+    ClientService clientService) =>
+{
+    try
+    {
+        var result = await clientService.GetClientsAsync(
+            search,
+            page ?? 1,
+            pageSize ?? 20);
+        return Results.Ok(result);
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(detail: ex.Message, statusCode: 500);
+    }
+}).WithName("GetClients").WithOpenApi();
+
+// Get client details by ID
+app.MapGet("/api/clients/{clienteId:int}", async (int clienteId, ClientService clientService) =>
+{
+    try
+    {
+        var client = await clientService.GetClientDetailsAsync(clienteId);
+        if (client == null)
+        {
+            return Results.NotFound(new { message = $"Cliente #{clienteId} no encontrado" });
+        }
+        return Results.Ok(client);
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(detail: ex.Message, statusCode: 500);
+    }
+}).WithName("GetClientDetails").WithOpenApi();
+
+// Get client by DNI (exact match - for autocomplete)
+app.MapGet("/api/clients/by-dni/{dni}", async (string dni, ClientService clientService) =>
+{
+    try
+    {
+        var client = await clientService.GetClientByDniAsync(dni);
+        if (client == null)
+        {
+            return Results.NotFound(new { message = "Cliente no encontrado" });
+        }
+        return Results.Ok(client);
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(detail: ex.Message, statusCode: 500);
+    }
+}).WithName("GetClientByDni").WithOpenApi();
+
+// Search clients (for autocomplete suggestions)
+app.MapGet("/api/clients/search/{prefix}", async (string prefix, int? maxResults, ClientService clientService) =>
+{
+    try
+    {
+        var clients = await clientService.SearchClientsAsync(prefix, maxResults ?? 10);
+        return Results.Ok(clients);
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(detail: ex.Message, statusCode: 500);
+    }
+}).WithName("SearchClients").WithOpenApi();
 
 app.Run();
 

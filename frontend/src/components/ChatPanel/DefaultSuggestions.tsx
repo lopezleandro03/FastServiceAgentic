@@ -24,7 +24,8 @@ const DefaultSuggestions: React.FC<DefaultSuggestionsProps> = ({ onSendMessage, 
 
 Puedes buscar órdenes de las siguientes formas:
 
-• **Por número de orden** - Ej: "Buscar orden 128001" o simplemente "128001"
+• **⚡ Búsqueda rápida** - Usa **#128001** para buscar directo sin IA
+• **Por número de orden** - Ej: "Buscar orden 128001"
 • **Por nombre del cliente** - Ej: "Órdenes de Juan Pérez"
 • **Por DNI del cliente** - Ej: "Buscar DNI 12345678"
 • **Por teléfono** - Ej: "Buscar teléfono 1155667788"
@@ -50,10 +51,10 @@ Escribe tu búsqueda en el campo de texto de abajo.`
         <button
           onClick={handleSearchClick}
           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-white/10 hover:bg-white/20 border border-white/20 hover:border-white/30 text-white/90 transition-all"
-          title="Buscar orden"
+          title="Buscar orden (usa #número para búsqueda rápida)"
         >
           <Search className="w-4 h-4" />
-          <span>Buscar orden</span>
+          <span>#Buscar</span>
         </button>
       </div>
     </div>

@@ -1,0 +1,23 @@
+# Build outputs
+bin/
+obj/
+
+# IDE files
+.vs/
+.vscode/
+*.user
+*.suo
+
+# Test files
+**/*Tests/
+**/*Test/
+
+# Documentation
+*.md
+
+# Local settings (keep appsettings.json for defaults)
+appsettings.Development.json
+
+# Logs
+*.log
+logs/

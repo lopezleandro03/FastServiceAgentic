@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useState, useRef } from 'react';
 import './App.css';
 import SplitLayout from './components/Layout/SplitLayout';
-import MainPanel from './components/MainPanel/MainPanel';
+import MainPanel, { MainView } from './components/MainPanel/MainPanel';
 import ChatPanel from './components/ChatPanel/ChatPanel';
 import MessageList from './components/ChatPanel/MessageList';
 import MessageInput from './components/ChatPanel/MessageInput';
@@ -11,9 +11,13 @@ import { LoadingIndicator } from './components/ChatPanel/LoadingIndicator';
 import { useChat } from './hooks/useChat';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import LoginPage from './components/Login/LoginPage';
+import { LayoutGrid, TrendingUp, LogOut, Loader2, Users } from 'lucide-react';
+import { generateAccountingInsights } from './services/accountingService';
 
 function AppContent() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user, logout, permissions, isLoadingPermissions } = useAuth();
+  const [activeView, setActiveView] = useState<MainView>('kanban');
+  const hasShownAccountingInsights = useRef(false);
   const { 
     messages, 
     isLoading, 
@@ -36,6 +40,33 @@ function AppContent() {
     exitOrderEdit,
     startAddNota,
   } = useChat();
+
+  // Handle view change with AI insights for accounting
+  const handleViewChange = async (view: MainView) => {
+    setActiveView(view);
+    
+    // Show accounting insights when entering accounting module (only once per session)
+    if (view === 'accounting' && !hasShownAccountingInsights.current) {
+      hasShownAccountingInsights.current = true;
+      
+      // Add a thinking indicator
+      addMessage({
+        role: 'assistant',
+        content: '🔍 Analizando datos de contabilidad...',
+      });
+      
+      try {
+        const insights = await generateAccountingInsights();
+        // Replace the thinking message with actual insights
+        addMessage({
+          role: 'assistant',
+          content: insights,
+        });
+      } catch (error) {
+        console.error('Error generating insights:', error);
+      }
+    }
+  };
 
   if (!isAuthenticated) {
     return <LoginPage />;
@@ -75,7 +106,7 @@ function AppContent() {
     <>
       <div className="flex flex-1 min-h-0 flex-col">
         <div className="flex-1 min-h-0 overflow-y-auto">
-          <MessageList messages={messages} />
+          <MessageList messages={messages} userName={user ? `${user.nombre} ${user.apellido}` : undefined} />
         </div>
         {isLoading && <LoadingIndicator />}
       </div>
@@ -102,25 +133,98 @@ function AppContent() {
   );
 
   return (
-    <SplitLayout
-      mainContent={
-        <MainPanel 
-          orders={orders} 
-          selectedOrderDetails={selectedOrderDetails} 
-          isCreatingOrder={isCreatingOrder}
-          isEditingOrder={isEditingOrder}
-          editingOrderDetails={editingOrderDetails}
-          onCancelCreate={cancelOrderCreation}
-          onExitCreate={exitOrderCreation}
-          onOrderSaved={handleOrderSaved}
-          onOrderSelected={setSelectedOrder}
-          onCancelEdit={cancelOrderEdit}
-          onExitEdit={exitOrderEdit}
-          onOrderUpdated={handleOrderUpdated}
+    <div className="h-screen flex flex-col overflow-hidden">
+      {/* Full-width navigation header */}
+      <div className="flex-shrink-0 flex items-center justify-between px-4 py-3 bg-gradient-to-r from-indigo-600 via-blue-600 to-cyan-500">
+        <div className="flex items-center gap-2">
+          {/* Kanban/Orders - always visible */}
+          <button
+            onClick={() => handleViewChange('kanban')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              activeView === 'kanban'
+                ? 'bg-white text-blue-600 shadow-md'
+                : 'text-white/90 hover:bg-white/20 hover:text-white'
+            }`}
+          >
+            <LayoutGrid className="h-4 w-4" />
+            Trabajos
+          </button>
+          {/* Accounting - only visible if user has permission */}
+          {isLoadingPermissions ? (
+            <div className="flex items-center gap-2 px-4 py-2 text-white/60">
+              <Loader2 className="h-4 w-4 animate-spin" />
+            </div>
+          ) : permissions?.canAccessAccounting && (
+            <button
+              onClick={() => handleViewChange('accounting')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                activeView === 'accounting'
+                  ? 'bg-white text-blue-600 shadow-md'
+                  : 'text-white/90 hover:bg-white/20 hover:text-white'
+              }`}
+            >
+              <TrendingUp className="h-4 w-4" />
+              Contabilidad
+            </button>
+          )}
+          {/* Clients - always visible */}
+          <button
+            onClick={() => handleViewChange('clients')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              activeView === 'clients'
+                ? 'bg-white text-blue-600 shadow-md'
+                : 'text-white/90 hover:bg-white/20 hover:text-white'
+            }`}
+          >
+            <Users className="h-4 w-4" />
+            Clientes
+          </button>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="text-white/80 text-sm hidden sm:block">
+            {user ? `${user.nombre} ${user.apellido}` : 'Usuario'}
+          </span>
+          <img
+            src="https://api.dicebear.com/7.x/avataaars/svg?seed=FastService"
+            alt="User avatar"
+            className="h-8 w-8 rounded-full border-2 border-white/40 bg-white/20"
+          />
+          <button
+            onClick={logout}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-white/90 hover:bg-white/20 hover:text-white transition-all"
+            title="Cerrar sesión"
+          >
+            <LogOut className="h-4 w-4" />
+            <span className="hidden sm:inline">Salir</span>
+          </button>
+        </div>
+      </div>
+      
+      {/* Split content below header */}
+      <div className="flex-1 min-h-0">
+        <SplitLayout
+          mainContent={
+            <MainPanel 
+              orders={orders} 
+              selectedOrderDetails={selectedOrderDetails} 
+              isCreatingOrder={isCreatingOrder}
+              isEditingOrder={isEditingOrder}
+              editingOrderDetails={editingOrderDetails}
+              activeView={activeView}
+              onCancelCreate={cancelOrderCreation}
+              onExitCreate={exitOrderCreation}
+              onOrderSaved={handleOrderSaved}
+              onOrderSelected={setSelectedOrder}
+              onCancelEdit={cancelOrderEdit}
+              onExitEdit={exitOrderEdit}
+              onOrderUpdated={handleOrderUpdated}
+              onViewChange={setActiveView}
+            />
+          }
+          chatPanel={<ChatPanel onClearChat={clearMessages}>{chatPanelContent}</ChatPanel>}
         />
-      }
-      chatPanel={<ChatPanel onClearChat={clearMessages}>{chatPanelContent}</ChatPanel>}
-    />
+      </div>
+    </div>
   );
 }
 
