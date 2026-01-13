@@ -10,10 +10,6 @@ targetScope = 'resourceGroup'
 // Parameters
 // ===========================================================================
 
-@description('Environment name (dev, staging, prod)')
-@allowed(['dev', 'staging', 'prod'])
-param environmentName string = 'dev'
-
 @description('Azure region for resources')
 param location string = resourceGroup().location
 
@@ -29,12 +25,10 @@ param dockerHubImage string
 @description('Existing App Service Plan resource ID')
 param existingAppServicePlanId string
 
-// Database connection (use Key Vault in production)
 @secure()
 @description('SQL Server connection string')
 param sqlConnectionString string
 
-// Azure OpenAI settings
 @secure()
 @description('Azure OpenAI API Key')
 param azureOpenAIApiKey string
@@ -55,32 +49,26 @@ param repositoryBranch string = 'main'
 // Variables
 // ===========================================================================
 
-var resourcePrefix = '${appName}-${environmentName}'
 var tags = {
   Application: appName
-  Environment: environmentName
   ManagedBy: 'Bicep'
 }
-
-// ===========================================================================
-// Using existing App Service Plan and Docker Hub for container registry
-// ===========================================================================
 
 // ===========================================================================
 // Backend Web App (Containerized)
 // ===========================================================================
 
-module backendWebApp 'br/public:avm/res/web/site:0.15.0' = {
-  name: 'backendWebApp'
-  params: {
-    name: '${resourcePrefix}-api'
-    location: location
-    kind: 'app,linux,container'
-    serverFarmResourceId: existingAppServicePlanId
+resource backendWebApp 'Microsoft.Web/sites@2023-12-01' = {
+  name: '${appName}-api'
+  location: location
+  tags: tags
+  kind: 'app,linux,container'
+  identity: {
+    type: 'SystemAssigned'
+  }
+  properties: {
+    serverFarmId: existingAppServicePlanId
     httpsOnly: true
-    managedIdentities: {
-      systemAssigned: true
-    }
     siteConfig: {
       alwaysOn: true
       ftpsState: 'Disabled'
@@ -119,21 +107,10 @@ module backendWebApp 'br/public:avm/res/web/site:0.15.0' = {
         }
         {
           name: 'ASPNETCORE_ENVIRONMENT'
-          value: environmentName == 'prod' ? 'Production' : 'Development'
+          value: 'Production'
         }
       ]
     }
-    basicPublishingCredentialsPolicies: [
-      {
-        name: 'ftp'
-        allow: false
-      }
-      {
-        name: 'scm'
-        allow: true
-      }
-    ]
-    tags: tags
   }
 }
 
@@ -141,12 +118,15 @@ module backendWebApp 'br/public:avm/res/web/site:0.15.0' = {
 // Frontend Static Web App (Free Tier)
 // ===========================================================================
 
-module staticWebApp 'br/public:avm/res/web/static-site:0.7.0' = {
-  name: 'staticWebApp'
-  params: {
-    name: '${resourcePrefix}-swa'
-    location: 'eastus2' // Static Web Apps have limited region availability
-    sku: 'Free'
+resource staticWebApp 'Microsoft.Web/staticSites@2023-12-01' = {
+  name: '${appName}-swa'
+  location: 'eastus2'
+  tags: tags
+  sku: {
+    name: 'Free'
+    tier: 'Free'
+  }
+  properties: {
     repositoryUrl: repositoryUrl
     branch: repositoryBranch
     buildProperties: {
@@ -154,12 +134,17 @@ module staticWebApp 'br/public:avm/res/web/static-site:0.7.0' = {
       outputLocation: 'build'
       skipGithubActionWorkflowGeneration: true
     }
-    appSettings: {
-      REACT_APP_API_URL: 'https://${backendWebApp.outputs.defaultHostname}'
-    }
-    allowConfigFileUpdates: true
     stagingEnvironmentPolicy: 'Enabled'
-    tags: tags
+    allowConfigFileUpdates: true
+  }
+}
+
+// Static Web App - App Settings
+resource staticWebAppSettings 'Microsoft.Web/staticSites/config@2023-12-01' = {
+  parent: staticWebApp
+  name: 'appsettings'
+  properties: {
+    REACT_APP_API_URL: 'https://${backendWebApp.properties.defaultHostName}'
   }
 }
 
@@ -168,13 +153,13 @@ module staticWebApp 'br/public:avm/res/web/static-site:0.7.0' = {
 // ===========================================================================
 
 @description('Backend API URL')
-output backendUrl string = 'https://${backendWebApp.outputs.defaultHostname}'
+output backendUrl string = 'https://${backendWebApp.properties.defaultHostName}'
 
 @description('Backend Web App name')
-output backendWebAppName string = backendWebApp.outputs.name
+output backendWebAppName string = backendWebApp.name
 
 @description('Frontend Static Web App URL')
-output frontendUrl string = staticWebApp.outputs.defaultHostname
+output frontendUrl string = 'https://${staticWebApp.properties.defaultHostname}'
 
 @description('Frontend Static Web App name')
-output staticWebAppName string = staticWebApp.outputs.name
+output staticWebAppName string = staticWebApp.name

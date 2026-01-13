@@ -12,15 +12,6 @@ on:
       - '.github/workflows/infrastructure-deploy.yml'
   workflow_dispatch:
     inputs:
-      environment:
-        description: 'Deployment environment'
-        required: true
-        default: 'dev'
-        type: choice
-        options:
-          - dev
-          - staging
-          - prod
       action:
         description: 'Deployment action'
         required: true
@@ -32,7 +23,6 @@ on:
 
 env:
   AZURE_RESOURCE_GROUP: fastservice-app
-  LOCATION: eastus2
 
 jobs:
   # ---------------------------------------------------------------------------
@@ -61,7 +51,7 @@ jobs:
     name: What-If Analysis
     runs-on: ubuntu-latest
     needs: validate
-    if: github.event.inputs.action == 'what-if' || github.event_name == 'pull_request'
+    if: github.event.inputs.action == 'what-if'
 
     steps:
       - name: Checkout code
@@ -89,12 +79,9 @@ jobs:
     name: Deploy Infrastructure
     runs-on: ubuntu-latest
     needs: validate
-    if: github.event.inputs.action == 'deploy' && github.event_name != 'pull_request'
-    environment:
-      name: ${{ github.event.inputs.environment || 'dev' }}
+    if: github.event.inputs.action == 'deploy'
 
     outputs:
-      acrLoginServer: ${{ steps.deployment.outputs.acrLoginServer }}
       backendUrl: ${{ steps.deployment.outputs.backendUrl }}
       frontendUrl: ${{ steps.deployment.outputs.frontendUrl }}
 

@@ -1,10 +1,9 @@
 using './main.bicep'
 
 // ===========================================================================
-// FastService Infrastructure Parameters - Development Environment
+// FastService Infrastructure Parameters
 // ===========================================================================
 
-param environmentName = 'dev'
 param location = 'eastus2'
 param appName = 'fastservice'
 param imageTag = 'latest'
@@ -16,7 +15,7 @@ param dockerHubImage = 'yourusername/fastservice-api'
 param existingAppServicePlanId = '/subscriptions/05502140-2c2f-45e5-85dc-477c35e7a985/resourceGroups/fastservice-app/providers/Microsoft.Web/serverFarms/basic-serviceplan'
 
 // GitHub repository (optional - needed for SWA GitHub integration)
-param repositoryUrl = 'https://github.com/YOUR_ORG/FastServiceAgentic'
+param repositoryUrl = 'https://github.com/lopezleandro03/FastServiceAgentic'
 param repositoryBranch = 'main'
 
 // Azure OpenAI Configuration
@@ -25,9 +24,6 @@ param azureOpenAIDeploymentName = 'gpt-5-nano'
 
 // ===========================================================================
 // Secrets - Override these during deployment
-// Do NOT commit actual values to source control
 // ===========================================================================
-
-// Use: az deployment group create ... --parameters sqlConnectionString='<actual-value>' azureOpenAIApiKey='<actual-value>'
-param sqlConnectionString = '' // Required - pass securely at deployment time
-param azureOpenAIApiKey = ''   // Required - pass securely at deployment time
+param sqlConnectionString = ''
+param azureOpenAIApiKey = ''
