@@ -63,5 +63,6 @@ Thumbs.db
 
 # Local secrets - do not commit
 appsettings.json
+appsettings.Local.json
 Specs/AZUREOPENAICONFIG.MD
 Specs/DATABASECONFIG.MD
