@@ -22,9 +22,6 @@ param imageTag string = 'latest'
 @description('Docker Hub image name (e.g., username/fastservice-api)')
 param dockerHubImage string
 
-@description('Existing App Service Plan resource ID')
-param existingAppServicePlanId string
-
 @secure()
 @description('SQL Server connection string')
 param sqlConnectionString string
@@ -49,9 +46,29 @@ param repositoryBranch string = 'main'
 // Variables
 // ===========================================================================
 
+var uniqueSuffix = uniqueString(resourceGroup().id)
 var tags = {
   Application: appName
   ManagedBy: 'Bicep'
+}
+
+// ===========================================================================
+// App Service Plan (Linux B1 with Always On)
+// ===========================================================================
+
+resource appServicePlan 'Microsoft.Web/serverfarms@2023-12-01' = {
+  name: '${appName}-plan-${uniqueSuffix}'
+  location: location
+  tags: tags
+  kind: 'linux'
+  sku: {
+    name: 'B1'
+    tier: 'Basic'
+    capacity: 1
+  }
+  properties: {
+    reserved: true // Required for Linux
+  }
 }
 
 // ===========================================================================
@@ -59,7 +76,7 @@ var tags = {
 // ===========================================================================
 
 resource backendWebApp 'Microsoft.Web/sites@2023-12-01' = {
-  name: '${appName}-api'
+  name: '${appName}-api-${uniqueSuffix}'
   location: location
   tags: tags
   kind: 'app,linux,container'
@@ -67,7 +84,7 @@ resource backendWebApp 'Microsoft.Web/sites@2023-12-01' = {
     type: 'SystemAssigned'
   }
   properties: {
-    serverFarmId: existingAppServicePlanId
+    serverFarmId: appServicePlan.id
     httpsOnly: true
     siteConfig: {
       alwaysOn: true
@@ -119,7 +136,7 @@ resource backendWebApp 'Microsoft.Web/sites@2023-12-01' = {
 // ===========================================================================
 
 resource staticWebApp 'Microsoft.Web/staticSites@2023-12-01' = {
-  name: '${appName}-swa'
+  name: '${appName}-swa-${uniqueSuffix}'
   location: 'eastus2'
   tags: tags
   sku: {

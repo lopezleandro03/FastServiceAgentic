@@ -11,7 +11,7 @@ import { LoadingIndicator } from './components/ChatPanel/LoadingIndicator';
 import { useChat } from './hooks/useChat';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import LoginPage from './components/Login/LoginPage';
-import { LayoutGrid, TrendingUp, LogOut, Loader2, Users } from 'lucide-react';
+import { LayoutGrid, TrendingUp, LogOut, Loader2, Users, Search } from 'lucide-react';
 import { generateAccountingInsights } from './services/accountingService';
 
 function AppContent() {
@@ -178,6 +178,18 @@ function AppContent() {
           >
             <Users className="h-4 w-4" />
             Clientes
+          </button>
+          {/* Advanced Search - always visible */}
+          <button
+            onClick={() => handleViewChange('search')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              activeView === 'search'
+                ? 'bg-white text-blue-600 shadow-md'
+                : 'text-white/90 hover:bg-white/20 hover:text-white'
+            }`}
+          >
+            <Search className="h-4 w-4" />
+            Búsqueda
           </button>
         </div>
         <div className="flex items-center gap-3">

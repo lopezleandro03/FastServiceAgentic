@@ -4,9 +4,11 @@ export interface OrderSearchCriteria {
   dni?: string;
   technicianName?: string;
   status?: string;
+  statuses?: string[];
   brand?: string;
   deviceType?: string;
   serialNumber?: string;
+  model?: string;
   fromDate?: string;
   toDate?: string;
   maxResults?: number;
@@ -16,6 +18,7 @@ export interface OrderSummary {
   orderNumber: number;
   customerName: string;
   deviceInfo: string;
+  model?: string;
   status: string;
   entryDate: string;
   estimatedDeliveryDate?: string;

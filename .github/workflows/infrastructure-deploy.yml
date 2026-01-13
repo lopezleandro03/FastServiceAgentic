@@ -71,7 +71,6 @@ jobs:
               sqlConnectionString='${{ secrets.SQL_CONNECTION_STRING }}' \
               azureOpenAIApiKey='${{ secrets.AZURE_OPENAI_API_KEY }}' \
               dockerHubImage='${{ secrets.DOCKERHUB_USERNAME }}/fastservice-api' \
-              existingAppServicePlanId='/subscriptions/05502140-2c2f-45e5-85dc-477c35e7a985/resourceGroups/fastservice-app/providers/Microsoft.Web/serverFarms/basic-serviceplan' \
               repositoryUrl='${{ github.server_url }}/${{ github.repository }}'
 
   # ---------------------------------------------------------------------------
@@ -106,7 +105,6 @@ jobs:
               sqlConnectionString='${{ secrets.SQL_CONNECTION_STRING }}' \
               azureOpenAIApiKey='${{ secrets.AZURE_OPENAI_API_KEY }}' \
               dockerHubImage='${{ secrets.DOCKERHUB_USERNAME }}/fastservice-api' \
-              existingAppServicePlanId='/subscriptions/05502140-2c2f-45e5-85dc-477c35e7a985/resourceGroups/fastservice-app/providers/Microsoft.Web/serverFarms/basic-serviceplan' \
               repositoryUrl='${{ github.server_url }}/${{ github.repository }}' \
             --query 'properties.outputs' -o json)
           

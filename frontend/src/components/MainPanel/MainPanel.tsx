@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { OrderSummary, OrderDetails } from '../../types/order';
-import { OrderList, OrderDetailsView, OrderCreateView } from '../Orders';
+import { OrderList, OrderDetailsView, OrderCreateView, OrderAdvancedSearch } from '../Orders';
 import { KanbanBoard } from '../Kanban';
 import { AccountingDashboard } from '../Accounting';
 import { ClientsModule } from '../Clients';
 import { LoadingSpinner } from '../ui/loading-spinner';
 
-export type MainView = 'kanban' | 'orders' | 'accounting' | 'clients';
+export type MainView = 'kanban' | 'orders' | 'accounting' | 'clients' | 'search';
 
 interface MainPanelProps {
   orders?: OrderSummary[];
@@ -46,8 +46,9 @@ const MainPanel: React.FC<MainPanelProps> = ({
   const [isTransitioning, setIsTransitioning] = useState(false);
 
   // When selectedOrderDetails changes from chat, update the view with visual feedback
+  // But not when in search view - that handles its own order details
   useEffect(() => {
-    if (selectedOrderDetails) {
+    if (selectedOrderDetails && activeView !== 'search') {
       // If we're already viewing an order, show a brief transition
       if (viewingOrderDetails && viewingOrderDetails.orderNumber !== selectedOrderDetails.orderNumber) {
         setIsTransitioning(true);
@@ -60,7 +61,7 @@ const MainPanel: React.FC<MainPanelProps> = ({
         setViewingOrderDetails(selectedOrderDetails);
       }
     }
-  }, [selectedOrderDetails]);
+  }, [selectedOrderDetails, activeView]);
 
   // When activeView changes to a non-orders view, clear order details
   useEffect(() => {
@@ -187,7 +188,8 @@ const MainPanel: React.FC<MainPanelProps> = ({
   const isShowingOrderDetails = Boolean(viewingOrderDetails);
   let mainBodyContent: React.ReactNode;
 
-  // Priority: Edit mode > Create mode > Order details > Order list > Accounting > Kanban
+  // Priority: Edit mode > Create mode > Search view > Order details > Order list > Accounting > Clients > Kanban
+  // Note: Search view handles its own order details internally
   if (isEditingOrder && editingOrderDetails) {
     mainBodyContent = (
       <div className="p-4">
@@ -213,6 +215,13 @@ const MainPanel: React.FC<MainPanelProps> = ({
     mainBodyContent = (
       <div className="p-4">
         <LoadingSpinner size="md" message="Cargando orden..." />
+      </div>
+    );
+  } else if (activeView === 'search') {
+    // Show Advanced Search view (handles its own order details internally)
+    mainBodyContent = (
+      <div className="h-full min-w-0 overflow-hidden p-4">
+        <OrderAdvancedSearch onOrderSelected={onOrderSelected} />
       </div>
     );
   } else if (isShowingOrderDetails && viewingOrderDetails) {

@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Mvc;
 using FastService.McpServer.Data;
 using FastService.McpServer.Data.Entities;
 using FastService.McpServer.Services;
@@ -180,6 +181,61 @@ app.MapPost("/api/chat", async (ChatRequest request, AgentService agentService) 
         return Results.Problem(detail: ex.Message, statusCode: 500);
     }
 }).WithName("Chat").WithOpenApi();
+
+// Advanced order search endpoint
+app.MapGet("/api/orders/search", async (
+    int? orderNumber,
+    string? customerName,
+    string? dni,
+    string? status,
+    [FromQuery(Name = "statuses")] string[]? statuses,
+    string? brand,
+    string? deviceType,
+    string? model,
+    DateTime? fromDate,
+    DateTime? toDate,
+    int? maxResults,
+    OrderService orderService) =>
+{
+    try
+    {
+        var criteria = new OrderSearchCriteria
+        {
+            OrderNumber = orderNumber,
+            CustomerName = customerName,
+            DNI = dni,
+            Status = status,
+            Statuses = statuses?.ToList(),
+            Brand = brand,
+            DeviceType = deviceType,
+            Model = model,
+            FromDate = fromDate,
+            ToDate = toDate,
+            MaxResults = maxResults ?? 50
+        };
+        
+        var orders = await orderService.SearchOrdersAsync(criteria);
+        return Results.Ok(orders);
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(detail: ex.Message, statusCode: 500);
+    }
+}).WithName("SearchOrders").WithOpenApi();
+
+// Get all repair statuses endpoint
+app.MapGet("/api/statuses", async (OrderService orderService) =>
+{
+    try
+    {
+        var statuses = await orderService.GetAllStatusesAsync();
+        return Results.Ok(statuses);
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(detail: ex.Message, statusCode: 500);
+    }
+}).WithName("GetAllStatuses").WithOpenApi();
 
 // Order details endpoint
 app.MapGet("/api/orders/{orderNumber:int}", async (int orderNumber, OrderService orderService) =>

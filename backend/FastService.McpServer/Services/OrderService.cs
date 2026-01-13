@@ -79,6 +79,7 @@ namespace FastService.McpServer.Services
                     .Include(r => r.Marca)
                     .Include(r => r.TipoDispositivo)
                     .Include(r => r.TecnicoAsignado)
+                    .Include(r => r.ReparacionDetalle)
                     .AsQueryable();
 
                 // Apply filters
@@ -108,6 +109,13 @@ namespace FastService.McpServer.Services
                     query = query.Where(r => r.EstadoReparacion!.Nombre.ToLower().Contains(criteria.Status.ToLower()));
                 }
 
+                // Handle multiple statuses
+                if (criteria.Statuses != null && criteria.Statuses.Count > 0)
+                {
+                    var statusList = criteria.Statuses.Select(s => s.ToLower()).ToList();
+                    query = query.Where(r => statusList.Contains(r.EstadoReparacion!.Nombre.ToLower()));
+                }
+
                 if (!string.IsNullOrWhiteSpace(criteria.Brand))
                 {
                     query = query.Where(r => r.Marca!.Nombre.ToLower().Contains(criteria.Brand.ToLower()));
@@ -116,6 +124,43 @@ namespace FastService.McpServer.Services
                 if (!string.IsNullOrWhiteSpace(criteria.DeviceType))
                 {
                     query = query.Where(r => r.TipoDispositivo!.Nombre.ToLower().Contains(criteria.DeviceType.ToLower()));
+                }
+
+                if (!string.IsNullOrWhiteSpace(criteria.Model))
+                {
+                    var modelSearch = criteria.Model.Trim();
+                    var startsWithWildcard = modelSearch.StartsWith("*");
+                    var endsWithWildcard = modelSearch.EndsWith("*");
+                    var searchTerm = modelSearch.Trim('*').ToLower();
+                    
+                    if (startsWithWildcard && endsWithWildcard)
+                    {
+                        // *term* - contains
+                        query = query.Where(r => r.ReparacionDetalle != null && 
+                            r.ReparacionDetalle.Modelo != null &&
+                            r.ReparacionDetalle.Modelo.ToLower().Contains(searchTerm));
+                    }
+                    else if (startsWithWildcard)
+                    {
+                        // *term - ends with
+                        query = query.Where(r => r.ReparacionDetalle != null && 
+                            r.ReparacionDetalle.Modelo != null &&
+                            r.ReparacionDetalle.Modelo.ToLower().EndsWith(searchTerm));
+                    }
+                    else if (endsWithWildcard)
+                    {
+                        // term* - starts with
+                        query = query.Where(r => r.ReparacionDetalle != null && 
+                            r.ReparacionDetalle.Modelo != null &&
+                            r.ReparacionDetalle.Modelo.ToLower().StartsWith(searchTerm));
+                    }
+                    else
+                    {
+                        // no wildcard - default to contains for flexibility
+                        query = query.Where(r => r.ReparacionDetalle != null && 
+                            r.ReparacionDetalle.Modelo != null &&
+                            r.ReparacionDetalle.Modelo.ToLower().Contains(searchTerm));
+                    }
                 }
 
                 if (criteria.FromDate.HasValue)
@@ -137,6 +182,7 @@ namespace FastService.McpServer.Services
                         OrderNumber = r.ReparacionId,
                         CustomerName = $"{r.Cliente!.Nombre} {r.Cliente.Apellido}",
                         DeviceInfo = $"{r.Marca!.Nombre} {r.TipoDispositivo!.Nombre}",
+                        Model = r.ReparacionDetalle != null ? r.ReparacionDetalle.Modelo : null,
                         Status = r.EstadoReparacion!.Nombre,
                         EntryDate = r.CreadoEn,
                         EstimatedDeliveryDate = r.FechaEntrega,

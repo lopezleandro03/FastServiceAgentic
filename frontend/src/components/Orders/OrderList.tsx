@@ -162,6 +162,7 @@ const OrderList: React.FC<OrderListProps> = ({
                 </div>
               </TableHead>
               <TableHead>Dispositivo</TableHead>
+              <TableHead>Modelo</TableHead>
               <TableHead
                 className="cursor-pointer hover:bg-muted/50"
                 onClick={() => handleSort('status')}
@@ -199,6 +200,9 @@ const OrderList: React.FC<OrderListProps> = ({
                 <TableCell>{order.customerName}</TableCell>
                 <TableCell className="text-muted-foreground">
                   {order.deviceInfo}
+                </TableCell>
+                <TableCell className="text-muted-foreground">
+                  {order.model || '-'}
                 </TableCell>
                 <TableCell>
                   <StatusBadge status={order.status} />
