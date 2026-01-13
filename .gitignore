@@ -60,3 +60,8 @@ Thumbs.db
 # Environment variables (keep template, ignore actual values)
 .env.local
 *.env.local
+
+# Local secrets - do not commit
+appsettings.json
+Specs/AZUREOPENAICONFIG.MD
+Specs/DATABASECONFIG.MD
