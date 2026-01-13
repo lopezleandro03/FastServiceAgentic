@@ -67,10 +67,12 @@ jobs:
           az deployment group what-if \
             --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
             --template-file infra/main.bicep \
-            --parameters infra/main.bicepparam \
-            --parameters sqlConnectionString='${{ secrets.SQL_CONNECTION_STRING }}' \
-            --parameters azureOpenAIApiKey='${{ secrets.AZURE_OPENAI_API_KEY }}' \
-            --parameters dockerHubImage='${{ secrets.DOCKERHUB_USERNAME }}/fastservice-api'
+            --parameters \
+              sqlConnectionString='${{ secrets.SQL_CONNECTION_STRING }}' \
+              azureOpenAIApiKey='${{ secrets.AZURE_OPENAI_API_KEY }}' \
+              dockerHubImage='${{ secrets.DOCKERHUB_USERNAME }}/fastservice-api' \
+              existingAppServicePlanId='/subscriptions/05502140-2c2f-45e5-85dc-477c35e7a985/resourceGroups/fastservice-app/providers/Microsoft.Web/serverFarms/basic-serviceplan' \
+              repositoryUrl='${{ github.server_url }}/${{ github.repository }}'
 
   # ---------------------------------------------------------------------------
   # Deploy Infrastructure
@@ -100,11 +102,12 @@ jobs:
           result=$(az deployment group create \
             --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
             --template-file infra/main.bicep \
-            --parameters infra/main.bicepparam \
-            --parameters sqlConnectionString='${{ secrets.SQL_CONNECTION_STRING }}' \
-            --parameters azureOpenAIApiKey='${{ secrets.AZURE_OPENAI_API_KEY }}' \
-            --parameters dockerHubImage='${{ secrets.DOCKERHUB_USERNAME }}/fastservice-api' \
-            --parameters repositoryUrl='${{ github.server_url }}/${{ github.repository }}' \
+            --parameters \
+              sqlConnectionString='${{ secrets.SQL_CONNECTION_STRING }}' \
+              azureOpenAIApiKey='${{ secrets.AZURE_OPENAI_API_KEY }}' \
+              dockerHubImage='${{ secrets.DOCKERHUB_USERNAME }}/fastservice-api' \
+              existingAppServicePlanId='/subscriptions/05502140-2c2f-45e5-85dc-477c35e7a985/resourceGroups/fastservice-app/providers/Microsoft.Web/serverFarms/basic-serviceplan' \
+              repositoryUrl='${{ github.server_url }}/${{ github.repository }}' \
             --query 'properties.outputs' -o json)
           
           echo "backendUrl=$(echo $result | jq -r '.backendUrl.value')" >> $GITHUB_OUTPUT
