@@ -2,8 +2,10 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import App from './App';
 
-test('renders learn react link', () => {
+test('renders login page', () => {
   render(<App />);
-  const linkElement = screen.getByText(/learn react/i);
-  expect(linkElement).toBeInTheDocument();
+  const titleElement = screen.getByRole('heading', { name: /FastService/i });
+  expect(titleElement).toBeInTheDocument();
+  const loginButton = screen.getByRole('button', { name: /ingresar/i });
+  expect(loginButton).toBeInTheDocument();
 });
