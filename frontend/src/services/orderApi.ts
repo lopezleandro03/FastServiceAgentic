@@ -2,7 +2,7 @@
 import { KanbanBoardData, KanbanFilters, UserInfo, BusinessInfo } from '../types/kanban';
 import { OrderDetails, OrderSearchCriteria, OrderSummary, OrderStatus } from '../types/order';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5207';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080';
 
 /**
  * Search orders with advanced criteria
