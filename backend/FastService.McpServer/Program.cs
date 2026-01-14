@@ -23,6 +23,7 @@ builder.Services.AddScoped<OrderService>();
 builder.Services.AddScoped<OrderSearchTools>();
 builder.Services.AddScoped<CustomerTools>();
 builder.Services.AddScoped<AccountingTools>();
+builder.Services.AddScoped<OrderUpdateTools>();
 builder.Services.AddScoped<AgentService>();
 builder.Services.AddScoped<AccountingService>();
 builder.Services.AddScoped<ClientService>();
@@ -185,7 +186,7 @@ app.MapPost("/api/chat", async (ChatRequest request, AgentService agentService) 
 {
     try
     {
-        var response = await agentService.GetResponseAsync(request.Message, request.ConversationHistory, request.CanAccessAccounting);
+        var response = await agentService.GetResponseAsync(request.Message, request.ConversationHistory, request.CanAccessAccounting, request.SelectedOrder);
         return Results.Ok(new ChatResponse(response));
     }
     catch (Exception ex)
@@ -772,7 +773,7 @@ app.MapPost("/api/admin/update-password", async (UpdatePasswordRequest request, 
 app.Run();
 
 record UpdatePasswordRequest(string UserName, string NewPassword);
-record ChatRequest(string Message, List<ConversationMessage>? ConversationHistory = null, bool CanAccessAccounting = false);
+record ChatRequest(string Message, List<ConversationMessage>? ConversationHistory = null, bool CanAccessAccounting = false, SelectedOrderContext? SelectedOrder = null);
 record ChatResponse(string Message);
 record UserInfoDto(int Id, string Name);
 record BusinessInfoDto(int Id, string Name);

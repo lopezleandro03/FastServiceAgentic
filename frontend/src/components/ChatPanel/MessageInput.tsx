@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '../ui/button';
 import { Textarea } from '../ui/textarea';
 
@@ -10,6 +10,16 @@ interface MessageInputProps {
 
 const MessageInput: React.FC<MessageInputProps> = ({ onSendMessage, disabled = false, placeholder }) => {
   const [message, setMessage] = useState('');
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const wasDisabled = useRef(disabled);
+
+  // Focus the textarea when loading completes (disabled goes from true to false)
+  useEffect(() => {
+    if (wasDisabled.current && !disabled) {
+      textareaRef.current?.focus();
+    }
+    wasDisabled.current = disabled;
+  }, [disabled]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,10 +48,11 @@ const MessageInput: React.FC<MessageInputProps> = ({ onSendMessage, disabled = f
       <div className="rounded-2xl bg-white/95 shadow-2xl shadow-slate-900/10 p-3">
         <div className="flex gap-3">
           <Textarea
+            ref={textareaRef}
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             onKeyDown={handleKeyPress}
-            placeholder={placeholder || "Escribí tu consulta... (Tip: #128001 para búsqueda rápida)"}
+            placeholder={placeholder || "#128001 → búsqueda rápida | o preguntá lo que necesites..."}
             disabled={disabled}
             className="flex-1 resize-none border-none bg-transparent text-slate-900 placeholder-slate-400 focus-visible:ring-0"
             rows={2}

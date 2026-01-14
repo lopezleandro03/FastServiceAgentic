@@ -1150,7 +1150,19 @@ export const useChat = (options: UseChatOptions = {}): UseChatReturn => {
             role: msg.role,
             content: msg.content
           })),
-          canAccessAccounting
+          canAccessAccounting,
+          selectedOrder: selectedOrderDetails ? {
+            orderNumber: selectedOrderDetails.orderNumber,
+            customerName: selectedOrderDetails.customer?.fullName,
+            phone: selectedOrderDetails.customer?.phone,
+            email: selectedOrderDetails.customer?.email,
+            address: selectedOrderDetails.customer?.address,
+            deviceBrand: selectedOrderDetails.device?.brand,
+            deviceType: selectedOrderDetails.device?.deviceType,
+            deviceModel: selectedOrderDetails.device?.model,
+            status: selectedOrderDetails.status,
+            presupuesto: selectedOrderDetails.presupuesto
+          } : null
         }),
       });
 

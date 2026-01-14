@@ -54,7 +54,7 @@ Escribe tu búsqueda en el campo de texto de abajo.`
           title="Buscar orden (usa #número para búsqueda rápida)"
         >
           <Search className="w-4 h-4" />
-          <span>#Buscar</span>
+          <span>Buscar orden</span>
         </button>
       </div>
     </div>

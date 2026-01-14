@@ -18,6 +18,7 @@ namespace FastService.McpServer.Services
         private readonly OrderSearchTools _orderSearchTools;
         private readonly CustomerTools _customerTools;
         private readonly AccountingTools _accountingTools;
+        private readonly OrderUpdateTools _orderUpdateTools;
         private readonly ILogger<AgentService> _logger;
         private readonly List<ChatTool> _tools;
 
@@ -26,12 +27,14 @@ namespace FastService.McpServer.Services
             OrderSearchTools orderSearchTools,
             CustomerTools customerTools,
             AccountingTools accountingTools,
+            OrderUpdateTools orderUpdateTools,
             ILogger<AgentService> logger)
         {
             _logger = logger;
             _orderSearchTools = orderSearchTools;
             _customerTools = customerTools;
             _accountingTools = accountingTools;
+            _orderUpdateTools = orderUpdateTools;
 
             var endpoint = configuration["AzureOpenAI:Endpoint"] ?? throw new InvalidOperationException("AzureOpenAI:Endpoint not configured");
             var apiKey = configuration["AzureOpenAI:ApiKey"] ?? throw new InvalidOperationException("AzureOpenAI:ApiKey not configured");
@@ -326,17 +329,111 @@ namespace FastService.McpServer.Services
                         }
                     }
                     """)
+                ),
+
+                // === ORDER UPDATE TOOLS ===
+                ChatTool.CreateFunctionTool(
+                    functionName: "UpdateOrderField",
+                    functionDescription: "Update a specific field of an existing order. Use when the user wants to modify a single field like phone, email, address, model, etc. Supported fields: telefono, telefono2, email, direccion, localidad, modelo, serie, accesorios, ubicacion, presupuesto, precio.",
+                    functionParameters: BinaryData.FromString("""
+                    {
+                        "type": "object",
+                        "properties": {
+                            "orderNumber": {
+                                "type": "integer",
+                                "description": "Order number to update"
+                            },
+                            "field": {
+                                "type": "string",
+                                "description": "Field to update: telefono, telefono2, email, direccion, localidad, modelo, serie, accesorios, ubicacion, presupuesto, precio"
+                            },
+                            "newValue": {
+                                "type": "string",
+                                "description": "New value for the field"
+                            }
+                        },
+                        "required": ["orderNumber", "field", "newValue"]
+                    }
+                    """)
+                ),
+                ChatTool.CreateFunctionTool(
+                    functionName: "UpdateCustomerInfo",
+                    functionDescription: "Update multiple customer contact fields at once for an order.",
+                    functionParameters: BinaryData.FromString("""
+                    {
+                        "type": "object",
+                        "properties": {
+                            "orderNumber": {
+                                "type": "integer",
+                                "description": "Order number"
+                            },
+                            "telefono": {
+                                "type": "string",
+                                "description": "Primary phone number"
+                            },
+                            "telefono2": {
+                                "type": "string",
+                                "description": "Secondary phone number"
+                            },
+                            "email": {
+                                "type": "string",
+                                "description": "Email address"
+                            },
+                            "direccion": {
+                                "type": "string",
+                                "description": "Address"
+                            },
+                            "localidad": {
+                                "type": "string",
+                                "description": "City/locality"
+                            }
+                        },
+                        "required": ["orderNumber"]
+                    }
+                    """)
+                ),
+                ChatTool.CreateFunctionTool(
+                    functionName: "UpdateDeviceInfo",
+                    functionDescription: "Update device/equipment information for an order.",
+                    functionParameters: BinaryData.FromString("""
+                    {
+                        "type": "object",
+                        "properties": {
+                            "orderNumber": {
+                                "type": "integer",
+                                "description": "Order number"
+                            },
+                            "modelo": {
+                                "type": "string",
+                                "description": "Device model"
+                            },
+                            "serie": {
+                                "type": "string",
+                                "description": "Serial number"
+                            },
+                            "ubicacion": {
+                                "type": "string",
+                                "description": "Location/shelf"
+                            },
+                            "accesorios": {
+                                "type": "string",
+                                "description": "Accessories"
+                            }
+                        },
+                        "required": ["orderNumber"]
+                    }
+                    """)
                 )
             };
         }
 
-        public async Task<string> GetResponseAsync(string userMessage, List<ConversationMessage>? conversationHistory = null, bool canAccessAccounting = false)
+        public async Task<string> GetResponseAsync(string userMessage, List<ConversationMessage>? conversationHistory = null, bool canAccessAccounting = false, SelectedOrderContext? selectedOrder = null)
         {
             try
             {
                 var messages = new List<ChatMessage>
                 {
-                    new SystemChatMessage(GetSystemPrompt(canAccessAccounting))
+                    new SystemChatMessage(GetSystemPrompt(canAccessAccounting, selectedOrder))
                 };
 
                 // Add conversation history if provided
@@ -485,6 +582,27 @@ namespace FastService.McpServer.Services
                     "GetRecentSales" => await _accountingTools.GetRecentSalesAsync(
                         args.RootElement.TryGetProperty("count", out var count) ? count.GetInt32() : 20,
                         args.RootElement.TryGetProperty("invoiced", out var invoiced) ? invoiced.GetBoolean() : null),
+
+                    // Order Update Tools
+                    "UpdateOrderField" => await _orderUpdateTools.UpdateOrderFieldAsync(
+                        args.RootElement.GetProperty("orderNumber").GetInt32(),
+                        args.RootElement.GetProperty("field").GetString()!,
+                        args.RootElement.GetProperty("newValue").GetString()!),
+                    
+                    "UpdateCustomerInfo" => await _orderUpdateTools.UpdateCustomerInfoAsync(
+                        args.RootElement.GetProperty("orderNumber").GetInt32(),
+                        args.RootElement.TryGetProperty("telefono", out var tel) ? tel.GetString() : null,
+                        args.RootElement.TryGetProperty("telefono2", out var tel2) ? tel2.GetString() : null,
+                        args.RootElement.TryGetProperty("email", out var email) ? email.GetString() : null,
+                        args.RootElement.TryGetProperty("direccion", out var dir) ? dir.GetString() : null,
+                        args.RootElement.TryGetProperty("localidad", out var loc) ? loc.GetString() : null),
+                    
+                    "UpdateDeviceInfo" => await _orderUpdateTools.UpdateDeviceInfoAsync(
+                        args.RootElement.GetProperty("orderNumber").GetInt32(),
+                        args.RootElement.TryGetProperty("modelo", out var modelo) ? modelo.GetString() : null,
+                        args.RootElement.TryGetProperty("serie", out var serie) ? serie.GetString() : null,
+                        args.RootElement.TryGetProperty("ubicacion", out var ubic) ? ubic.GetString() : null,
+                        args.RootElement.TryGetProperty("accesorios", out var acc) ? acc.GetString() : null),
                     
                     _ => JsonSerializer.Serialize(new { success = false, message = $"Unknown function: {functionName}" })
                 };
@@ -503,7 +621,7 @@ namespace FastService.McpServer.Services
         /// <summary>
         /// Returns the system prompt that defines the AI assistant's behavior.
         /// </summary>
-        private static string GetSystemPrompt(bool canAccessAccounting = false)
+        private static string GetSystemPrompt(bool canAccessAccounting = false, SelectedOrderContext? selectedOrder = null)
         {
             var accountingSection = canAccessAccounting 
                 ? @"
@@ -517,7 +635,28 @@ namespace FastService.McpServer.Services
 NO tenés acceso al módulo de contabilidad. Si el usuario pregunta sobre ventas, facturación o datos contables, respondé:
 ""No tenés permisos para acceder a la información de contabilidad. Por favor, contactá a un administrador si necesitás acceso.""";
 
+            var selectedOrderSection = selectedOrder != null
+                ? $@"
+
+=== ORDEN ACTUALMENTE SELECCIONADA ===
+El usuario tiene seleccionada la siguiente orden. Usá esta información como contexto para cualquier operación.
+Cuando el usuario diga ""actualiza teléfono"" o similar sin especificar número de orden, usá esta orden.
+
+**Número de Orden:** #{selectedOrder.OrderNumber}
+**Cliente:** {selectedOrder.CustomerName}
+**Teléfono:** {selectedOrder.Phone ?? "No registrado"}
+**Email:** {selectedOrder.Email ?? "No registrado"}
+**Dirección:** {selectedOrder.Address ?? "No registrada"}
+**Equipo:** {selectedOrder.DeviceBrand} {selectedOrder.DeviceType} - {selectedOrder.DeviceModel}
+**Estado:** {selectedOrder.Status}
+**Presupuesto:** ${selectedOrder.Presupuesto?.ToString("N2") ?? "0"}
+
+Para actualizar campos de esta orden, usá el orderNumber: {selectedOrder.OrderNumber}
+"
+                : "";
+
             return $@"Eres un asistente virtual especializado para FastService, un sistema de gestión de taller de reparaciones electrónicas.
+{selectedOrderSection}
 
 === ROL Y LÍMITES ===
 Tu ÚNICO objetivo es ayudar con tareas relacionadas al servicio técnico electrónico:
@@ -546,6 +685,11 @@ Ejemplo: ""#107037"" → Buscar la orden 107037 automáticamente.
 - SearchOrdersByDNI: Buscar órdenes por DNI del cliente
 - SearchOrdersByDevice: Buscar órdenes por marca y/o tipo de dispositivo
 - GetAllStatuses: Listar todos los estados de reparación
+
+**Actualización de Órdenes:**
+- UpdateOrderField: Actualizar un campo específico de una orden (telefono, email, direccion, modelo, etc.)
+- UpdateCustomerInfo: Actualizar múltiples datos del cliente de una orden
+- UpdateDeviceInfo: Actualizar información del dispositivo de una orden
 
 **Clientes:**
 - SearchCustomerByName: Buscar clientes por nombre
