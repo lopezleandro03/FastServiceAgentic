@@ -44,10 +44,10 @@ export const useChat = (): UseChatReturn => {
   const [isEditingOrder, setIsEditingOrder] = useState(false);
   const [editingOrderDetails, setEditingOrderDetails] = useState<OrderDetails | null>(null);
   const [pendingNotaOrderNumber, setPendingNotaOrderNumber] = useState<number | null>(null);
-  const [pendingRetiraOrderNumber, setPendingRetiraOrderNumber] = useState<number | null>(null);
-  const [retiraStep, setRetiraStep] = useState<'monto' | 'metodo' | null>(null);
-  const [retiraMonto, setRetiraMonto] = useState<number | null>(null);
-  const [paymentMethods, setPaymentMethods] = useState<{ id: number; nombre: string }[]>([]);
+  const [pendingRetiraOrderNumber, _setPendingRetiraOrderNumber] = useState<number | null>(null);
+  const [retiraStep, _setRetiraStep] = useState<'monto' | 'metodo' | null>(null);
+  const [retiraMonto, _setRetiraMonto] = useState<number | null>(null);
+  const [paymentMethods, _setPaymentMethods] = useState<{ id: number; nombre: string }[]>([]);
 
   const extractOrdersFromMessage = (message: string): OrderSummary[] => {
     // Try to extract JSON from the message

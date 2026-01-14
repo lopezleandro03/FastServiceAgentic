@@ -176,6 +176,7 @@ export function useAccounting(): UseAccountingReturn {
       setIsLoading(false);
     };
     loadInitial();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Load chart when period, year, or month changes
@@ -201,6 +202,7 @@ export function useAccounting(): UseAccountingReturn {
     
     setIsLoading(true);
     loadMovements(updatedFilter).finally(() => setIsLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timePreset, selectedYear, selectedMonth]);
 
   // Handle period change - sync time filters with chart period

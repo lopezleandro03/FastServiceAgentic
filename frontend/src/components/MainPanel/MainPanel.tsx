@@ -61,7 +61,7 @@ const MainPanel: React.FC<MainPanelProps> = ({
         setViewingOrderDetails(selectedOrderDetails);
       }
     }
-  }, [selectedOrderDetails, activeView]);
+  }, [selectedOrderDetails, activeView, viewingOrderDetails]);
 
   // When activeView changes to a non-orders view, clear order details
   useEffect(() => {
