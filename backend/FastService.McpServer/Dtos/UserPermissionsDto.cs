@@ -38,4 +38,14 @@ public class UserPermissionsResponse
     public bool CanAccessAccounting { get; set; }
     public bool CanAccessOrders { get; set; }
     public bool CanAccessKanban { get; set; }
+    
+    /// <summary>
+    /// Role-based action permissions
+    /// IsManager: Gerente (1) - sees all actions with collapsible groups
+    /// IsAdmin: FastServiceAdmin (3), Gerente (1), ElectroShopAdmin (2)
+    /// IsTecnico: Tecnico (4)
+    /// </summary>
+    public bool IsManager { get; set; }
+    public bool IsAdmin { get; set; }
+    public bool IsTecnico { get; set; }
 }

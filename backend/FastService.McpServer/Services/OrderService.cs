@@ -367,7 +367,7 @@ namespace FastService.McpServer.Services
 
         /// <summary>
         /// Get Kanban board data with orders grouped by repair status.
-        /// Returns 6 fixed columns: INGRESADO, PRESUPUESTADO, ESP_REPUESTO, A_REPARAR, REPARADO, RECHAZADO
+        /// Returns 7 fixed columns: INGRESADO, PRESUPUESTADO, ESP_REPUESTO, A_REPARAR, REPARADO, RECHAZADO (técnico), RECHAZO_PRESUP (cliente)
         /// </summary>
         public async Task<KanbanBoardData> GetKanbanBoardAsync(
             int? technicianId = null,
@@ -383,6 +383,9 @@ namespace FastService.McpServer.Services
             var hasta = toDate ?? DateTime.Now.AddDays(1); // Include today
 
             // Column definitions with status mappings (baseline compatible)
+            // Two types of rejection:
+            // - RECHAZADO (por técnico): Internal rejection, can't repair (no parts, etc.)
+            // - RECHAZO_PRESUP (por cliente): Client rejects the budget quote
             var columnDefinitions = new[]
             {
                 ("INGRESADO", "INGRESADO", new[] { "INGRESADO" }),
@@ -390,7 +393,8 @@ namespace FastService.McpServer.Services
                 ("ESP_REPUESTO", "ESP. REPUESTO", new[] { "ESP. REPUESTO" }),
                 ("A_REPARAR", "A REPARAR", new[] { "A REPARAR", "REINGRESADO" }), // Merged column
                 ("REPARADO", "REPARADO", new[] { "REPARADO" }),
-                ("RECHAZADO", "RECHAZADO", new[] { "RECHAZADO" })
+                ("RECHAZADO", "Rechazado (técnico)", new[] { "RECHAZADO" }),
+                ("RECHAZO_PRESUP", "Rechazado (cliente)", new[] { "RECHAZO PRESUP." })
             };
 
             try
@@ -725,6 +729,929 @@ namespace FastService.McpServer.Services
                 sw.Stop();
                 _logger.LogError(ex, "Error processing retira for order #{OrderNumber} (elapsed {Elapsed}ms)", 
                     request.OrderNumber, sw.ElapsedMilliseconds);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Process a "Seña" (deposit/advance payment) action on an order.
+        /// This records the deposit, creates a novedad, and creates accounting entries.
+        /// Unlike Retira, this does NOT change the order status.
+        /// </summary>
+        public async Task<ProcessSenaResponse> ProcessSenaAsync(ProcessSenaRequest request)
+        {
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+
+            using var transaction = await _context.Database.BeginTransactionAsync();
+
+            try
+            {
+                // Get the order with its detail
+                var order = await _context.Reparacions
+                    .Include(r => r.ReparacionDetalle)
+                    .Include(r => r.EstadoReparacion)
+                    .FirstOrDefaultAsync(r => r.ReparacionId == request.OrderNumber);
+
+                if (order == null)
+                {
+                    throw new InvalidOperationException($"Order #{request.OrderNumber} not found");
+                }
+
+                // Get payment method name for response
+                var metodoPago = await _context.MetodoPagos
+                    .FirstOrDefaultAsync(m => m.MetodoPagoId == request.MetodoPagoId);
+
+                var metodoPagoNombre = metodoPago?.Nombre ?? "Desconocido";
+
+                // Get user ID
+                var userId = request.UserId ?? order.TecnicoAsignadoId;
+
+                // 1. Create Novedad (SENA type = 26)
+                var novedad = new Data.Entities.Novedad
+                {
+                    ReparacionId = request.OrderNumber,
+                    TipoNovedadId = NovedadTipoIds.SENA,
+                    Observacion = $"Seña - Monto: ${request.Monto:N2} - Método: {metodoPagoNombre}",
+                    Monto = request.Monto,
+                    UserId = userId,
+                    ModificadoEn = DateTime.Now,
+                    ModificadoPor = userId
+                };
+                _context.Novedads.Add(novedad);
+                await _context.SaveChangesAsync();
+
+                // 2. Update order modification timestamp (but NOT status - seña doesn't change status)
+                order.ModificadoPor = userId;
+                order.ModificadoEn = DateTime.Now;
+
+                // 3. Create accounting entry (Venta) if Monto > 0
+                int? ventaId = null;
+                if (request.Monto > 0)
+                {
+                    int? facturaId = null;
+
+                    // Create Factura record if facturado
+                    if (request.Facturado && request.TipoFacturaId.HasValue)
+                    {
+                        var factura = new Data.Entities.Factura
+                        {
+                            NroFactura = request.NroFactura,
+                            TipoFacturaId = request.TipoFacturaId.Value,
+                            ModificadoEn = DateTime.Now,
+                            ModificadoPor = userId
+                        };
+                        _context.Facturas.Add(factura);
+                        await _context.SaveChangesAsync();
+                        facturaId = factura.FacturaId;
+                    }
+
+                    // Create Venta record - note the different description for Seña
+                    var venta = new Data.Entities.Ventum
+                    {
+                        Descripcion = $"Seña por servicio de FastService orden {order.ReparacionId}",
+                        ClienteId = order.ClienteId,
+                        Monto = request.Monto,
+                        RefNumber = order.ReparacionId.ToString(),
+                        PuntoDeVentaId = 1, // Default punto de venta
+                        FacturaId = facturaId,
+                        MetodoPagoId = request.MetodoPagoId,
+                        TipoTransaccionId = request.Facturado ? 1 : 2, // 1 = facturado, 2 = no facturado
+                        Fecha = DateTime.Now,
+                        Vendedor = order.EmpleadoAsignadoId,
+                        Facturado = request.Facturado
+                    };
+                    _context.Venta.Add(venta);
+                    await _context.SaveChangesAsync();
+                    ventaId = venta.VentaId;
+                }
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                sw.Stop();
+                _logger.LogInformation("ProcessSena: Order #{OrderNumber} deposit recorded successfully in {Elapsed}ms", 
+                    request.OrderNumber, sw.ElapsedMilliseconds);
+
+                return new ProcessSenaResponse
+                {
+                    OrderNumber = request.OrderNumber,
+                    CurrentStatus = order.EstadoReparacion?.Nombre ?? "Desconocido",
+                    MontoRegistrado = request.Monto,
+                    MetodoPago = metodoPagoNombre,
+                    Facturado = request.Facturado,
+                    VentaId = ventaId,
+                    NovedadId = novedad.NovedadId,
+                    ProcessedAt = DateTime.Now
+                };
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                sw.Stop();
+                _logger.LogError(ex, "Error processing seña for order #{OrderNumber} (elapsed {Elapsed}ms)", 
+                    request.OrderNumber, sw.ElapsedMilliseconds);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Process Informar Presupuesto - informs the customer of the quote
+        /// Actions: "acepta" (customer accepts), "rechaza" (customer rejects), "confirma" (pending confirmation)
+        /// NovedadTipo: ACEPTA=3, RECHAZA=6, PRESUPINFOR=31
+        /// Status changes: Acepta→"A REPARAR", Rechaza→"RECHAZO PRESUP.", Confirma→"PRESUPUESTADO"
+        /// </summary>
+        public async Task<InformarPresupuestoResponse> ProcessInformarPresupuestoAsync(int orderNumber, InformarPresupuestoRequest request)
+        {
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            _logger.LogInformation("ProcessInformarPresupuesto: Starting for order #{OrderNumber}, Action: {Accion}", 
+                orderNumber, request.Accion);
+
+            using var transaction = await _context.Database.BeginTransactionAsync();
+
+            try
+            {
+                // Load order with related entities
+                var order = await _context.Reparacions
+                    .Include(r => r.EstadoReparacion)
+                    .Include(r => r.ReparacionDetalle)
+                    .FirstOrDefaultAsync(r => r.ReparacionId == orderNumber);
+
+                if (order == null)
+                {
+                    throw new InvalidOperationException($"Order #{orderNumber} not found");
+                }
+
+                var previousStatus = order.EstadoReparacion?.Nombre ?? "Desconocido";
+
+                // Determine NovedadTipo based on action
+                int novedadTipoId;
+                string newStatusName;
+                var accionNormalizada = request.Accion.ToUpper().Trim();
+
+                switch (accionNormalizada)
+                {
+                    case "ACEPTA":
+                        novedadTipoId = 3; // ACEPTA
+                        newStatusName = "A REPARAR";
+                        break;
+                    case "RECHAZA":
+                        novedadTipoId = 6; // RECHAZA
+                        newStatusName = "RECHAZO PRESUP.";
+                        break;
+                    case "CONFIRMA":
+                    default:
+                        novedadTipoId = 31; // PRESUPINFOR
+                        newStatusName = "PRESUPUESTADO";
+                        break;
+                }
+
+                // Get new status ID
+                var newStatus = await _context.EstadoReparacions
+                    .FirstOrDefaultAsync(e => e.Nombre != null && e.Nombre.ToUpper() == newStatusName.ToUpper());
+
+                if (newStatus == null)
+                {
+                    throw new InvalidOperationException($"Status '{newStatusName}' not found in database");
+                }
+
+                // Create Novedad record
+                var novedad = new Novedad
+                {
+                    ReparacionId = orderNumber,
+                    TipoNovedadId = novedadTipoId,
+                    Observacion = request.Observacion ?? $"Presupuesto informado - Cliente {request.Accion.ToLower()}",
+                    Monto = request.Monto ?? 0,
+                    UserId = 1, // TODO: Get current user from context
+                    ModificadoPor = 1,
+                    ModificadoEn = DateTime.Now
+                };
+                _context.Novedads.Add(novedad);
+
+                // Update order status
+                order.EstadoReparacionId = newStatus.EstadoReparacionId;
+                order.ModificadoPor = 1;
+                order.ModificadoEn = DateTime.Now;
+
+                // Update ReparacionDetalle
+                if (order.ReparacionDetalle != null)
+                {
+                    // Update presupuesto if a new amount was provided
+                    if (request.Monto.HasValue && request.Monto.Value > 0)
+                    {
+                        order.ReparacionDetalle.Presupuesto = request.Monto.Value;
+                    }
+                    order.ReparacionDetalle.PresupuestoFecha = DateTime.Now;
+                }
+
+                // If customer accepts, assign employee to technician
+                if (accionNormalizada == "ACEPTA" && order.TecnicoAsignadoId > 0)
+                {
+                    order.EmpleadoAsignadoId = order.TecnicoAsignadoId;
+                }
+
+                // Update informado fields
+                order.InformadoEn = DateTime.Now;
+                order.InformadoPor = 1; // TODO: Get current user
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                sw.Stop();
+                _logger.LogInformation("ProcessInformarPresupuesto: Order #{OrderNumber} updated successfully in {Elapsed}ms. Action: {Accion}, NewStatus: {NewStatus}", 
+                    orderNumber, sw.ElapsedMilliseconds, request.Accion, newStatusName);
+
+                return new InformarPresupuestoResponse
+                {
+                    OrderNumber = orderNumber,
+                    PreviousStatus = previousStatus,
+                    NewStatus = newStatusName,
+                    Accion = request.Accion,
+                    Presupuesto = order.ReparacionDetalle?.Presupuesto ?? 0,
+                    NovedadId = novedad.NovedadId,
+                    InformadoEn = DateTime.Now
+                };
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                sw.Stop();
+                _logger.LogError(ex, "Error processing informar presupuesto for order #{OrderNumber} (elapsed {Elapsed}ms)", 
+                    orderNumber, sw.ElapsedMilliseconds);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Process Reingreso - re-entry of equipment after being picked up
+        /// NovedadTipo: REINGRESO=24
+        /// Status changes: Always → "REINGRESADO"
+        /// </summary>
+        public async Task<ReingresoResponse> ProcessReingresoAsync(int orderNumber, ReingresoRequest request)
+        {
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            _logger.LogInformation("ProcessReingreso: Starting for order #{OrderNumber}", orderNumber);
+
+            using var transaction = await _context.Database.BeginTransactionAsync();
+
+            try
+            {
+                // Load order with related entities
+                var order = await _context.Reparacions
+                    .Include(r => r.EstadoReparacion)
+                    .FirstOrDefaultAsync(r => r.ReparacionId == orderNumber);
+
+                if (order == null)
+                {
+                    throw new InvalidOperationException($"Order #{orderNumber} not found");
+                }
+
+                var previousStatus = order.EstadoReparacion?.Nombre ?? "Desconocido";
+                const string newStatusName = "REINGRESADO";
+
+                // Get new status ID
+                var newStatus = await _context.EstadoReparacions
+                    .FirstOrDefaultAsync(e => e.Nombre != null && e.Nombre.ToUpper() == newStatusName);
+
+                if (newStatus == null)
+                {
+                    throw new InvalidOperationException($"Status '{newStatusName}' not found in database");
+                }
+
+                // Create Novedad record
+                var novedad = new Novedad
+                {
+                    ReparacionId = orderNumber,
+                    TipoNovedadId = 24, // REINGRESO
+                    Observacion = request.Observacion,
+                    Monto = 0,
+                    UserId = 1, // TODO: Get current user from context
+                    ModificadoPor = 1,
+                    ModificadoEn = DateTime.Now
+                };
+                _context.Novedads.Add(novedad);
+
+                // Update order status
+                order.EstadoReparacionId = newStatus.EstadoReparacionId;
+                order.ModificadoPor = 1;
+                order.ModificadoEn = DateTime.Now;
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                sw.Stop();
+                _logger.LogInformation("ProcessReingreso: Order #{OrderNumber} reingresado successfully in {Elapsed}ms", 
+                    orderNumber, sw.ElapsedMilliseconds);
+
+                return new ReingresoResponse
+                {
+                    OrderNumber = orderNumber,
+                    PreviousStatus = previousStatus,
+                    NewStatus = newStatusName,
+                    NovedadId = novedad.NovedadId,
+                    Observacion = request.Observacion
+                };
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                sw.Stop();
+                _logger.LogError(ex, "Error processing reingreso for order #{OrderNumber} (elapsed {Elapsed}ms)", 
+                    orderNumber, sw.ElapsedMilliseconds);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Process Rechaza Presupuesto - CLIENT rejects the budget quote
+        /// This is different from technician rejection (no parts, can't repair)
+        /// NovedadTipo: RECHAZA=6
+        /// Status changes: Always → "RECHAZO PRESUP."
+        /// </summary>
+        public async Task<RechazaPresupuestoResponse> ProcessRechazaPresupuestoAsync(int orderNumber, RechazaPresupuestoRequest request)
+        {
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            _logger.LogInformation("ProcessRechazaPresupuesto: Starting for order #{OrderNumber}", orderNumber);
+
+            using var transaction = await _context.Database.BeginTransactionAsync();
+
+            try
+            {
+                // Load order with related entities
+                var order = await _context.Reparacions
+                    .Include(r => r.EstadoReparacion)
+                    .FirstOrDefaultAsync(r => r.ReparacionId == orderNumber);
+
+                if (order == null)
+                {
+                    throw new InvalidOperationException($"Order #{orderNumber} not found");
+                }
+
+                var previousStatus = order.EstadoReparacion?.Nombre ?? "Desconocido";
+                const string newStatusName = "RECHAZO PRESUP.";
+
+                // Get new status ID
+                var newStatus = await _context.EstadoReparacions
+                    .FirstOrDefaultAsync(e => e.Nombre != null && e.Nombre.ToUpper() == newStatusName.ToUpper());
+
+                if (newStatus == null)
+                {
+                    throw new InvalidOperationException($"Status '{newStatusName}' not found in database");
+                }
+
+                // Create Novedad record - RECHAZA (client rejection)
+                var observacion = string.IsNullOrWhiteSpace(request.Observacion) 
+                    ? "Cliente rechaza presupuesto" 
+                    : request.Observacion;
+
+                var novedad = new Novedad
+                {
+                    ReparacionId = orderNumber,
+                    TipoNovedadId = 6, // RECHAZA
+                    Observacion = observacion,
+                    Monto = 0,
+                    UserId = 1, // TODO: Get current user from context
+                    ModificadoPor = 1,
+                    ModificadoEn = DateTime.Now
+                };
+                _context.Novedads.Add(novedad);
+
+                // Update order status
+                order.EstadoReparacionId = newStatus.EstadoReparacionId;
+                order.ModificadoPor = 1;
+                order.ModificadoEn = DateTime.Now;
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                sw.Stop();
+                _logger.LogInformation("ProcessRechazaPresupuesto: Order #{OrderNumber} rejected by client successfully in {Elapsed}ms", 
+                    orderNumber, sw.ElapsedMilliseconds);
+
+                return new RechazaPresupuestoResponse
+                {
+                    Success = true,
+                    Message = $"Presupuesto rechazado por cliente. Estado cambiado a {newStatusName}",
+                    OrderNumber = orderNumber,
+                    PreviousStatus = previousStatus,
+                    NewStatus = newStatusName,
+                    NovedadId = novedad.NovedadId
+                };
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                sw.Stop();
+                _logger.LogError(ex, "Error processing rechaza presupuesto for order #{OrderNumber} (elapsed {Elapsed}ms)", 
+                    orderNumber, sw.ElapsedMilliseconds);
+                throw;
+            }
+        }
+
+        // ===================== TÉCNICO ACTIONS =====================
+
+        /// <summary>
+        /// Process Presupuesto - TECHNICIAN creates a budget/quote
+        /// NovedadTipo: PRESUPUESTADO = 2
+        /// Status changes: → "PRESUPUESTADO" or "PRESUP. EN DOMICILIO" (if domicile order)
+        /// </summary>
+        public async Task<PresupuestoResponse> ProcessPresupuestoAsync(int orderNumber, PresupuestoRequest request)
+        {
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            _logger.LogInformation("ProcessPresupuesto: Starting for order #{OrderNumber}, Monto: {Monto}", 
+                orderNumber, request.Monto);
+
+            if (request.Monto <= 0)
+            {
+                throw new ArgumentException("El monto del presupuesto debe ser mayor a 0");
+            }
+
+            using var transaction = await _context.Database.BeginTransactionAsync();
+
+            try
+            {
+                var order = await _context.Reparacions
+                    .Include(r => r.EstadoReparacion)
+                    .Include(r => r.ReparacionDetalle)
+                    .FirstOrDefaultAsync(r => r.ReparacionId == orderNumber);
+
+                if (order == null)
+                {
+                    throw new InvalidOperationException($"Order #{orderNumber} not found");
+                }
+
+                var previousStatus = order.EstadoReparacion?.Nombre ?? "Desconocido";
+                
+                // Check if order is domicile to determine status
+                var isDomicile = order.ReparacionDetalle?.EsDomicilio ?? false;
+                var newStatusName = isDomicile ? "PRESUP. EN DOMICILIO" : "PRESUPUESTADO";
+
+                var newStatus = await _context.EstadoReparacions
+                    .FirstOrDefaultAsync(e => e.Nombre != null && e.Nombre.ToUpper() == newStatusName.ToUpper());
+
+                if (newStatus == null)
+                {
+                    // Fallback to PRESUPUESTADO if PRESUP. EN DOMICILIO doesn't exist
+                    newStatusName = "PRESUPUESTADO";
+                    newStatus = await _context.EstadoReparacions
+                        .FirstOrDefaultAsync(e => e.Nombre != null && e.Nombre.ToUpper() == newStatusName.ToUpper());
+                }
+
+                if (newStatus == null)
+                {
+                    throw new InvalidOperationException($"Status '{newStatusName}' not found in database");
+                }
+
+                // Update budget in ReparacionDetalle
+                if (order.ReparacionDetalle != null)
+                {
+                    order.ReparacionDetalle.Presupuesto = request.Monto;
+                    order.ReparacionDetalle.PresupuestoFecha = DateTime.Now;
+                    order.ReparacionDetalle.ModificadoEn = DateTime.Now;
+                    order.ReparacionDetalle.ModificadoPor = 1;
+                }
+
+                // Create Novedad record
+                var observacion = string.IsNullOrWhiteSpace(request.Observacion)
+                    ? $"Presupuesto: ${request.Monto:N0}"
+                    : request.Observacion;
+
+                var novedad = new Novedad
+                {
+                    ReparacionId = orderNumber,
+                    TipoNovedadId = 2, // PRESUPUESTADO
+                    Observacion = observacion,
+                    Monto = request.Monto,
+                    UserId = 1, // TODO: Get current user
+                    ModificadoPor = 1,
+                    ModificadoEn = DateTime.Now
+                };
+                _context.Novedads.Add(novedad);
+
+                // Update order status
+                order.EstadoReparacionId = newStatus.EstadoReparacionId;
+                order.ModificadoPor = 1;
+                order.ModificadoEn = DateTime.Now;
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                sw.Stop();
+                _logger.LogInformation("ProcessPresupuesto: Order #{OrderNumber} presupuestado successfully in {Elapsed}ms", 
+                    orderNumber, sw.ElapsedMilliseconds);
+
+                return new PresupuestoResponse
+                {
+                    Success = true,
+                    Message = $"Presupuesto creado. Estado cambiado a {newStatusName}",
+                    OrderNumber = orderNumber,
+                    PreviousStatus = previousStatus,
+                    NewStatus = newStatusName,
+                    Monto = request.Monto,
+                    NovedadId = novedad.NovedadId
+                };
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                sw.Stop();
+                _logger.LogError(ex, "Error processing presupuesto for order #{OrderNumber} (elapsed {Elapsed}ms)", 
+                    orderNumber, sw.ElapsedMilliseconds);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Process Reparado - TECHNICIAN marks order as repaired
+        /// NovedadTipo: REPARADO = 4
+        /// Status changes: → "REPARADO"
+        /// </summary>
+        public async Task<ReparadoResponse> ProcessReparadoAsync(int orderNumber, ReparadoRequest request)
+        {
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            _logger.LogInformation("ProcessReparado: Starting for order #{OrderNumber}", orderNumber);
+
+            using var transaction = await _context.Database.BeginTransactionAsync();
+
+            try
+            {
+                var order = await _context.Reparacions
+                    .Include(r => r.EstadoReparacion)
+                    .Include(r => r.ReparacionDetalle)
+                    .FirstOrDefaultAsync(r => r.ReparacionId == orderNumber);
+
+                if (order == null)
+                {
+                    throw new InvalidOperationException($"Order #{orderNumber} not found");
+                }
+
+                var previousStatus = order.EstadoReparacion?.Nombre ?? "Desconocido";
+                const string newStatusName = "REPARADO";
+
+                var newStatus = await _context.EstadoReparacions
+                    .FirstOrDefaultAsync(e => e.Nombre != null && e.Nombre.ToUpper() == newStatusName.ToUpper());
+
+                if (newStatus == null)
+                {
+                    throw new InvalidOperationException($"Status '{newStatusName}' not found in database");
+                }
+
+                // Save repair description in ReparacionDetalle
+                if (order.ReparacionDetalle != null && !string.IsNullOrWhiteSpace(request.Observacion))
+                {
+                    order.ReparacionDetalle.ReparacionDesc = request.Observacion;
+                    order.ReparacionDetalle.ModificadoEn = DateTime.Now;
+                    order.ReparacionDetalle.ModificadoPor = 1;
+                }
+
+                // Create Novedad record
+                var observacion = string.IsNullOrWhiteSpace(request.Observacion)
+                    ? "Equipo reparado"
+                    : request.Observacion;
+
+                var novedad = new Novedad
+                {
+                    ReparacionId = orderNumber,
+                    TipoNovedadId = 4, // REPARADO
+                    Observacion = observacion,
+                    Monto = 0,
+                    UserId = 1,
+                    ModificadoPor = 1,
+                    ModificadoEn = DateTime.Now
+                };
+                _context.Novedads.Add(novedad);
+
+                // Update order status
+                order.EstadoReparacionId = newStatus.EstadoReparacionId;
+                order.ModificadoPor = 1;
+                order.ModificadoEn = DateTime.Now;
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                sw.Stop();
+                _logger.LogInformation("ProcessReparado: Order #{OrderNumber} marked as repaired in {Elapsed}ms", 
+                    orderNumber, sw.ElapsedMilliseconds);
+
+                return new ReparadoResponse
+                {
+                    Success = true,
+                    Message = "Equipo marcado como reparado",
+                    OrderNumber = orderNumber,
+                    PreviousStatus = previousStatus,
+                    NewStatus = newStatusName,
+                    NovedadId = novedad.NovedadId
+                };
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                sw.Stop();
+                _logger.LogError(ex, "Error processing reparado for order #{OrderNumber} (elapsed {Elapsed}ms)", 
+                    orderNumber, sw.ElapsedMilliseconds);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Process Rechazar - TECHNICIAN can't repair (no parts, irreparable, etc.)
+        /// NovedadTipo: RECHAZA = 6
+        /// Status changes: → "RECHAZADO"
+        /// Different from client rejection (RECHAZO PRESUP.)
+        /// </summary>
+        public async Task<RechazarResponse> ProcessRechazarAsync(int orderNumber, RechazarRequest request)
+        {
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            _logger.LogInformation("ProcessRechazar: Starting for order #{OrderNumber}", orderNumber);
+
+            if (string.IsNullOrWhiteSpace(request.Observacion))
+            {
+                throw new ArgumentException("Debe indicar el motivo del rechazo");
+            }
+
+            using var transaction = await _context.Database.BeginTransactionAsync();
+
+            try
+            {
+                var order = await _context.Reparacions
+                    .Include(r => r.EstadoReparacion)
+                    .FirstOrDefaultAsync(r => r.ReparacionId == orderNumber);
+
+                if (order == null)
+                {
+                    throw new InvalidOperationException($"Order #{orderNumber} not found");
+                }
+
+                var previousStatus = order.EstadoReparacion?.Nombre ?? "Desconocido";
+                const string newStatusName = "RECHAZADO";
+
+                var newStatus = await _context.EstadoReparacions
+                    .FirstOrDefaultAsync(e => e.Nombre != null && e.Nombre.ToUpper() == newStatusName.ToUpper());
+
+                if (newStatus == null)
+                {
+                    throw new InvalidOperationException($"Status '{newStatusName}' not found in database");
+                }
+
+                // Create Novedad record
+                var novedad = new Novedad
+                {
+                    ReparacionId = orderNumber,
+                    TipoNovedadId = 6, // RECHAZA (technician rejection)
+                    Observacion = request.Observacion,
+                    Monto = 0,
+                    UserId = 1,
+                    ModificadoPor = 1,
+                    ModificadoEn = DateTime.Now
+                };
+                _context.Novedads.Add(novedad);
+
+                // Update order status
+                order.EstadoReparacionId = newStatus.EstadoReparacionId;
+                order.ModificadoPor = 1;
+                order.ModificadoEn = DateTime.Now;
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                sw.Stop();
+                _logger.LogInformation("ProcessRechazar: Order #{OrderNumber} rejected by technician in {Elapsed}ms", 
+                    orderNumber, sw.ElapsedMilliseconds);
+
+                return new RechazarResponse
+                {
+                    Success = true,
+                    Message = "Reparación rechazada por técnico",
+                    OrderNumber = orderNumber,
+                    PreviousStatus = previousStatus,
+                    NewStatus = newStatusName,
+                    NovedadId = novedad.NovedadId
+                };
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                sw.Stop();
+                _logger.LogError(ex, "Error processing rechazar for order #{OrderNumber} (elapsed {Elapsed}ms)", 
+                    orderNumber, sw.ElapsedMilliseconds);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Process Espera Repuesto - TECHNICIAN marks order as waiting for parts
+        /// NovedadTipo: ESPERAREPUESTO = 16
+        /// Status changes: → "ESP. REPUESTO"
+        /// </summary>
+        public async Task<EsperaRepuestoResponse> ProcessEsperaRepuestoAsync(int orderNumber, EsperaRepuestoRequest request)
+        {
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            _logger.LogInformation("ProcessEsperaRepuesto: Starting for order #{OrderNumber}", orderNumber);
+
+            if (string.IsNullOrWhiteSpace(request.Observacion))
+            {
+                throw new ArgumentException("Debe indicar qué repuesto se necesita");
+            }
+
+            using var transaction = await _context.Database.BeginTransactionAsync();
+
+            try
+            {
+                var order = await _context.Reparacions
+                    .Include(r => r.EstadoReparacion)
+                    .FirstOrDefaultAsync(r => r.ReparacionId == orderNumber);
+
+                if (order == null)
+                {
+                    throw new InvalidOperationException($"Order #{orderNumber} not found");
+                }
+
+                var previousStatus = order.EstadoReparacion?.Nombre ?? "Desconocido";
+                const string newStatusName = "ESP. REPUESTO";
+
+                var newStatus = await _context.EstadoReparacions
+                    .FirstOrDefaultAsync(e => e.Nombre != null && e.Nombre.ToUpper() == newStatusName.ToUpper());
+
+                if (newStatus == null)
+                {
+                    throw new InvalidOperationException($"Status '{newStatusName}' not found in database");
+                }
+
+                // Create Novedad record
+                var novedad = new Novedad
+                {
+                    ReparacionId = orderNumber,
+                    TipoNovedadId = 16, // ESPERAREPUESTO
+                    Observacion = request.Observacion,
+                    Monto = 0,
+                    UserId = 1,
+                    ModificadoPor = 1,
+                    ModificadoEn = DateTime.Now
+                };
+                _context.Novedads.Add(novedad);
+
+                // Update order status
+                order.EstadoReparacionId = newStatus.EstadoReparacionId;
+                order.ModificadoPor = 1;
+                order.ModificadoEn = DateTime.Now;
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                sw.Stop();
+                _logger.LogInformation("ProcessEsperaRepuesto: Order #{OrderNumber} waiting for parts in {Elapsed}ms", 
+                    orderNumber, sw.ElapsedMilliseconds);
+
+                return new EsperaRepuestoResponse
+                {
+                    Success = true,
+                    Message = "Orden marcada en espera de repuesto",
+                    OrderNumber = orderNumber,
+                    PreviousStatus = previousStatus,
+                    NewStatus = newStatusName,
+                    NovedadId = novedad.NovedadId
+                };
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                sw.Stop();
+                _logger.LogError(ex, "Error processing espera repuesto for order #{OrderNumber} (elapsed {Elapsed}ms)", 
+                    orderNumber, sw.ElapsedMilliseconds);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Process Rep. Domicilio - TECHNICIAN completes home repair
+        /// NovedadTipo: REPDOMICILIO = 40
+        /// Status changes: → "RETIRADO" (completed)
+        /// Generates accounting entry if monto > 0
+        /// </summary>
+        public async Task<RepDomicilioResponse> ProcessRepDomicilioAsync(int orderNumber, RepDomicilioRequest request)
+        {
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            _logger.LogInformation("ProcessRepDomicilio: Starting for order #{OrderNumber}, Monto: {Monto}", 
+                orderNumber, request.Monto);
+
+            using var transaction = await _context.Database.BeginTransactionAsync();
+
+            try
+            {
+                var order = await _context.Reparacions
+                    .Include(r => r.EstadoReparacion)
+                    .Include(r => r.ReparacionDetalle)
+                    .FirstOrDefaultAsync(r => r.ReparacionId == orderNumber);
+
+                if (order == null)
+                {
+                    throw new InvalidOperationException($"Order #{orderNumber} not found");
+                }
+
+                var previousStatus = order.EstadoReparacion?.Nombre ?? "Desconocido";
+                const string newStatusName = "RETIRADO";
+
+                var newStatus = await _context.EstadoReparacions
+                    .FirstOrDefaultAsync(e => e.Nombre != null && e.Nombre.ToUpper() == newStatusName.ToUpper());
+
+                if (newStatus == null)
+                {
+                    throw new InvalidOperationException($"Status '{newStatusName}' not found in database");
+                }
+
+                // Update price in ReparacionDetalle
+                if (order.ReparacionDetalle != null)
+                {
+                    order.ReparacionDetalle.Precio = request.Monto;
+                    order.ReparacionDetalle.ModificadoEn = DateTime.Now;
+                    order.ReparacionDetalle.ModificadoPor = 1;
+                }
+
+                // Create Novedad record
+                var observacion = string.IsNullOrWhiteSpace(request.Observacion)
+                    ? $"Reparación a domicilio completada. Monto: ${request.Monto:N0}"
+                    : request.Observacion;
+
+                var novedad = new Novedad
+                {
+                    ReparacionId = orderNumber,
+                    TipoNovedadId = 40, // REPDOMICILIO
+                    Observacion = observacion,
+                    Monto = request.Monto,
+                    UserId = 1,
+                    ModificadoPor = 1,
+                    ModificadoEn = DateTime.Now
+                };
+                _context.Novedads.Add(novedad);
+
+                // Update order status
+                order.EstadoReparacionId = newStatus.EstadoReparacionId;
+                order.ModificadoPor = 1;
+                order.ModificadoEn = DateTime.Now;
+
+                int? ventaId = null;
+
+                // Generate accounting entry if amount > 0
+                if (request.Monto > 0)
+                {
+                    int? facturaId = null;
+
+                    if (request.Facturado && !string.IsNullOrWhiteSpace(request.NroFactura))
+                    {
+                        var factura = new Factura
+                        {
+                            NroFactura = request.NroFactura,
+                            TipoFacturaId = request.TipoFacturaId ?? 1,
+                            ModificadoEn = DateTime.Now,
+                            ModificadoPor = 1
+                        };
+                        _context.Facturas.Add(factura);
+                        await _context.SaveChangesAsync();
+                        facturaId = factura.FacturaId;
+                    }
+
+                    var venta = new Ventum
+                    {
+                        Descripcion = $"Reparación a domicilio FastService orden {orderNumber}",
+                        Monto = request.Monto,
+                        MetodoPagoId = request.MetodoPagoId,
+                        FacturaId = facturaId,
+                        Facturado = request.Facturado,
+                        Fecha = DateTime.Now,
+                        Vendedor = 1, // Default vendor
+                        PuntoDeVentaId = 1, // Default POS
+                        TipoTransaccionId = 1, // Default transaction type
+                        ClienteId = order.ClienteId
+                    };
+                    _context.Venta.Add(venta);
+                    await _context.SaveChangesAsync();
+                    ventaId = venta.VentaId;
+                }
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                sw.Stop();
+                _logger.LogInformation("ProcessRepDomicilio: Order #{OrderNumber} completed home repair in {Elapsed}ms", 
+                    orderNumber, sw.ElapsedMilliseconds);
+
+                return new RepDomicilioResponse
+                {
+                    Success = true,
+                    Message = "Reparación a domicilio completada",
+                    OrderNumber = orderNumber,
+                    PreviousStatus = previousStatus,
+                    NewStatus = newStatusName,
+                    Monto = request.Monto,
+                    NovedadId = novedad.NovedadId,
+                    VentaId = ventaId
+                };
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                sw.Stop();
+                _logger.LogError(ex, "Error processing rep domicilio for order #{OrderNumber} (elapsed {Elapsed}ms)", 
+                    orderNumber, sw.ElapsedMilliseconds);
                 throw;
             }
         }

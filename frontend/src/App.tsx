@@ -28,6 +28,17 @@ function AppContent() {
     isEditingOrder,
     editingOrderDetails,
     pendingNotaOrderNumber,
+    pendingRetiraOrderNumber,
+    pendingSenaOrderNumber,
+    pendingInformarPresupOrderNumber,
+    pendingReingresoOrderNumber,
+    pendingRechazaPresupOrderNumber,
+    // Técnico action states
+    pendingPresupuestoOrderNumber,
+    pendingReparadoOrderNumber,
+    pendingRechazarOrderNumber,
+    pendingEsperaRepuestoOrderNumber,
+    pendingRepDomicilioOrderNumber,
     sendMessage, 
     addMessage, 
     clearMessages,
@@ -39,11 +50,27 @@ function AppContent() {
     cancelOrderEdit,
     exitOrderEdit,
     startAddNota,
-  } = useChat();
+    startRetira,
+    startSena,
+    startInformarPresup,
+    startReingreso,
+    startRechazaPresup,
+    // Técnico action functions
+    startPresupuesto,
+    startReparado,
+    startRechazar,
+    startEsperaRepuesto,
+    startRepDomicilio,
+  } = useChat({ canAccessAccounting: permissions?.canAccessAccounting });
 
   // Handle view change with AI insights for accounting
   const handleViewChange = async (view: MainView) => {
     setActiveView(view);
+    
+    // Clear selected order when navigating to a different view
+    if (selectedOrderDetails) {
+      setSelectedOrder(null);
+    }
     
     // Show accounting insights when entering accounting module (only once per session)
     if (view === 'accounting' && !hasShownAccountingInsights.current) {
@@ -115,15 +142,55 @@ function AppContent() {
         <DefaultSuggestions onSendMessage={sendMessage} onAddMessage={addMessage} onStartOrderCreation={startOrderCreation} />
       )}
       {/* Action suggestions chips above input - like real AI chips */}
-      {selectedOrderDetails && !pendingNotaOrderNumber && (
+      {selectedOrderDetails && !pendingNotaOrderNumber && !pendingRetiraOrderNumber && !pendingSenaOrderNumber && !pendingInformarPresupOrderNumber && !pendingReingresoOrderNumber && !pendingRechazaPresupOrderNumber && !pendingPresupuestoOrderNumber && !pendingReparadoOrderNumber && !pendingRechazarOrderNumber && !pendingEsperaRepuestoOrderNumber && !pendingRepDomicilioOrderNumber && (
         <ActionSuggestions
           orderNumber={selectedOrderDetails.orderNumber}
+          presupuesto={selectedOrderDetails.presupuesto}
           onAddMessage={addMessage}
           onEditOrder={handleEditOrder}
           onStartAddNota={handleStartAddNota}
+          onStartRetira={startRetira}
+          onStartSena={startSena}
+          onStartInformarPresup={startInformarPresup}
+          onStartReingreso={startReingreso}
+          onStartRechazaPresup={startRechazaPresup}
+          onStartPresupuesto={startPresupuesto}
+          onStartReparado={startReparado}
+          onStartRechazar={startRechazar}
+          onStartEsperaRepuesto={startEsperaRepuesto}
+          onStartRepDomicilio={startRepDomicilio}
+          permissions={permissions}
         />
       )}
-      <MessageInput onSendMessage={sendMessage} disabled={isLoading} placeholder={pendingNotaOrderNumber ? "Escribe la nota aquí..." : undefined} />
+      <MessageInput 
+        onSendMessage={sendMessage} 
+        disabled={isLoading} 
+        placeholder={
+          pendingNotaOrderNumber 
+            ? "Escribe la nota aquí..." 
+            : pendingRetiraOrderNumber 
+              ? "Ingresa el monto o responde 'sí'..." 
+              : pendingSenaOrderNumber
+                ? "Ingresa el monto de la seña..."
+                : pendingInformarPresupOrderNumber
+                  ? "Selecciona una opción o ingresa el monto..."
+                  : pendingReingresoOrderNumber
+                    ? "Describe el motivo del reingreso..."
+                    : pendingRechazaPresupOrderNumber
+                      ? "Ingresa observación o 'no' para continuar..."
+                      : pendingPresupuestoOrderNumber
+                        ? "Ingresa el monto del presupuesto..."
+                        : pendingReparadoOrderNumber
+                          ? "Ingresa observación o 'no' para continuar..."
+                          : pendingRechazarOrderNumber
+                            ? "Describe el motivo del rechazo técnico..."
+                            : pendingEsperaRepuestoOrderNumber
+                              ? "Describe qué repuesto se necesita..."
+                              : pendingRepDomicilioOrderNumber
+                                ? "Ingresa el monto cobrado..."
+                                : undefined
+        } 
+      />
       {error && (
         <div className="flex-shrink-0 px-4 py-2 bg-red-50 border-t border-red-200 text-red-700 text-sm">
           {error}
@@ -202,7 +269,10 @@ function AppContent() {
             className="h-8 w-8 rounded-full border-2 border-white/40 bg-white/20"
           />
           <button
-            onClick={logout}
+            onClick={() => {
+              clearMessages();
+              logout();
+            }}
             className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-white/90 hover:bg-white/20 hover:text-white transition-all"
             title="Cerrar sesión"
           >

@@ -143,11 +143,20 @@ app.MapGet("/api/auth/permissions/{userId:int}", async (int userId, FastServiceD
             .ToHashSet();
 
         var roleNames = userRoles.Select(r => r.Name.ToUpper()).ToHashSet();
+        var roleIds = userRoles.Select(r => r.RoleId).ToHashSet();
 
         // Check if user has access to accounting:
         // 1. Has "Contabilidad" controller in menu items, OR
         // 2. Has any admin-like role (contains "admin" in name)
         var hasAdminRole = roleNames.Any(r => r.Contains("ADMIN"));
+        
+        // Role-based action permissions
+        // Manager role: Gerente (1) - sees all actions with collapsible groups
+        var isManager = roleIds.Contains(1);
+        // Admin roles: FastServiceAdmin (3), Gerente (1), ElectroShopAdmin (2)
+        var isAdmin = roleIds.Contains(1) || roleIds.Contains(2) || roleIds.Contains(3);
+        // Tecnico role: Tecnico (4)
+        var isTecnico = roleIds.Contains(4);
 
         var response = new UserPermissionsResponse
         {
@@ -157,7 +166,10 @@ app.MapGet("/api/auth/permissions/{userId:int}", async (int userId, FastServiceD
             AllowedMenuItems = allowedMenuItems,
             CanAccessAccounting = controllerNames.Contains("contabilidad") || hasAdminRole,
             CanAccessOrders = true, // All authenticated users can access orders
-            CanAccessKanban = true  // All authenticated users can access kanban
+            CanAccessKanban = true,  // All authenticated users can access kanban
+            IsManager = isManager,
+            IsAdmin = isAdmin,
+            IsTecnico = isTecnico
         };
 
         return Results.Ok(response);
@@ -173,7 +185,7 @@ app.MapPost("/api/chat", async (ChatRequest request, AgentService agentService) 
 {
     try
     {
-        var response = await agentService.GetResponseAsync(request.Message, request.ConversationHistory);
+        var response = await agentService.GetResponseAsync(request.Message, request.ConversationHistory, request.CanAccessAccounting);
         return Results.Ok(new ChatResponse(response));
     }
     catch (Exception ex)
@@ -339,6 +351,183 @@ app.MapPost("/api/orders/{orderNumber:int}/retira", async (int orderNumber, Proc
         return Results.Problem(detail: ex.Message, statusCode: 500);
     }
 }).WithName("ProcessRetira").WithOpenApi();
+
+// Process Seña (deposit/advance payment) action on an order
+app.MapPost("/api/orders/{orderNumber:int}/sena", async (int orderNumber, ProcessSenaRequest request, OrderService orderService) =>
+{
+    try
+    {
+        request.OrderNumber = orderNumber; // Ensure consistency
+        var result = await orderService.ProcessSenaAsync(request);
+        return Results.Ok(result);
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.NotFound(new { error = ex.Message });
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(detail: ex.Message, statusCode: 500);
+    }
+}).WithName("ProcessSena").WithOpenApi();
+
+// Process Informar Presupuesto - informs the customer of the quote
+app.MapPost("/api/orders/{orderNumber:int}/informar-presupuesto", async (int orderNumber, InformarPresupuestoRequest request, OrderService orderService) =>
+{
+    try
+    {
+        var result = await orderService.ProcessInformarPresupuestoAsync(orderNumber, request);
+        return Results.Ok(result);
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.NotFound(new { error = ex.Message });
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(detail: ex.Message, statusCode: 500);
+    }
+}).WithName("ProcessInformarPresupuesto").WithOpenApi();
+
+// Process Reingreso - re-entry of equipment
+app.MapPost("/api/orders/{orderNumber:int}/reingreso", async (int orderNumber, ReingresoRequest request, OrderService orderService) =>
+{
+    try
+    {
+        var result = await orderService.ProcessReingresoAsync(orderNumber, request);
+        return Results.Ok(result);
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.NotFound(new { error = ex.Message });
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(detail: ex.Message, statusCode: 500);
+    }
+}).WithName("ProcessReingreso").WithOpenApi();
+
+// Process Rechaza Presupuesto - CLIENT rejects the budget quote
+app.MapPost("/api/orders/{orderNumber:int}/rechaza-presupuesto", async (int orderNumber, RechazaPresupuestoRequest request, OrderService orderService) =>
+{
+    try
+    {
+        var result = await orderService.ProcessRechazaPresupuestoAsync(orderNumber, request);
+        return Results.Ok(result);
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.NotFound(new { error = ex.Message });
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(detail: ex.Message, statusCode: 500);
+    }
+}).WithName("ProcessRechazaPresupuesto").WithOpenApi();
+
+// ===================== TÉCNICO ACTIONS =====================
+
+// Process Presupuesto - TECHNICIAN creates a budget/quote
+app.MapPost("/api/orders/{orderNumber:int}/presupuesto", async (int orderNumber, PresupuestoRequest request, OrderService orderService) =>
+{
+    try
+    {
+        var result = await orderService.ProcessPresupuestoAsync(orderNumber, request);
+        return Results.Ok(result);
+    }
+    catch (ArgumentException ex)
+    {
+        return Results.BadRequest(new { error = ex.Message });
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.NotFound(new { error = ex.Message });
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(detail: ex.Message, statusCode: 500);
+    }
+}).WithName("ProcessPresupuesto").WithOpenApi();
+
+// Process Reparado - TECHNICIAN marks order as repaired
+app.MapPost("/api/orders/{orderNumber:int}/reparado", async (int orderNumber, ReparadoRequest request, OrderService orderService) =>
+{
+    try
+    {
+        var result = await orderService.ProcessReparadoAsync(orderNumber, request);
+        return Results.Ok(result);
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.NotFound(new { error = ex.Message });
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(detail: ex.Message, statusCode: 500);
+    }
+}).WithName("ProcessReparado").WithOpenApi();
+
+// Process Rechazar - TECHNICIAN can't repair (no parts, irreparable, etc.)
+app.MapPost("/api/orders/{orderNumber:int}/rechazar", async (int orderNumber, RechazarRequest request, OrderService orderService) =>
+{
+    try
+    {
+        var result = await orderService.ProcessRechazarAsync(orderNumber, request);
+        return Results.Ok(result);
+    }
+    catch (ArgumentException ex)
+    {
+        return Results.BadRequest(new { error = ex.Message });
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.NotFound(new { error = ex.Message });
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(detail: ex.Message, statusCode: 500);
+    }
+}).WithName("ProcessRechazar").WithOpenApi();
+
+// Process Espera Repuesto - TECHNICIAN marks order as waiting for parts
+app.MapPost("/api/orders/{orderNumber:int}/espera-repuesto", async (int orderNumber, EsperaRepuestoRequest request, OrderService orderService) =>
+{
+    try
+    {
+        var result = await orderService.ProcessEsperaRepuestoAsync(orderNumber, request);
+        return Results.Ok(result);
+    }
+    catch (ArgumentException ex)
+    {
+        return Results.BadRequest(new { error = ex.Message });
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.NotFound(new { error = ex.Message });
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(detail: ex.Message, statusCode: 500);
+    }
+}).WithName("ProcessEsperaRepuesto").WithOpenApi();
+
+// Process Rep. Domicilio - TECHNICIAN completes home repair
+app.MapPost("/api/orders/{orderNumber:int}/rep-domicilio", async (int orderNumber, RepDomicilioRequest request, OrderService orderService) =>
+{
+    try
+    {
+        var result = await orderService.ProcessRepDomicilioAsync(orderNumber, request);
+        return Results.Ok(result);
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.NotFound(new { error = ex.Message });
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(detail: ex.Message, statusCode: 500);
+    }
+}).WithName("ProcessRepDomicilio").WithOpenApi();
 
 // Get all payment methods
 app.MapGet("/api/payment-methods", async (OrderService orderService) =>
@@ -560,9 +749,30 @@ app.MapGet("/api/clients/search/{prefix}", async (string prefix, int? maxResults
     }
 }).WithName("SearchClients").WithOpenApi();
 
+// Temporary admin endpoint to update user password
+app.MapPost("/api/admin/update-password", async (UpdatePasswordRequest request, FastServiceDbContext db) =>
+{
+    try
+    {
+        var user = await db.Usuarios.FirstOrDefaultAsync(u => u.Nombre == request.UserName);
+        if (user == null)
+        {
+            return Results.NotFound(new { error = $"User '{request.UserName}' not found" });
+        }
+        user.Contraseña = request.NewPassword;
+        await db.SaveChangesAsync();
+        return Results.Ok(new { success = true, message = $"Password updated for user {request.UserName}" });
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(detail: ex.Message, statusCode: 500);
+    }
+});
+
 app.Run();
 
-record ChatRequest(string Message, List<ConversationMessage>? ConversationHistory = null);
+record UpdatePasswordRequest(string UserName, string NewPassword);
+record ChatRequest(string Message, List<ConversationMessage>? ConversationHistory = null, bool CanAccessAccounting = false);
 record ChatResponse(string Message);
 record UserInfoDto(int Id, string Name);
 record BusinessInfoDto(int Id, string Name);

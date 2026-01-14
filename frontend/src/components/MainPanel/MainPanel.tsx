@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { OrderSummary, OrderDetails } from '../../types/order';
 import { OrderList, OrderDetailsView, OrderCreateView, OrderAdvancedSearch } from '../Orders';
 import { KanbanBoard } from '../Kanban';
 import { AccountingDashboard } from '../Accounting';
 import { ClientsModule } from '../Clients';
 import { LoadingSpinner } from '../ui/loading-spinner';
+import { openPrintWindow, ReceiptData } from '../Print';
 
 export type MainView = 'kanban' | 'orders' | 'accounting' | 'clients' | 'search';
 
@@ -97,21 +98,37 @@ const MainPanel: React.FC<MainPanelProps> = ({
     }
   };
 
-  const handlePrint = () => {
-    if (viewingOrderDetails) {
-      console.log(`Printing order #${viewingOrderDetails.orderNumber}`);
-      // TODO: Integrate with actual print functionality
-      alert(`📄 Imprimiendo formulario de orden #${viewingOrderDetails.orderNumber}`);
-    }
-  };
+  // Convert OrderDetails to ReceiptData for printing
+  const getReceiptData = useCallback((order: OrderDetails): ReceiptData => {
+    const fullAddress = order.customer.addressDetails?.fullAddress || order.customer.address || '';
+    
+    return {
+      reparacionId: order.orderNumber,
+      nombre: order.customer.fullName || `${order.customer.firstName} ${order.customer.lastName}`,
+      telefono1: order.customer.phone || '',
+      telefono2: order.customer.celular || '',
+      direccion: fullAddress,
+      creadoEn: order.entryDate || order.repair.entryDate || new Date().toISOString(),
+      marca: order.device.brand || '',
+      modelo: order.device.model || '',
+      serie: order.device.serialNumber || '',
+      comercio: '', // Not available in current OrderDetails, can be added later
+      accesorios: order.device.accesorios || '',
+      esGarantia: order.isGarantia,
+    };
+  }, []);
 
-  const handlePrintDorso = () => {
+  const handlePrint = useCallback(() => {
     if (viewingOrderDetails) {
-      console.log(`Printing dorso for order #${viewingOrderDetails.orderNumber}`);
-      // TODO: Integrate with actual print functionality
-      alert(`🖨️ Imprimiendo dorso de orden #${viewingOrderDetails.orderNumber}`);
+      openPrintWindow(getReceiptData(viewingOrderDetails), 'receipt');
     }
-  };
+  }, [viewingOrderDetails, getReceiptData]);
+
+  const handlePrintDorso = useCallback(() => {
+    if (viewingOrderDetails) {
+      openPrintWindow(getReceiptData(viewingOrderDetails), 'dorso');
+    }
+  }, [viewingOrderDetails, getReceiptData]);
 
   const handleSaveNewOrder = async (orderData: any) => {
     // Send the order data to the API

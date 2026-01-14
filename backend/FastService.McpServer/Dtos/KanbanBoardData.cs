@@ -8,7 +8,7 @@ public class KanbanBoardData
 {
     /// <summary>
     /// Fixed array of 6 Kanban columns in display order:
-    /// INGRESADO, PRESUPUESTADO, ESP_REPUESTO, A_REPARAR, REPARADO, RECHAZADO
+    /// INGRESADO, PRESUPUESTADO, ESP_REPUESTO, A_REPARAR, REPARADO, RECHAZADO, RECHAZO_PRESUP
     /// </summary>
     public List<KanbanColumn> Columns { get; set; } = new();
 

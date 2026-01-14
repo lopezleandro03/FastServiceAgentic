@@ -8,7 +8,18 @@ export type OrderActionType =
   | 'nota_reclamo'
   | 'reingreso'
   | 'retira'
-  | 'sena';
+  | 'sena'
+  | 'llamado'
+  | 'coord_entrega'
+  | 'rechaza_presup' // Client rejects budget
+  // Técnico actions
+  | 'presupuesto'
+  | 'reparado'
+  | 'rechazar' // Technician rejects (can't repair)
+  | 'espera_repuesto'
+  | 'rep_domicilio';
+
+export type ActionGroup = 'common' | 'admin' | 'tecnico';
 
 export interface OrderAction {
   type: OrderActionType;
@@ -18,62 +29,152 @@ export interface OrderAction {
   requiresInput?: boolean;
   inputLabel?: string;
   isSpecial?: boolean; // For actions that require custom handling (like edit)
+  group: ActionGroup; // Which role group this action belongs to
 }
 
-export const ORDER_ACTIONS: OrderAction[] = [
+// Common actions - available to all roles
+export const COMMON_ACTIONS: OrderAction[] = [
   {
     type: 'edit',
     label: 'Editar',
     icon: '✏️',
     description: 'Editar datos de la orden',
     isSpecial: true,
+    group: 'common',
   },
   {
-    type: 'print_dorso',
-    label: 'Imprimir Dorso',
-    icon: '🖨️',
-    description: 'Imprimir etiqueta del dorso',
+    type: 'nota_reclamo',
+    label: 'Nota',
+    icon: '📝',
+    description: 'Agregar nota o registrar reclamo',
+    isSpecial: true,
+    group: 'common',
   },
   {
     type: 'print',
     label: 'Imprimir',
     icon: '📄',
     description: 'Imprimir formulario de orden',
+    group: 'common',
   },
+  {
+    type: 'print_dorso',
+    label: 'Dorso',
+    icon: '🖨️',
+    description: 'Imprimir etiqueta del dorso',
+    group: 'common',
+  },
+];
+
+// Admin actions - FastServiceAdmin, Gerente, ElectroShopAdmin
+export const ADMIN_ACTIONS: OrderAction[] = [
   {
     type: 'informar_presupuesto',
     label: 'Inform. Presup.',
     icon: '💰',
     description: 'Informar presupuesto al cliente',
-  },
-  {
-    type: 'nota_reclamo',
-    label: 'Nota/Reclamo',
-    icon: '📝',
-    description: 'Agregar nota o registrar reclamo',
-    isSpecial: true, // Conversational flow
-  },
-  {
-    type: 'reingreso',
-    label: 'Reingreso',
-    icon: '🔄',
-    description: 'Registrar reingreso del equipo',
+    isSpecial: true,
+    group: 'admin',
   },
   {
     type: 'retira',
     label: 'Retira',
     icon: '✅',
     description: 'Marcar orden como retirada',
-    isSpecial: true, // Conversational flow - requires monto and payment method
+    isSpecial: true,
+    group: 'admin',
   },
   {
     type: 'sena',
     label: 'Seña',
     icon: '💵',
     description: 'Registrar pago de seña',
-    requiresInput: true,
-    inputLabel: 'Ingrese el monto de la seña',
+    isSpecial: true,
+    group: 'admin',
   },
+  {
+    type: 'reingreso',
+    label: 'Reingreso',
+    icon: '🔄',
+    description: 'Registrar reingreso del equipo',
+    isSpecial: true,
+    group: 'admin',
+  },
+  {
+    type: 'llamado',
+    label: 'Llamado',
+    icon: '📞',
+    description: 'Registrar llamado telefónico',
+    isSpecial: true,
+    group: 'admin',
+  },
+  {
+    type: 'coord_entrega',
+    label: 'Entrega',
+    icon: '📦',
+    description: 'Coordinar entrega del equipo',
+    isSpecial: true,
+    group: 'admin',
+  },
+  {
+    type: 'rechaza_presup',
+    label: 'Rechaza Presup.',
+    icon: '🚫',
+    description: 'Cliente rechaza el presupuesto',
+    isSpecial: true,
+    group: 'admin',
+  },
+];
+
+// Técnico actions
+export const TECNICO_ACTIONS: OrderAction[] = [
+  {
+    type: 'presupuesto',
+    label: 'Presupuesto',
+    icon: '📊',
+    description: 'Crear presupuesto de reparación',
+    isSpecial: true,
+    group: 'tecnico',
+  },
+  {
+    type: 'reparado',
+    label: 'Reparado',
+    icon: '✅',
+    description: 'Marcar equipo como reparado',
+    isSpecial: true,
+    group: 'tecnico',
+  },
+  {
+    type: 'rechazar',
+    label: 'No Reparable',
+    icon: '❌',
+    description: 'Rechazar reparación (sin repuestos, no reparable)',
+    isSpecial: true,
+    group: 'tecnico',
+  },
+  {
+    type: 'espera_repuesto',
+    label: 'Esp. Repuesto',
+    icon: '⏳',
+    description: 'Marcar en espera de repuesto',
+    isSpecial: true,
+    group: 'tecnico',
+  },
+  {
+    type: 'rep_domicilio',
+    label: 'Rep. Domicilio',
+    icon: '🏠',
+    description: 'Reparación en domicilio',
+    isSpecial: true,
+    group: 'tecnico',
+  },
+];
+
+// All actions combined (for backwards compatibility)
+export const ORDER_ACTIONS: OrderAction[] = [
+  ...COMMON_ACTIONS,
+  ...ADMIN_ACTIONS,
+  ...TECNICO_ACTIONS,
 ];
 
 export interface UseOrderActionsProps {
@@ -116,7 +217,8 @@ export const useOrderActions = ({
           break;
 
         case 'informar_presupuesto':
-          resultMessage = `💰 **Presupuesto informado**\n\nEl cliente ha sido notificado del presupuesto para orden #${orderNumber}.\n\n*(Simulación - integración pendiente)*`;
+          // Informar Presupuesto is handled conversationally via useChat - this case shouldn't be reached
+          resultMessage = `💰 **Informar Presupuesto**\n\nEsta acción se maneja de forma conversacional. Usa el botón "Inform. Presup." para iniciar el proceso.`;
           break;
 
         case 'nota_reclamo':
@@ -126,17 +228,18 @@ export const useOrderActions = ({
           break;
 
         case 'reingreso':
-          resultMessage = `🔄 **Reingreso registrado**\n\nSe registró el reingreso del equipo para orden #${orderNumber}.\n\n*(Simulación - integración pendiente)*`;
+          // Reingreso is handled conversationally via useChat - this case shouldn't be reached
+          resultMessage = `🔄 **Reingreso**\n\nEsta acción se maneja de forma conversacional. Usa el botón "Reingreso" para iniciar el proceso.`;
           break;
 
         case 'retira':
-          resultMessage = `✅ **Orden retirada**\n\nLa orden #${orderNumber} ha sido marcada como retirada.\n\n*(Simulación - integración pendiente)*`;
+          // Retira is handled conversationally via useChat - this case shouldn't be reached
+          resultMessage = `✅ **Retira**\n\nEsta acción se maneja de forma conversacional. Usa el botón "Retira" para iniciar el proceso.`;
           break;
 
         case 'sena':
-          resultMessage = inputValue
-            ? `💵 **Seña registrada**\n\nSe registró una seña de $${inputValue} para orden #${orderNumber}.\n\n*(Simulación - integración pendiente)*`
-            : `💵 **Seña**\n\nAcción cancelada - no se proporcionó monto.\n\n*(Simulación - integración pendiente)*`;
+          // Seña is handled conversationally via useChat - this case shouldn't be reached
+          resultMessage = `💵 **Seña**\n\nEsta acción se maneja de forma conversacional. Usa el botón "Seña" para iniciar el proceso.`;
           break;
 
         default:

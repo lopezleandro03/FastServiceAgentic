@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { ChatMessage } from '../../types/chat';
 import { Badge } from '../ui/badge';
 import { cn } from '../../lib/utils';
@@ -72,33 +72,16 @@ const MessageList: React.FC<MessageListProps> = ({ messages, userName }) => {
     scrollToBottom();
   }, [messages]);
 
-  const emptyState = useMemo(() => (
-    <div className="w-full rounded-2xl border border-white/10 bg-white/5 px-6 py-8 text-white/80">
-      <div className="mx-auto mb-4 h-12 w-12 rounded-full border border-white/20 flex items-center justify-center text-white/70">
-        <svg
-          className="h-5 w-5"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v6"
-          />
-        </svg>
-      </div>
-      <p className="text-sm uppercase tracking-[0.2em] text-white/60">FastService AI</p>
-      <p className="mt-2 text-xl font-semibold text-white">¿En qué te ayudo?</p>
-      <p className="mt-1 text-sm text-white/70">
-        Consultá por número de orden, estado o técnico asignado. También puedo sugerirte próximos pasos.
-      </p>
-    </div>
-  ), []);
-
   if (messages.length === 0) {
-    return emptyState;
+    return (
+      <div className="flex flex-col gap-5 px-5 pt-4 pb-6">
+        <div className="flex justify-start">
+          <div className="max-w-[85%] rounded-2xl border px-5 py-4 shadow-lg backdrop-blur border-white/10 bg-white/5 text-white/90">
+            <p>Bienvenido {userName || 'usuario'}, ¡estoy acá para ayudarte!</p>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (

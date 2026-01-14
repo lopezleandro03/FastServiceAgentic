@@ -7,7 +7,7 @@ public class KanbanColumn
 {
     /// <summary>
     /// Column identifier matching baseline status grouping.
-    /// Values: INGRESADO, PRESUPUESTADO, ESP_REPUESTO, A_REPARAR, REPARADO, RECHAZADO
+    /// Values: INGRESADO, PRESUPUESTADO, ESP_REPUESTO, A_REPARAR, REPARADO, RECHAZADO, RECHAZO_PRESUP
     /// </summary>
     public string ColumnId { get; set; } = string.Empty;
 

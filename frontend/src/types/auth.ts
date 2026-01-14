@@ -42,4 +42,8 @@ export interface UserPermissions {
   canAccessAccounting: boolean;
   canAccessOrders: boolean;
   canAccessKanban: boolean;
+  // Role-based action permissions
+  isManager: boolean;  // Gerente - sees all actions with collapsible groups
+  isAdmin: boolean;  // FastServiceAdmin, Gerente, ElectroShopAdmin
+  isTecnico: boolean;  // Tecnico role
 }

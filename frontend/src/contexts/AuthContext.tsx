@@ -86,6 +86,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
             canAccessAccounting: false,
             canAccessOrders: true,
             canAccessKanban: true,
+            isManager: false,
+            isAdmin: false,
+            isTecnico: false,
           });
         } finally {
           setIsLoadingPermissions(false);

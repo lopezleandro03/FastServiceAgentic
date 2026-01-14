@@ -19,7 +19,8 @@ export type KanbanColumnId =
   | 'ESP_REPUESTO'
   | 'A_REPARAR'
   | 'REPARADO'
-  | 'RECHAZADO';
+  | 'RECHAZADO'
+  | 'RECHAZO_PRESUP';
 
 export interface KanbanOrderCard {
   orderNumber: number;

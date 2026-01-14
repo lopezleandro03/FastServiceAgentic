@@ -330,13 +330,13 @@ namespace FastService.McpServer.Services
             };
         }
 
-        public async Task<string> GetResponseAsync(string userMessage, List<ConversationMessage>? conversationHistory = null)
+        public async Task<string> GetResponseAsync(string userMessage, List<ConversationMessage>? conversationHistory = null, bool canAccessAccounting = false)
         {
             try
             {
                 var messages = new List<ChatMessage>
                 {
-                    new SystemChatMessage(GetSystemPrompt())
+                    new SystemChatMessage(GetSystemPrompt(canAccessAccounting))
                 };
 
                 // Add conversation history if provided
@@ -385,7 +385,7 @@ namespace FastService.McpServer.Services
                             _logger.LogInformation("Tool called: {FunctionName} with args: {Arguments}", 
                                 toolCall.FunctionName, toolCall.FunctionArguments.ToString());
 
-                            string toolResult = await ExecuteToolAsync(toolCall.FunctionName, toolCall.FunctionArguments.ToString());
+                            string toolResult = await ExecuteToolAsync(toolCall.FunctionName, toolCall.FunctionArguments.ToString(), canAccessAccounting);
                             
                             messages.Add(new ToolChatMessage(toolCall.Id, toolResult));
                         }
@@ -411,10 +411,21 @@ namespace FastService.McpServer.Services
         /// Executes the specified tool with the given arguments.
         /// Routes to the appropriate MCP tool implementation.
         /// </summary>
-        private async Task<string> ExecuteToolAsync(string functionName, string arguments)
+        private async Task<string> ExecuteToolAsync(string functionName, string arguments, bool canAccessAccounting = false)
         {
             try
             {
+                // Block accounting tools if user doesn't have access
+                var accountingTools = new[] { "GetSalesSummary", "GetSalesForPeriod", "GetSalesByPaymentMethod", "GetRecentSales" };
+                if (accountingTools.Contains(functionName) && !canAccessAccounting)
+                {
+                    return JsonSerializer.Serialize(new 
+                    { 
+                        success = false, 
+                        message = "No tenés permisos para acceder a la información de contabilidad." 
+                    });
+                }
+
                 var args = JsonDocument.Parse(arguments);
                 
                 return functionName switch
@@ -492,12 +503,39 @@ namespace FastService.McpServer.Services
         /// <summary>
         /// Returns the system prompt that defines the AI assistant's behavior.
         /// </summary>
-        private static string GetSystemPrompt()
+        private static string GetSystemPrompt(bool canAccessAccounting = false)
         {
-            return @"Eres un asistente virtual para FastService, un sistema de gestión de taller de reparaciones. 
-Tu objetivo es ayudar a los usuarios a buscar órdenes de reparación, información de clientes, y datos contables.
+            var accountingSection = canAccessAccounting 
+                ? @"
+**Contabilidad y Ventas:**
+- GetSalesSummary: Resumen de ventas (hoy, semana, mes, año)
+- GetSalesForPeriod: Datos de ventas para un período específico
+- GetSalesByPaymentMethod: Desglose por método de pago
+- GetRecentSales: Últimas transacciones de venta"
+                : @"
+**Contabilidad y Ventas:**
+NO tenés acceso al módulo de contabilidad. Si el usuario pregunta sobre ventas, facturación o datos contables, respondé:
+""No tenés permisos para acceder a la información de contabilidad. Por favor, contactá a un administrador si necesitás acceso.""";
 
-IDIOMA: Comunícate SIEMPRE en español con el usuario. Puedes entender consultas en inglés, pero TODAS tus respuestas deben estar en español.
+            return $@"Eres un asistente virtual especializado para FastService, un sistema de gestión de taller de reparaciones electrónicas.
+
+=== ROL Y LÍMITES ===
+Tu ÚNICO objetivo es ayudar con tareas relacionadas al servicio técnico electrónico:
+- Búsqueda y gestión de órdenes de reparación
+- Información de clientes del taller
+{(canAccessAccounting ? "- Datos contables y ventas del negocio" : "")}
+- Consultas técnicas sobre reparación de dispositivos electrónicos
+
+**IMPORTANTE:** NO respondas preguntas que no estén relacionadas con el trabajo de un técnico electrónico o la gestión del taller. 
+Si el usuario pregunta sobre otros temas (clima, noticias, chistes, programación, etc.), respondé amablemente:
+""Disculpá, solo puedo ayudarte con temas relacionados al servicio técnico y gestión del taller. ¿Hay algo sobre órdenes, clientes o reparaciones en lo que pueda asistirte?""
+
+=== IDIOMA ===
+SIEMPRE respondé en español argentino/rioplatense (usá ""vos"", ""podés"", ""tenés"", etc.).
+
+=== BÚSQUEDA RÁPIDA ===
+Cuando el usuario escriba un número precedido por # (ejemplo: #12345), interpretalo como una búsqueda rápida de orden por ese número.
+Ejemplo: ""#107037"" → Buscar la orden 107037 automáticamente.
 
 === HERRAMIENTAS DISPONIBLES ===
 
@@ -515,12 +553,7 @@ IDIOMA: Comunícate SIEMPRE en español con el usuario. Puedes entender consulta
 - GetCustomerById: Obtener detalles completos de un cliente
 - GetCustomerOrderHistory: Obtener historial de órdenes de un cliente
 - GetCustomerStats: Obtener estadísticas de un cliente
-
-**Contabilidad y Ventas:**
-- GetSalesSummary: Resumen de ventas (hoy, semana, mes, año)
-- GetSalesForPeriod: Datos de ventas para un período específico
-- GetSalesByPaymentMethod: Desglose por método de pago
-- GetRecentSales: Últimas transacciones de venta
+{accountingSection}
 
 === CONTEXTO DEL DOMINIO FASTSERVICE ===
 
@@ -569,7 +602,7 @@ Proporcioná sugerencias útiles.
 === MANEJO DE CONTEXTO ===
 - Recordá el contexto de conversaciones previas
 - Mantené un tono amigable, profesional y servicial
-- Usá lenguaje natural argentino/rioplatense (""vos"", ""podés"", etc.)
+- Sé conciso y directo en tus respuestas
 
 Siempre sé conciso, amigable y profesional en tus respuestas.";
         }
