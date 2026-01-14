@@ -1167,7 +1167,20 @@ export const useChat = (options: UseChatOptions = {}): UseChatReturn => {
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        // Map HTTP status codes to user-friendly messages
+        let userMessage = 'No pudimos procesar tu solicitud en este momento.';
+        if (response.status === 429) {
+          userMessage = 'El servicio está recibiendo muchas solicitudes. Por favor, esperá unos segundos e intentá de nuevo.';
+        } else if (response.status === 503 || response.status === 502 || response.status === 504) {
+          userMessage = 'El servicio de inteligencia artificial no está disponible temporalmente. Por favor, intentá de nuevo en unos minutos.';
+        } else if (response.status === 401 || response.status === 403) {
+          userMessage = 'No tenés autorización para usar el asistente. Por favor, contactá al administrador.';
+        } else if (response.status >= 500) {
+          userMessage = 'Hubo un problema con el servidor. Por favor, intentá de nuevo más tarde.';
+        } else if (response.status >= 400) {
+          userMessage = 'Hubo un problema con tu solicitud. Por favor, intentá reformular tu pregunta.';
+        }
+        throw new Error(userMessage);
       }
 
       const data = await response.json();
@@ -1211,12 +1224,20 @@ export const useChat = (options: UseChatOptions = {}): UseChatReturn => {
         setSelectedOrderDetails(null);
       }
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
-      setError(errorMessage);
+      // Check if it's a network error vs an error message we created
+      let userFriendlyMessage: string;
+      if (err instanceof TypeError && err.message.includes('fetch')) {
+        userFriendlyMessage = 'No se pudo conectar con el servidor. Por favor, verificá tu conexión a internet e intentá de nuevo.';
+      } else if (err instanceof Error) {
+        userFriendlyMessage = err.message;
+      } else {
+        userFriendlyMessage = 'Ocurrió un error inesperado. Por favor, intentá de nuevo.';
+      }
+      setError(userFriendlyMessage);
       
       const errorResponseMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
-        content: `Error: ${errorMessage}. Please try again.`,
+        content: `❌ ${userFriendlyMessage}`,
         role: 'assistant',
         timestamp: new Date(),
       };
