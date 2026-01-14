@@ -52,12 +52,12 @@ jobs:
         env:
           CI: true
 
-      - name: Build
-        working-directory: frontend
-        run: npm run build
-        env:
-          CI: false
-          REACT_APP_API_URL: ${{ env.API_URL }}
+      # - name: Build
+      #   working-directory: frontend
+      #   run: npm run build
+      #   env:
+      #     CI: false
+      #     REACT_APP_API_URL: ${{ env.API_URL }}
 
       - name: Deploy to Azure Static Web Apps
         id: swa_deploy
@@ -68,8 +68,8 @@ jobs:
           action: 'upload'
           app_location: 'frontend'
           output_location: 'build'
-          skip_app_build: true
-          skip_api_build: true
+          skip_app_build: false
+          skip_api_build: false
 
   # ---------------------------------------------------------------------------
   # Close Pull Request Job
