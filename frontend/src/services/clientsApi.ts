@@ -1,6 +1,6 @@
 import { ClientsListResponse, ClientDetails, ClientAutocomplete } from '../types/client';
 
-const API_BASE_URL = 'http://localhost:5207';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080';
 
 export async function getClients(
   search?: string,

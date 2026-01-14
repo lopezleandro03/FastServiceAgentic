@@ -73,7 +73,7 @@ const MainPanel: React.FC<MainPanelProps> = ({
   const handleOrderClick = async (orderNumber: number) => {
     setIsLoadingDetails(true);
     try {
-      const response = await fetch(`http://localhost:5207/api/orders/${orderNumber}`);
+      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8080'}/api/orders/${orderNumber}`);
       if (response.ok) {
         const orderDetails = await response.json();
         setViewingOrderDetails(orderDetails);
@@ -115,7 +115,7 @@ const MainPanel: React.FC<MainPanelProps> = ({
 
   const handleSaveNewOrder = async (orderData: any) => {
     // Send the order data to the API
-    const response = await fetch('http://localhost:5207/api/orders', {
+    const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8080'}/api/orders`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -151,7 +151,7 @@ const MainPanel: React.FC<MainPanelProps> = ({
 
   const handleUpdateOrder = async (orderData: any, orderNumber: number) => {
     // Send the order data to the API
-    const response = await fetch(`http://localhost:5207/api/orders/${orderNumber}`, {
+    const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8080'}/api/orders/${orderNumber}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',

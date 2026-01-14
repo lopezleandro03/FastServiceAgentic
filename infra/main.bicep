@@ -126,6 +126,10 @@ resource backendWebApp 'Microsoft.Web/sites@2023-12-01' = {
           name: 'ASPNETCORE_ENVIRONMENT'
           value: 'Production'
         }
+        {
+          name: 'ALLOWED_ORIGINS'
+          value: 'https://${appName}-swa-${uniqueSuffix}.azurestaticapps.net'
+        }
       ]
     }
   }

@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import { ChatMessage } from '../types/chat';
 import { OrderSummary, OrderDetails } from '../types/order';
 
-const API_BASE_URL = 'http://localhost:5207';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080';
 
 interface UseChatReturn {
   messages: ChatMessage[];

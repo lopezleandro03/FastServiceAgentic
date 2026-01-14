@@ -7,7 +7,7 @@ import { ArrowLeft, Save, X, Search, Ban, Pencil, Loader2, CheckCircle } from 'l
 import { OrderDetails } from '../../types/order';
 import { getClientByDni } from '../../services/clientsApi';
 
-const API_BASE_URL = 'http://localhost:5207';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080';
 const GOOGLE_MAPS_API_KEY = 'AIzaSyAF44JdvJ96J5WyhIwxFRc646TTjhQ2dIY';
 
 interface CustomerData {
