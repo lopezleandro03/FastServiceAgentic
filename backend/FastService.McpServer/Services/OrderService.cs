@@ -601,6 +601,84 @@ namespace FastService.McpServer.Services
         }
 
         /// <summary>
+        /// Delete a novedad (note/movement) from an order
+        /// </summary>
+        public async Task<bool> DeleteNovedadAsync(int orderNumber, int novedadId)
+        {
+            try
+            {
+                // Get the novedad
+                var novedad = await _context.Novedads
+                    .FirstOrDefaultAsync(n => n.NovedadId == novedadId && n.ReparacionId == orderNumber);
+
+                if (novedad == null)
+                {
+                    throw new InvalidOperationException($"Novedad #{novedadId} not found for order #{orderNumber}");
+                }
+
+                _context.Novedads.Remove(novedad);
+                await _context.SaveChangesAsync();
+
+                _logger.LogInformation("Deleted novedad #{NovedadId} from order #{OrderNumber}", novedadId, orderNumber);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting novedad #{NovedadId} from order #{OrderNumber}", novedadId, orderNumber);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Delete an order and all its related data
+        /// </summary>
+        public async Task<bool> DeleteOrderAsync(int orderNumber)
+        {
+            using var transaction = await _context.Database.BeginTransactionAsync();
+
+            try
+            {
+                // Get the order with all related entities
+                var order = await _context.Reparacions
+                    .Include(r => r.ReparacionDetalle)
+                    .FirstOrDefaultAsync(r => r.ReparacionId == orderNumber);
+
+                if (order == null)
+                {
+                    throw new InvalidOperationException($"Order #{orderNumber} not found");
+                }
+
+                // Delete all novedades for this order
+                var novedades = await _context.Novedads
+                    .Where(n => n.ReparacionId == orderNumber)
+                    .ToListAsync();
+                _context.Novedads.RemoveRange(novedades);
+
+                // Delete reparacion detalle if exists
+                if (order.ReparacionDetalle != null)
+                {
+                    _context.ReparacionDetalles.Remove(order.ReparacionDetalle);
+                }
+
+                // Delete the order itself
+                _context.Reparacions.Remove(order);
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                _logger.LogInformation("Deleted order #{OrderNumber} and all related data ({NovedadesCount} novedades)", 
+                    orderNumber, novedades.Count);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                _logger.LogError(ex, "Error deleting order #{OrderNumber}", orderNumber);
+                throw;
+            }
+        }
+
+        /// <summary>
         /// Process a "Retira" (withdrawal) action on an order.
         /// This marks the order as withdrawn, records the payment, and creates accounting entries.
         /// </summary>

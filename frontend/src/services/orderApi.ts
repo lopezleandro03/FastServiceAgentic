@@ -118,6 +118,35 @@ export async function fetchOrderDetails(orderNumber: number): Promise<OrderDetai
 }
 
 /**
+ * Delete an order and all its related data
+ * @param orderNumber The order ID to delete
+ */
+export async function deleteOrder(orderNumber: number): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/api/orders/${orderNumber}`, {
+    method: 'DELETE',
+  });
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: response.statusText }));
+    throw new Error(error.error || `Failed to delete order ${orderNumber}`);
+  }
+}
+
+/**
+ * Delete a novedad (note/movement) from an order
+ * @param orderNumber The order ID
+ * @param novedadId The novedad ID to delete
+ */
+export async function deleteNovedad(orderNumber: number, novedadId: number): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/api/orders/${orderNumber}/novedades/${novedadId}`, {
+    method: 'DELETE',
+  });
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: response.statusText }));
+    throw new Error(error.error || `Failed to delete novedad ${novedadId}`);
+  }
+}
+
+/**
  * Fetch list of technicians for filter dropdown
  * @returns Array of UserInfo
  */

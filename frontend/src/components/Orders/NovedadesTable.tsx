@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { NovedadInfo } from '../../types/order';
+import { deleteNovedad } from '../../services/orderApi';
 import {
   Table,
   TableBody,
@@ -14,12 +15,39 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '../ui/tooltip';
+import { Button } from '../ui/button';
+import { Trash2, Loader2 } from 'lucide-react';
 
 interface NovedadesTableProps {
   novedades: NovedadInfo[];
+  orderNumber?: number;
+  onNovedadDeleted?: () => void;
 }
 
-const NovedadesTable: React.FC<NovedadesTableProps> = ({ novedades }) => {
+const NovedadesTable: React.FC<NovedadesTableProps> = ({ novedades, orderNumber, onNovedadDeleted }) => {
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+
+  const handleDeleteNovedad = async (novedadId: number) => {
+    if (!orderNumber) return;
+    
+    if (!window.confirm('¿Estás seguro de eliminar esta novedad?')) {
+      return;
+    }
+
+    setDeletingId(novedadId);
+    try {
+      await deleteNovedad(orderNumber, novedadId);
+      if (onNovedadDeleted) {
+        onNovedadDeleted();
+      }
+    } catch (error) {
+      console.error('Error deleting novedad:', error);
+      alert(error instanceof Error ? error.message : 'Error al eliminar la novedad');
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   const formatDate = (dateString: string): string => {
     try {
       const date = new Date(dateString);
@@ -71,6 +99,7 @@ const NovedadesTable: React.FC<NovedadesTableProps> = ({ novedades }) => {
               <TableHead className="w-[140px]">Novedad</TableHead>
               <TableHead className="w-[100px] text-right">Monto</TableHead>
               <TableHead>Observación</TableHead>
+              {orderNumber && <TableHead className="w-[60px]"></TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -101,6 +130,30 @@ const NovedadesTable: React.FC<NovedadesTableProps> = ({ novedades }) => {
                     truncateText(novedad.observacion)
                   )}
                 </TableCell>
+                {orderNumber && (
+                  <TableCell className="text-center">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                          onClick={() => handleDeleteNovedad(novedad.id)}
+                          disabled={deletingId === novedad.id}
+                        >
+                          {deletingId === novedad.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Eliminar novedad</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TableCell>
+                )}
               </TableRow>
             ))}
           </TableBody>

@@ -1,12 +1,13 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { OrderDetails } from '../../types/order';
 import StatusBadge from './StatusBadge';
 import NovedadesTable from './NovedadesTable';
+import { deleteOrder, fetchOrderDetails } from '../../services/orderApi';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { Skeleton } from '../ui/skeleton';
-import { ArrowLeft, Printer } from 'lucide-react';
+import { ArrowLeft, Printer, Trash2, Loader2 } from 'lucide-react';
 
 // WhatsApp icon SVG component
 const WhatsAppIcon: React.FC<{ className?: string }> = ({ className }) => (
@@ -25,6 +26,8 @@ interface OrderDetailsViewProps {
   onBack?: () => void;
   onPrint?: () => void;
   onPrintDorso?: () => void;
+  onOrderDeleted?: () => void;
+  onOrderRefresh?: (order: OrderDetails) => void;
 }
 
 // Compact field component for dense layout
@@ -68,7 +71,52 @@ const OrderDetailsSkeleton: React.FC = () => (
   </div>
 );
 
-const OrderDetailsView: React.FC<OrderDetailsViewProps> = ({ order, isLoading, onBack, onPrint, onPrintDorso }) => {
+const OrderDetailsView: React.FC<OrderDetailsViewProps> = ({ order, isLoading, onBack, onPrint, onPrintDorso, onOrderDeleted, onOrderRefresh }) => {
+  const [isDeletingOrder, setIsDeletingOrder] = useState(false);
+  const [currentOrder, setCurrentOrder] = useState<OrderDetails | null>(order);
+
+  // Update currentOrder when order prop changes
+  React.useEffect(() => {
+    setCurrentOrder(order);
+  }, [order]);
+
+  const handleDeleteOrder = async () => {
+    if (!currentOrder) return;
+    
+    if (!window.confirm(`¿Estás seguro de eliminar la orden #${currentOrder.orderNumber}? Esta acción no se puede deshacer.`)) {
+      return;
+    }
+
+    setIsDeletingOrder(true);
+    try {
+      await deleteOrder(currentOrder.orderNumber);
+      if (onOrderDeleted) {
+        onOrderDeleted();
+      }
+      if (onBack) {
+        onBack();
+      }
+    } catch (error) {
+      console.error('Error deleting order:', error);
+      alert(error instanceof Error ? error.message : 'Error al eliminar la orden');
+    } finally {
+      setIsDeletingOrder(false);
+    }
+  };
+
+  const handleNovedadDeleted = async () => {
+    if (!currentOrder) return;
+    try {
+      const refreshedOrder = await fetchOrderDetails(currentOrder.orderNumber);
+      setCurrentOrder(refreshedOrder);
+      if (onOrderRefresh) {
+        onOrderRefresh(refreshedOrder);
+      }
+    } catch (error) {
+      console.error('Error refreshing order:', error);
+    }
+  };
+
   const formatDate = (dateString?: string | null): string => {
     if (!dateString) return '-';
     try {
@@ -127,7 +175,7 @@ const OrderDetailsView: React.FC<OrderDetailsViewProps> = ({ order, isLoading, o
 
   // Get customer phone number for WhatsApp (prioritize celular)
   const getWhatsAppPhone = (): string | null => {
-    const phone = order?.customer?.celular || order?.customer?.phone;
+    const phone = currentOrder?.customer?.celular || currentOrder?.customer?.phone;
     if (!phone) return null;
     return formatPhoneForWhatsApp(phone);
   };
@@ -137,8 +185,8 @@ const OrderDetailsView: React.FC<OrderDetailsViewProps> = ({ order, isLoading, o
     const phone = getWhatsAppPhone();
     if (!phone) return;
     
-    const customerName = order?.customer?.firstName || order?.customer?.fullName?.split(' ')[0] || 'cliente';
-    const orderNumber = order?.orderNumber || '';
+    const customerName = currentOrder?.customer?.firstName || currentOrder?.customer?.fullName?.split(' ')[0] || 'cliente';
+    const orderNumber = currentOrder?.orderNumber || '';
     
     const message = encodeURIComponent(
       `Hola ${customerName}, nos comunicamos de FastService respecto a su orden #${orderNumber}. ¿En qué podemos ayudarle?`
@@ -152,7 +200,7 @@ const OrderDetailsView: React.FC<OrderDetailsViewProps> = ({ order, isLoading, o
     return <OrderDetailsSkeleton />;
   }
 
-  if (!order) {
+  if (!currentOrder) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
         <svg className="w-12 h-12 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -180,14 +228,14 @@ const OrderDetailsView: React.FC<OrderDetailsViewProps> = ({ order, isLoading, o
             </Button>
           )}
           <div className="flex items-center gap-3">
-            <h2 className="text-xl font-semibold">Orden #{order.orderNumber}</h2>
-            <StatusBadge status={order.status || order.repair?.status || 'Desconocido'} />
-            {order.isDomicilio && (
+            <h2 className="text-xl font-semibold">Orden #{currentOrder?.orderNumber}</h2>
+            <StatusBadge status={currentOrder?.status || currentOrder?.repair?.status || 'Desconocido'} />
+            {currentOrder?.isDomicilio && (
               <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
                 Domicilio
               </Badge>
             )}
-            {order.isGarantia && (
+            {currentOrder?.isGarantia && (
               <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
                 Garantía
               </Badge>
@@ -231,6 +279,21 @@ const OrderDetailsView: React.FC<OrderDetailsViewProps> = ({ order, isLoading, o
               Imprimir Dorso
             </Button>
           )}
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleDeleteOrder}
+            disabled={isDeletingOrder}
+            className="h-9 px-3 bg-red-50 hover:bg-red-100 text-red-700 border-red-300"
+            title="Eliminar orden"
+          >
+            {isDeletingOrder ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Trash2 className="h-4 w-4 mr-2" />
+            )}
+            Eliminar
+          </Button>
         </div>
       </div>
 
@@ -246,12 +309,12 @@ const OrderDetailsView: React.FC<OrderDetailsViewProps> = ({ order, isLoading, o
         </CardHeader>
         <CardContent className="py-3 px-4">
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-x-4 gap-y-3">
-            <CompactField label="Fecha Estado" value={formatDateTime(order.statusDate)} />
-            <CompactField label="Fecha Ingreso" value={formatDate(order.entryDate || order.repair?.entryDate)} />
-            <CompactField label="Responsable" value={order.responsable?.fullName} />
-            <CompactField label="Técnico" value={order.technician?.fullName} />
-            <CompactField label="Presupuesto" value={formatCurrency(order.presupuesto || order.repair?.estimatedPrice)} />
-            <CompactField label="Monto Final" value={formatCurrency(order.montoFinal || order.repair?.finalPrice)} />
+            <CompactField label="Fecha Estado" value={formatDateTime(currentOrder?.statusDate)} />
+            <CompactField label="Fecha Ingreso" value={formatDate(currentOrder?.entryDate || currentOrder?.repair?.entryDate)} />
+            <CompactField label="Responsable" value={currentOrder?.responsable?.fullName} />
+            <CompactField label="Técnico" value={currentOrder?.technician?.fullName} />
+            <CompactField label="Presupuesto" value={formatCurrency(currentOrder?.presupuesto || currentOrder?.repair?.estimatedPrice)} />
+            <CompactField label="Monto Final" value={formatCurrency(currentOrder?.montoFinal || currentOrder?.repair?.finalPrice)} />
           </div>
         </CardContent>
       </Card>
@@ -268,12 +331,12 @@ const OrderDetailsView: React.FC<OrderDetailsViewProps> = ({ order, isLoading, o
         </CardHeader>
         <CardContent className="py-3 px-4">
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-x-4 gap-y-3">
-            <CompactField label="Documento" value={order.customer.dni} />
-            <CompactField label="Nombre" value={order.customer.firstName || order.customer.fullName?.split(' ')[0]} />
-            <CompactField label="Apellido" value={order.customer.lastName || order.customer.fullName?.split(' ').slice(1).join(' ')} />
-            <CompactField label="Email" value={order.customer.email} />
-            <CompactField label="Teléfono" value={order.customer.phone} />
-            <CompactField label="Celular" value={order.customer.celular} />
+            <CompactField label="Documento" value={currentOrder?.customer?.dni} />
+            <CompactField label="Nombre" value={currentOrder?.customer?.firstName || currentOrder?.customer?.fullName?.split(' ')[0]} />
+            <CompactField label="Apellido" value={currentOrder?.customer?.lastName || currentOrder?.customer?.fullName?.split(' ').slice(1).join(' ')} />
+            <CompactField label="Email" value={currentOrder?.customer?.email} />
+            <CompactField label="Teléfono" value={currentOrder?.customer?.phone} />
+            <CompactField label="Celular" value={currentOrder?.customer?.celular} />
           </div>
         </CardContent>
       </Card>
@@ -290,17 +353,17 @@ const OrderDetailsView: React.FC<OrderDetailsViewProps> = ({ order, isLoading, o
           </CardTitle>
         </CardHeader>
         <CardContent className="py-3 px-4">
-          {order.customer.addressDetails ? (
+          {currentOrder?.customer?.addressDetails ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-x-4 gap-y-3">
-              <CompactField label="Calle" value={order.customer.addressDetails.calle} />
-              <CompactField label="Altura" value={order.customer.addressDetails.altura} />
-              <CompactField label="Entre Calle 1" value={order.customer.addressDetails.entreCalle1} />
-              <CompactField label="Entre Calle 2" value={order.customer.addressDetails.entreCalle2} />
-              <CompactField label="Ciudad" value={order.customer.addressDetails.ciudad} />
-              <CompactField label="Código Postal" value={order.customer.addressDetails.codigoPostal} />
+              <CompactField label="Calle" value={currentOrder?.customer?.addressDetails?.calle} />
+              <CompactField label="Altura" value={currentOrder?.customer?.addressDetails?.altura} />
+              <CompactField label="Entre Calle 1" value={currentOrder?.customer?.addressDetails?.entreCalle1} />
+              <CompactField label="Entre Calle 2" value={currentOrder?.customer?.addressDetails?.entreCalle2} />
+              <CompactField label="Ciudad" value={currentOrder?.customer?.addressDetails?.ciudad} />
+              <CompactField label="Código Postal" value={currentOrder?.customer?.addressDetails?.codigoPostal} />
             </div>
           ) : (
-            <CompactField label="Dirección" value={order.customer.address} className="col-span-full" />
+            <CompactField label="Dirección" value={currentOrder?.customer?.address} className="col-span-full" />
           )}
         </CardContent>
       </Card>
@@ -317,12 +380,12 @@ const OrderDetailsView: React.FC<OrderDetailsViewProps> = ({ order, isLoading, o
         </CardHeader>
         <CardContent className="py-3 px-4">
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-x-4 gap-y-3">
-            <CompactField label="Tipo" value={order.device.deviceType} />
-            <CompactField label="Marca" value={order.device.brand} />
-            <CompactField label="Nro. Serie" value={order.device.serialNumber} />
-            <CompactField label="Modelo" value={order.device.model} />
-            <CompactField label="Ubicación" value={order.device.ubicacion} />
-            <CompactField label="Accesorios" value={order.device.accesorios} />
+            <CompactField label="Tipo" value={currentOrder?.device?.deviceType} />
+            <CompactField label="Marca" value={currentOrder?.device?.brand} />
+            <CompactField label="Nro. Serie" value={currentOrder?.device?.serialNumber} />
+            <CompactField label="Modelo" value={currentOrder?.device?.model} />
+            <CompactField label="Ubicación" value={currentOrder?.device?.ubicacion} />
+            <CompactField label="Accesorios" value={currentOrder?.device?.accesorios} />
           </div>
         </CardContent>
       </Card>
@@ -334,11 +397,15 @@ const OrderDetailsView: React.FC<OrderDetailsViewProps> = ({ order, isLoading, o
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            Novedades ({order.novedades?.length || 0})
+            Novedades ({currentOrder?.novedades?.length || 0})
           </CardTitle>
         </CardHeader>
         <CardContent className="py-3 px-4">
-          <NovedadesTable novedades={order.novedades || []} />
+          <NovedadesTable 
+            novedades={currentOrder?.novedades || []} 
+            orderNumber={currentOrder?.orderNumber}
+            onNovedadDeleted={handleNovedadDeleted}
+          />
         </CardContent>
       </Card>
     </div>

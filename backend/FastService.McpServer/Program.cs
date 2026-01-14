@@ -334,6 +334,42 @@ app.MapPost("/api/orders/{orderNumber:int}/novedades", async (int orderNumber, A
     }
 }).WithName("AddNovedad").WithOpenApi();
 
+// Delete a novedad (note/movement) from an order
+app.MapDelete("/api/orders/{orderNumber:int}/novedades/{novedadId:int}", async (int orderNumber, int novedadId, OrderService orderService) =>
+{
+    try
+    {
+        await orderService.DeleteNovedadAsync(orderNumber, novedadId);
+        return Results.Ok(new { message = $"Novedad #{novedadId} eliminada exitosamente" });
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.NotFound(new { error = ex.Message });
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(detail: ex.Message, statusCode: 500);
+    }
+}).WithName("DeleteNovedad").WithOpenApi();
+
+// Delete an order (and all its related data)
+app.MapDelete("/api/orders/{orderNumber:int}", async (int orderNumber, OrderService orderService) =>
+{
+    try
+    {
+        await orderService.DeleteOrderAsync(orderNumber);
+        return Results.Ok(new { message = $"Orden #{orderNumber} eliminada exitosamente" });
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.NotFound(new { error = ex.Message });
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(detail: ex.Message, statusCode: 500);
+    }
+}).WithName("DeleteOrder").WithOpenApi();
+
 // Process Retira (withdrawal) action on an order
 app.MapPost("/api/orders/{orderNumber:int}/retira", async (int orderNumber, ProcessRetiraRequest request, OrderService orderService) =>
 {
