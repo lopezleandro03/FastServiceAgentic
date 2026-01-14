@@ -9,6 +9,7 @@ import ActionSuggestions from './components/ChatPanel/ActionSuggestions';
 import DefaultSuggestions from './components/ChatPanel/DefaultSuggestions';
 import { LoadingIndicator } from './components/ChatPanel/LoadingIndicator';
 import { useChat } from './hooks/useChat';
+import { useIsMobile } from './hooks/useIsMobile';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import LoginPage from './components/Login/LoginPage';
 import { LayoutGrid, TrendingUp, LogOut, Loader2, Users, Search } from 'lucide-react';
@@ -18,6 +19,7 @@ function AppContent() {
   const { isAuthenticated, user, logout, permissions, isLoadingPermissions } = useAuth();
   const [activeView, setActiveView] = useState<MainView>('kanban');
   const hasShownAccountingInsights = useRef(false);
+  const isMobile = useIsMobile();
   const { 
     messages, 
     isLoading, 
@@ -198,6 +200,49 @@ function AppContent() {
       )}
     </>
   );
+
+  // Mobile view: Show only the AI chat interface
+  if (isMobile) {
+    return (
+      <div className="h-screen flex flex-col overflow-hidden">
+        {/* Mobile header with logout */}
+        <div className="flex-shrink-0 flex items-center justify-between px-4 py-3 bg-gradient-to-r from-indigo-600 via-blue-600 to-cyan-500">
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 rounded-full border border-white/40 bg-white/20 px-2 py-0.5 text-xs font-semibold tracking-wide">
+              <span className="h-2 w-2 rounded-full bg-emerald-300 animate-pulse" aria-hidden />
+              Online
+            </div>
+            <h2 className="text-lg font-semibold text-white">FastService AI</h2>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="text-white/80 text-sm">
+              {user ? `${user.nombre}` : 'Usuario'}
+            </span>
+            <button
+              onClick={() => {
+                clearMessages();
+                logout();
+              }}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-white/90 hover:bg-white/20 hover:text-white transition-all"
+              title="Cerrar sesión"
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+        
+        {/* Full-screen chat interface */}
+        <div className="flex-1 min-h-0 flex flex-col bg-slate-950">
+          <div className="absolute inset-0 opacity-60 pointer-events-none" aria-hidden>
+            <div className="w-full h-full bg-gradient-to-b from-indigo-900/70 via-slate-950 to-slate-950" />
+          </div>
+          <div className="relative flex-1 min-h-0 flex flex-col overflow-hidden text-white">
+            {chatPanelContent}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-screen flex flex-col overflow-hidden">
