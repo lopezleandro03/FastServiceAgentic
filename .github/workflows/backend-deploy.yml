@@ -15,21 +15,11 @@ on:
     paths:
       - 'backend/**'
   workflow_dispatch:
-    inputs:
-      environment:
-        description: 'Deployment environment'
-        required: true
-        default: 'dev'
-        type: choice
-        options:
-          - dev
-          - staging
-          - prod
 
 env:
   DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
   IMAGE_NAME: fastservice-api
-  APP_NAME: fastservice-${{ github.event.inputs.environment || 'dev' }}-api
+  AZURE_RESOURCE_GROUP: fastservice-app
 
 jobs:
   # ---------------------------------------------------------------------------
@@ -110,8 +100,7 @@ jobs:
     needs: docker
     if: github.event_name != 'pull_request'
     environment:
-      name: ${{ github.event.inputs.environment || 'dev' }}
-      url: https://${{ env.APP_NAME }}.azurewebsites.net
+      name: production
 
     steps:
       - name: Azure Login
@@ -119,17 +108,25 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
+      - name: Get App Service Name
+        id: get-app-name
+        run: |
+          APP_NAME=$(az webapp list --resource-group ${{ env.AZURE_RESOURCE_GROUP }} --query "[?contains(name, 'fastservice-api')].name" -o tsv)
+          echo "app-name=$APP_NAME" >> $GITHUB_OUTPUT
+          echo "Deploying to: $APP_NAME"
+
       - name: Deploy to App Service
         uses: azure/webapps-deploy@v3
         with:
-          app-name: ${{ env.APP_NAME }}
+          app-name: ${{ steps.get-app-name.outputs.app-name }}
           images: ${{ env.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
 
       - name: Health Check
         run: |
+          APP_NAME="${{ steps.get-app-name.outputs.app-name }}"
           echo "Waiting for deployment to complete..."
           sleep 30
-          response=$(curl -s -o /dev/null -w "%{http_code}" https://${{ env.APP_NAME }}.azurewebsites.net/health)
+          response=$(curl -s -o /dev/null -w "%{http_code}" https://${APP_NAME}.azurewebsites.net/health)
           if [ "$response" != "200" ]; then
             echo "Health check failed with status $response"
             exit 1
