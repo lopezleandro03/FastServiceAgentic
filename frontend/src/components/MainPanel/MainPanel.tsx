@@ -4,10 +4,11 @@ import { OrderList, OrderDetailsView, OrderCreateView, OrderAdvancedSearch } fro
 import { KanbanBoard } from '../Kanban';
 import { AccountingDashboard } from '../Accounting';
 import { ClientsModule } from '../Clients';
+import { WhatsAppTemplatesModule } from '../WhatsApp';
 import { LoadingSpinner } from '../ui/loading-spinner';
 import { openPrintWindow, ReceiptData } from '../Print';
 
-export type MainView = 'kanban' | 'orders' | 'accounting' | 'clients' | 'search';
+export type MainView = 'kanban' | 'orders' | 'accounting' | 'clients' | 'search' | 'whatsapp';
 
 interface MainPanelProps {
   orders?: OrderSummary[];
@@ -66,7 +67,7 @@ const MainPanel: React.FC<MainPanelProps> = ({
 
   // When activeView changes to a non-orders view, clear order details
   useEffect(() => {
-    if (activeView === 'accounting' || activeView === 'clients' || activeView === 'kanban') {
+    if (activeView === 'accounting' || activeView === 'clients' || activeView === 'kanban' || activeView === 'whatsapp') {
       setViewingOrderDetails(null);
     }
   }, [activeView]);
@@ -285,6 +286,13 @@ const MainPanel: React.FC<MainPanelProps> = ({
     mainBodyContent = (
       <div className="h-full min-w-0 overflow-hidden">
         <ClientsModule onViewOrder={handleOrderClick} />
+      </div>
+    );
+  } else if (activeView === 'whatsapp') {
+    // Show WhatsApp Templates management
+    mainBodyContent = (
+      <div className="h-full min-w-0 overflow-hidden">
+        <WhatsAppTemplatesModule />
       </div>
     );
   } else {

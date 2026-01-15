@@ -86,6 +86,7 @@ export interface NovedadInfo {
 
 export interface RepairInfo {
   status: string;
+  estadoReparacionId?: number;
   observations?: string;
   entryDate: string;
   exitDate?: string;

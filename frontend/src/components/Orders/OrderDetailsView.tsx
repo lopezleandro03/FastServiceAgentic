@@ -1,13 +1,23 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { OrderDetails } from '../../types/order';
 import StatusBadge from './StatusBadge';
 import NovedadesTable from './NovedadesTable';
 import { deleteOrder, fetchOrderDetails } from '../../services/orderApi';
+import { generateMessageForOrder, getTemplatesForState, getReminderTemplates, generateMessage, openWhatsApp } from '../../services/whatsappApi';
+import { WhatsAppTemplate, GeneratedMessage } from '../../types/whatsapp';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { Skeleton } from '../ui/skeleton';
-import { ArrowLeft, Printer, Trash2, Loader2 } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '../ui/dialog';
+import { ArrowLeft, Printer, Trash2, Loader2, ChevronDown, Clock, Send } from 'lucide-react';
 
 // WhatsApp icon SVG component
 const WhatsAppIcon: React.FC<{ className?: string }> = ({ className }) => (
@@ -74,9 +84,19 @@ const OrderDetailsSkeleton: React.FC = () => (
 const OrderDetailsView: React.FC<OrderDetailsViewProps> = ({ order, isLoading, onBack, onPrint, onPrintDorso, onOrderDeleted, onOrderRefresh }) => {
   const [isDeletingOrder, setIsDeletingOrder] = useState(false);
   const [currentOrder, setCurrentOrder] = useState<OrderDetails | null>(order);
+  
+  // WhatsApp template states
+  const [isWhatsAppDialogOpen, setIsWhatsAppDialogOpen] = useState(false);
+  const [availableTemplates, setAvailableTemplates] = useState<WhatsAppTemplate[]>([]);
+  const [reminderTemplates, setReminderTemplates] = useState<WhatsAppTemplate[]>([]);
+  const [selectedTemplate, setSelectedTemplate] = useState<WhatsAppTemplate | null>(null);
+  const [generatedMessage, setGeneratedMessage] = useState<GeneratedMessage | null>(null);
+  const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
+  const [isGeneratingMessage, setIsGeneratingMessage] = useState(false);
+  const [whatsAppError, setWhatsAppError] = useState<string | null>(null);
 
   // Update currentOrder when order prop changes
-  React.useEffect(() => {
+  useEffect(() => {
     setCurrentOrder(order);
   }, [order]);
 
@@ -180,20 +200,106 @@ const OrderDetailsView: React.FC<OrderDetailsViewProps> = ({ order, isLoading, o
     return formatPhoneForWhatsApp(phone);
   };
 
-  // Handle WhatsApp button click
-  const handleWhatsAppClick = () => {
+  // Load templates for the current order state
+  const loadTemplates = async () => {
+    if (!currentOrder) return;
+    
+    setIsLoadingTemplates(true);
+    setWhatsAppError(null);
+    
+    try {
+      // Get the state ID from the order (we need to map status name to ID)
+      const stateId = currentOrder.repair?.estadoReparacionId;
+      
+      const [stateTemplates, reminders] = await Promise.all([
+        stateId ? getTemplatesForState(stateId) : Promise.resolve([]),
+        getReminderTemplates(),
+      ]);
+      
+      setAvailableTemplates(stateTemplates);
+      setReminderTemplates(reminders);
+      
+      // Auto-select default template if available
+      const defaultTemplate = stateTemplates.find(t => t.esDefault) || stateTemplates[0];
+      if (defaultTemplate) {
+        setSelectedTemplate(defaultTemplate);
+        await loadGeneratedMessage(defaultTemplate.whatsAppTemplateId);
+      }
+    } catch (error) {
+      console.error('Error loading templates:', error);
+      setWhatsAppError('Error al cargar las plantillas');
+    } finally {
+      setIsLoadingTemplates(false);
+    }
+  };
+
+  // Generate message from selected template
+  const loadGeneratedMessage = async (templateId: number) => {
+    if (!currentOrder) return;
+    
+    setIsGeneratingMessage(true);
+    setWhatsAppError(null);
+    
+    try {
+      const message = await generateMessage(templateId, currentOrder.orderNumber);
+      setGeneratedMessage(message);
+    } catch (error) {
+      console.error('Error generating message:', error);
+      setWhatsAppError(error instanceof Error ? error.message : 'Error al generar el mensaje');
+      setGeneratedMessage(null);
+    } finally {
+      setIsGeneratingMessage(false);
+    }
+  };
+
+  // Handle template selection
+  const handleTemplateSelect = async (template: WhatsAppTemplate) => {
+    setSelectedTemplate(template);
+    await loadGeneratedMessage(template.whatsAppTemplateId);
+  };
+
+  // Handle WhatsApp button click - open dialog
+  const handleWhatsAppClick = async () => {
     const phone = getWhatsAppPhone();
-    if (!phone) return;
+    if (!phone) {
+      alert('Este cliente no tiene número de teléfono registrado');
+      return;
+    }
     
-    const customerName = currentOrder?.customer?.firstName || currentOrder?.customer?.fullName?.split(' ')[0] || 'cliente';
-    const orderNumber = currentOrder?.orderNumber || '';
+    setIsWhatsAppDialogOpen(true);
+    await loadTemplates();
+  };
+
+  // Send the WhatsApp message
+  const handleSendWhatsApp = () => {
+    if (!generatedMessage) return;
     
-    const message = encodeURIComponent(
-      `Hola ${customerName}, nos comunicamos de FastService respecto a su orden #${orderNumber}. ¿En qué podemos ayudarle?`
-    );
+    try {
+      openWhatsApp(generatedMessage);
+      setIsWhatsAppDialogOpen(false);
+    } catch (error) {
+      setWhatsAppError(error instanceof Error ? error.message : 'Error al abrir WhatsApp');
+    }
+  };
+
+  // Quick send - use default template directly
+  const handleQuickSend = async () => {
+    if (!currentOrder) return;
     
-    const whatsappUrl = `https://wa.me/${phone}?text=${message}`;
-    window.open(whatsappUrl, '_blank');
+    const phone = getWhatsAppPhone();
+    if (!phone) {
+      alert('Este cliente no tiene número de teléfono registrado');
+      return;
+    }
+    
+    try {
+      const message = await generateMessageForOrder(currentOrder.orderNumber);
+      openWhatsApp(message);
+    } catch (error) {
+      console.error('Error with quick send:', error);
+      // Fall back to dialog if no template available
+      handleWhatsAppClick();
+    }
   };
 
   if (isLoading) {
@@ -408,6 +514,119 @@ const OrderDetailsView: React.FC<OrderDetailsViewProps> = ({ order, isLoading, o
           />
         </CardContent>
       </Card>
+
+      {/* WhatsApp Template Selection Dialog */}
+      <Dialog open={isWhatsAppDialogOpen} onOpenChange={setIsWhatsAppDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <WhatsAppIcon className="w-5 h-5 text-green-600" />
+              Enviar Mensaje por WhatsApp
+            </DialogTitle>
+            <DialogDescription>
+              Selecciona una plantilla y revisa el mensaje antes de enviar
+            </DialogDescription>
+          </DialogHeader>
+
+          {isLoadingTemplates ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-6 h-6 animate-spin text-green-600" />
+              <span className="ml-2 text-muted-foreground">Cargando plantillas...</span>
+            </div>
+          ) : (
+            <div className="space-y-4 py-4">
+              {/* Template Selection */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Plantilla de Mensaje</label>
+                <div className="flex flex-wrap gap-2">
+                  {availableTemplates.map((template) => (
+                    <Button
+                      key={template.whatsAppTemplateId}
+                      variant={selectedTemplate?.whatsAppTemplateId === template.whatsAppTemplateId ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => handleTemplateSelect(template)}
+                      className={selectedTemplate?.whatsAppTemplateId === template.whatsAppTemplateId 
+                        ? "bg-green-600 hover:bg-green-700" 
+                        : ""}
+                    >
+                      {template.nombre}
+                      {template.esDefault && <span className="ml-1 text-xs">★</span>}
+                    </Button>
+                  ))}
+                  {reminderTemplates.length > 0 && (
+                    <>
+                      <div className="w-px h-6 bg-border mx-1" />
+                      {reminderTemplates.map((template) => (
+                        <Button
+                          key={template.whatsAppTemplateId}
+                          variant={selectedTemplate?.whatsAppTemplateId === template.whatsAppTemplateId ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => handleTemplateSelect(template)}
+                          className={`${selectedTemplate?.whatsAppTemplateId === template.whatsAppTemplateId 
+                            ? "bg-amber-600 hover:bg-amber-700" 
+                            : "border-amber-300 text-amber-700 hover:bg-amber-50"}`}
+                        >
+                          <Clock className="w-3 h-3 mr-1" />
+                          {template.nombre}
+                        </Button>
+                      ))}
+                    </>
+                  )}
+                </div>
+                {availableTemplates.length === 0 && reminderTemplates.length === 0 && (
+                  <p className="text-sm text-muted-foreground">
+                    No hay plantillas disponibles para el estado actual. 
+                    Configura plantillas en la sección "WhatsApp" del menú.
+                  </p>
+                )}
+              </div>
+
+              {/* Error display */}
+              {whatsAppError && (
+                <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded text-sm">
+                  {whatsAppError}
+                </div>
+              )}
+
+              {/* Generated Message Preview */}
+              {isGeneratingMessage ? (
+                <div className="flex items-center justify-center py-4">
+                  <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                  <span className="ml-2 text-muted-foreground text-sm">Generando mensaje...</span>
+                </div>
+              ) : generatedMessage && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Vista Previa del Mensaje</label>
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                    <div className="flex items-center gap-2 text-sm text-green-700 mb-2">
+                      <span className="font-medium">Para:</span>
+                      <span>{generatedMessage.customerName}</span>
+                      <span className="text-green-600">({generatedMessage.phoneNumber})</span>
+                    </div>
+                    <div className="bg-white rounded-lg p-3 shadow-sm border border-green-100">
+                      <p className="text-sm whitespace-pre-wrap">{generatedMessage.message}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setIsWhatsAppDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button 
+              onClick={handleSendWhatsApp} 
+              disabled={!generatedMessage || isGeneratingMessage}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              <Send className="w-4 h-4 mr-2" />
+              Abrir WhatsApp
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

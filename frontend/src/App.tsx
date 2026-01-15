@@ -12,14 +12,13 @@ import { useChat } from './hooks/useChat';
 import { useIsMobile } from './hooks/useIsMobile';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import LoginPage from './components/Login/LoginPage';
-import { LayoutGrid, TrendingUp, LogOut, Loader2, Users, Search } from 'lucide-react';
-import { generateAccountingInsights } from './services/accountingService';
+import { LayoutGrid, TrendingUp, LogOut, Loader2, Users, Search, MessageCircle } from 'lucide-react';
 
 function AppContent() {
   const { isAuthenticated, user, logout, permissions, isLoadingPermissions } = useAuth();
   const [activeView, setActiveView] = useState<MainView>('kanban');
-  const hasShownAccountingInsights = useRef(false);
   const isMobile = useIsMobile();
+
   const { 
     messages, 
     isLoading, 
@@ -63,37 +62,17 @@ function AppContent() {
     startRechazar,
     startEsperaRepuesto,
     startRepDomicilio,
-  } = useChat({ canAccessAccounting: permissions?.canAccessAccounting });
+  } = useChat({ 
+    canAccessAccounting: permissions?.canAccessAccounting
+  });
 
-  // Handle view change with AI insights for accounting
-  const handleViewChange = async (view: MainView) => {
+  // Handle view change
+  const handleViewChange = (view: MainView) => {
     setActiveView(view);
     
     // Clear selected order when navigating to a different view
     if (selectedOrderDetails) {
       setSelectedOrder(null);
-    }
-    
-    // Show accounting insights when entering accounting module (only once per session)
-    if (view === 'accounting' && !hasShownAccountingInsights.current) {
-      hasShownAccountingInsights.current = true;
-      
-      // Add a thinking indicator
-      addMessage({
-        role: 'assistant',
-        content: '🔍 Analizando datos de contabilidad...',
-      });
-      
-      try {
-        const insights = await generateAccountingInsights();
-        // Replace the thinking message with actual insights
-        addMessage({
-          role: 'assistant',
-          content: insights,
-        });
-      } catch (error) {
-        console.error('Error generating insights:', error);
-      }
     }
   };
 
@@ -131,11 +110,27 @@ function AppContent() {
     }
   };
 
+  const handleOrderClickFromChat = async (orderNumber: number) => {
+    try {
+      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8080'}/api/orders/${orderNumber}`);
+      if (response.ok) {
+        const orderDetails = await response.json();
+        setSelectedOrder(orderDetails);
+      }
+    } catch (error) {
+      console.error('Failed to fetch order details:', error);
+    }
+  };
+
   const chatPanelContent = (
     <>
       <div className="flex flex-1 min-h-0 flex-col">
         <div className="flex-1 min-h-0 overflow-y-auto">
-          <MessageList messages={messages} userName={user ? `${user.nombre} ${user.apellido}` : undefined} />
+          <MessageList 
+            messages={messages} 
+            userName={user ? `${user.nombre} ${user.apellido}` : undefined} 
+            onOrderClick={handleOrderClickFromChat}
+          />
         </div>
         {isLoading && <LoadingIndicator />}
       </div>
@@ -303,6 +298,20 @@ function AppContent() {
             <Search className="h-4 w-4" />
             Búsqueda
           </button>
+          {/* WhatsApp Integration - visible if user has accounting permission (admin) */}
+          {permissions?.canAccessAccounting && (
+            <button
+              onClick={() => handleViewChange('whatsapp')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                activeView === 'whatsapp'
+                  ? 'bg-white text-green-600 shadow-md'
+                  : 'text-white/90 hover:bg-white/20 hover:text-white'
+              }`}
+            >
+              <MessageCircle className="h-4 w-4" />
+              WhatsApp
+            </button>
+          )}
         </div>
         <div className="flex items-center gap-3">
           <span className="text-white/80 text-sm hidden sm:block">

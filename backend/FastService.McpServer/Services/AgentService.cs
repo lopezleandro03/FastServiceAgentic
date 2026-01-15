@@ -8,6 +8,14 @@ using System.Text.Json;
 namespace FastService.McpServer.Services
 {
     /// <summary>
+    /// Response from the AI agent.
+    /// </summary>
+    public class AgentResponse
+    {
+        public string Message { get; set; } = "";
+    }
+
+    /// <summary>
     /// Service that orchestrates AI chat interactions using Azure OpenAI.
     /// Integrates with MCP tools for order, customer, and accounting queries.
     /// Maintains backward compatibility with the existing web app chat interface.
@@ -130,6 +138,27 @@ namespace FastService.McpServer.Services
                     """)
                 ),
                 ChatTool.CreateFunctionTool(
+                    functionName: "SearchOrdersByAddress",
+                    functionDescription: "Search for repair orders by customer address. Supports partial address matching (street name, neighborhood, city).",
+                    functionParameters: BinaryData.FromString("""
+                    {
+                        "type": "object",
+                        "properties": {
+                            "address": {
+                                "type": "string",
+                                "description": "The address to search for (street name, neighborhood, or city)"
+                            },
+                            "maxResults": {
+                                "type": "integer",
+                                "description": "Maximum number of results to return",
+                                "default": 15
+                            }
+                        },
+                        "required": ["address"]
+                    }
+                    """)
+                ),
+                ChatTool.CreateFunctionTool(
                     functionName: "SearchOrdersByDevice",
                     functionDescription: "Search for repair orders by device brand and/or device type.",
                     functionParameters: BinaryData.FromString("""
@@ -154,6 +183,31 @@ namespace FastService.McpServer.Services
                     """)
                 ),
                 ChatTool.CreateFunctionTool(
+                    functionName: "SearchOrdersByModel",
+                    functionDescription: "Search for repair orders by device model name (fuzzy match) and optionally filter by repair status. Common use: find orders for specific device models like 'iPhone 14', 'Galaxy S23', 'MacBook Pro'.",
+                    functionParameters: BinaryData.FromString("""
+                    {
+                        "type": "object",
+                        "properties": {
+                            "model": {
+                                "type": "string",
+                                "description": "The device model to search for (partial matches allowed, e.g., 'iPhone 14', 'Galaxy', 'MacBook')"
+                            },
+                            "status": {
+                                "type": "string",
+                                "description": "Optional: Filter by repair status (e.g., 'Pendiente', 'En reparación', 'Finalizado')"
+                            },
+                            "maxResults": {
+                                "type": "integer",
+                                "description": "Maximum number of results to return",
+                                "default": 20
+                            }
+                        },
+                        "required": ["model"]
+                    }
+                    """)
+                ),
+                ChatTool.CreateFunctionTool(
                     functionName: "GetAllStatuses",
                     functionDescription: "Get all available repair statuses in the system.",
                     functionParameters: BinaryData.FromString("""
@@ -167,7 +221,7 @@ namespace FastService.McpServer.Services
                 // === CUSTOMER TOOLS ===
                 ChatTool.CreateFunctionTool(
                     functionName: "SearchCustomerByName",
-                    functionDescription: "Search for customers by name. Returns matching customers with their contact information.",
+                    functionDescription: "Search for customers by name, address or phone. This opens the Clients screen with search results. Use this when user wants to find/lookup a customer. Tell the user they are being redirected to see the results.",
                     functionParameters: BinaryData.FromString("""
                     {
                         "type": "object",
@@ -427,7 +481,7 @@ namespace FastService.McpServer.Services
             };
         }
 
-        public async Task<string> GetResponseAsync(string userMessage, List<ConversationMessage>? conversationHistory = null, bool canAccessAccounting = false, SelectedOrderContext? selectedOrder = null)
+        public async Task<AgentResponse> GetResponseAsync(string userMessage, List<ConversationMessage>? conversationHistory = null, bool canAccessAccounting = false, SelectedOrderContext? selectedOrder = null)
         {
             try
             {
@@ -490,12 +544,15 @@ namespace FastService.McpServer.Services
                     else
                     {
                         // Return the final response
-                        return choice.Content[0].Text;
+                        return new AgentResponse
+                        {
+                            Message = choice.Content[0].Text
+                        };
                     }
                     
                 } while (requiresAnotherCall);
 
-                return "I apologize, but I encountered an issue processing your request.";
+                return new AgentResponse { Message = "I apologize, but I encountered an issue processing your request." };
             }
             catch (Exception ex)
             {
@@ -542,10 +599,19 @@ namespace FastService.McpServer.Services
                     "SearchOrdersByDNI" => await _orderSearchTools.SearchOrdersByDNIAsync(
                         args.RootElement.GetProperty("dni").GetString()!),
                     
+                    "SearchOrdersByAddress" => await _orderSearchTools.SearchOrdersByAddressAsync(
+                        args.RootElement.GetProperty("address").GetString()!,
+                        args.RootElement.TryGetProperty("maxResults", out var maxAddr) ? maxAddr.GetInt32() : 15),
+                    
                     "SearchOrdersByDevice" => await _orderSearchTools.SearchOrdersByDeviceAsync(
                         args.RootElement.TryGetProperty("brand", out var brand) ? brand.GetString() : null,
                         args.RootElement.TryGetProperty("deviceType", out var deviceType) ? deviceType.GetString() : null,
                         args.RootElement.TryGetProperty("maxResults", out var maxDev) ? maxDev.GetInt32() : 15),
+                    
+                    "SearchOrdersByModel" => await _orderSearchTools.SearchOrdersByModelAsync(
+                        args.RootElement.GetProperty("model").GetString()!,
+                        args.RootElement.TryGetProperty("status", out var modelStatus) ? modelStatus.GetString() : null,
+                        args.RootElement.TryGetProperty("maxResults", out var maxModel) ? maxModel.GetInt32() : 20),
                     
                     "GetAllStatuses" => await _orderSearchTools.GetAllStatusesAsync(),
 
@@ -672,6 +738,32 @@ Si el usuario pregunta sobre otros temas (clima, noticias, chistes, programació
 === IDIOMA ===
 SIEMPRE respondé en español argentino/rioplatense (usá ""vos"", ""podés"", ""tenés"", etc.).
 
+=== PREGUNTA ""¿QUÉ SABÉS HACER?"" ===
+Si el usuario pregunta qué podés hacer, qué funciones tenés, o cómo ayudarlo, respondé con este formato:
+
+**🔍 Buscar órdenes por:**
+- Número de orden (#12345)
+- Nombre del cliente
+- DNI del cliente
+- Dirección
+- Modelo del dispositivo
+
+**📝 Actualizar órdenes:**
+- Teléfono, email, dirección del cliente
+- Información del dispositivo
+
+**👥 Gestión de clientes:**
+- Buscar por nombre
+- Ver historial de órdenes
+- Estadísticas del cliente
+{(canAccessAccounting ? @"
+**💰 Contabilidad:**
+- Resumen de ventas
+- Ventas por método de pago
+- Gráficos de ventas diarias" : "")}
+
+*Ejemplo: ""ordenes de García"" o ""#107037""*
+
 === BÚSQUEDA RÁPIDA ===
 Cuando el usuario escriba un número precedido por # (ejemplo: #12345), interpretalo como una búsqueda rápida de orden por ese número.
 Ejemplo: ""#107037"" → Buscar la orden 107037 automáticamente.
@@ -680,10 +772,11 @@ Ejemplo: ""#107037"" → Buscar la orden 107037 automáticamente.
 
 **Órdenes de Reparación:**
 - SearchOrderByNumber: Buscar una orden por su número
-- SearchOrdersByCustomer: Buscar órdenes por nombre del cliente
-- SearchOrdersByStatus: Buscar órdenes por estado
+- SearchOrdersByCustomer: Buscar órdenes por nombre del cliente (fuzzy)
 - SearchOrdersByDNI: Buscar órdenes por DNI del cliente
-- SearchOrdersByDevice: Buscar órdenes por marca y/o tipo de dispositivo
+- SearchOrdersByAddress: Buscar órdenes por dirección del cliente (fuzzy)
+- SearchOrdersByModel: Buscar órdenes por modelo del dispositivo (fuzzy) con filtro opcional por estado
+- SearchOrdersByStatus: Buscar órdenes por estado
 - GetAllStatuses: Listar todos los estados de reparación
 
 **Actualización de Órdenes:**
@@ -734,11 +827,14 @@ Ejemplo: ""#107037"" → Buscar la orden 107037 automáticamente.
 
 === FORMATO DE RESPUESTA ===
 
-**Para múltiples resultados:**
-Incluí un bloque JSON con los datos, seguido de un resumen en español.
-
-**Para un resultado específico:**
-Usá formato de texto descriptivo en español.
+**Para búsqueda de órdenes (1 o más resultados):**
+Respondé SOLO con un bloque de código JSON, sin texto adicional antes ni después:
+```json
+[
+  {{""orderNumber"": 12345, ""customerName"": ""Juan Pérez"", ""model"": ""iPhone 14 Pro"", ""status"": ""En reparación"", ""entryDate"": ""2024-01-15""}}
+]
+```
+SIEMPRE incluí el campo ""model"" con el modelo del dispositivo. NO incluyas resúmenes, encabezados ni texto explicativo. Solo el JSON. Esto aplica tanto para 1 resultado como para varios.
 
 **Para consultas sin resultados:**
 Proporcioná sugerencias útiles.
@@ -747,6 +843,9 @@ Proporcioná sugerencias útiles.
 - Recordá el contexto de conversaciones previas
 - Mantené un tono amigable, profesional y servicial
 - Sé conciso y directo en tus respuestas
+- NO hagas preguntas de seguimiento como ""¿Qué querés hacer a continuación?"" o ""¿Necesitás algo más?""
+- NO ofrezcas opciones ni menús después de cada respuesta
+- Simplemente completá la tarea solicitada y esperá la próxima instrucción del usuario
 
 Siempre sé conciso, amigable y profesional en tus respuestas.";
         }

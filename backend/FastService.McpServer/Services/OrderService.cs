@@ -35,6 +35,7 @@ namespace FastService.McpServer.Services
                        DireccionCodigoPostal = r.Cliente.DireccionNavigation != null ? r.Cliente.DireccionNavigation.CodigoPostal : null,
                        MarcaNombre = r.Marca!.Nombre,
                        TipoDispositivoNombre = r.TipoDispositivo!.Nombre,
+                       EstadoReparacionId = r.EstadoReparacionId,
                        EstadoNombre = r.EstadoReparacion!.Nombre,
                        // ReparacionDetalle fields
                        DetalleModelo = r.ReparacionDetalle != null ? r.ReparacionDetalle.Modelo : null,
@@ -90,10 +91,39 @@ namespace FastService.McpServer.Services
 
                 if (!string.IsNullOrWhiteSpace(criteria.CustomerName))
                 {
-                    var searchTerm = criteria.CustomerName.ToLower();
-                    query = query.Where(r =>
-                        r.Cliente!.Nombre.ToLower().Contains(searchTerm) ||
-                        r.Cliente.Apellido.ToLower().Contains(searchTerm));
+                    var searchTerm = criteria.CustomerName.ToLower().Trim();
+                    var searchParts = searchTerm.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                    
+                    // Build SQL-compatible query without using collection.Any() which causes OPENJSON issues
+                    if (searchParts.Length == 1)
+                    {
+                        // Single term - search in name or surname
+                        var term = searchParts[0];
+                        query = query.Where(r =>
+                            r.Cliente!.Nombre.ToLower().Contains(term) ||
+                            r.Cliente.Apellido.ToLower().Contains(term));
+                    }
+                    else if (searchParts.Length == 2)
+                    {
+                        // Two terms - common "nombre apellido" pattern
+                        var part1 = searchParts[0];
+                        var part2 = searchParts[1];
+                        query = query.Where(r =>
+                            // Full term match
+                            r.Cliente!.Nombre.ToLower().Contains(searchTerm) ||
+                            r.Cliente.Apellido.ToLower().Contains(searchTerm) ||
+                            // Match "nombre apellido" order
+                            (r.Cliente.Nombre.ToLower().Contains(part1) && r.Cliente.Apellido.ToLower().Contains(part2)) ||
+                            // Or reversed "apellido nombre"
+                            (r.Cliente.Nombre.ToLower().Contains(part2) && r.Cliente.Apellido.ToLower().Contains(part1)));
+                    }
+                    else
+                    {
+                        // 3+ terms - fallback to full search term
+                        query = query.Where(r =>
+                            r.Cliente!.Nombre.ToLower().Contains(searchTerm) ||
+                            r.Cliente.Apellido.ToLower().Contains(searchTerm));
+                    }
                 }
 
                 if (!string.IsNullOrWhiteSpace(criteria.DNI))
@@ -102,6 +132,15 @@ namespace FastService.McpServer.Services
                     {
                         query = query.Where(r => r.Cliente!.Dni == dniValue);
                     }
+                }
+
+                // Address search - fuzzy match on cliente direccion or localidad
+                if (!string.IsNullOrWhiteSpace(criteria.Address))
+                {
+                    var addressTerm = criteria.Address.ToLower().Trim();
+                    query = query.Where(r =>
+                        r.Cliente!.Direccion.ToLower().Contains(addressTerm) ||
+                        (r.Cliente.Localidad != null && r.Cliente.Localidad.ToLower().Contains(addressTerm)));
                 }
 
                 if (!string.IsNullOrWhiteSpace(criteria.Status))
@@ -265,6 +304,7 @@ namespace FastService.McpServer.Services
                     Repair = new RepairInfo
                     {
                         Status = projected.EstadoNombre,
+                        EstadoReparacionId = projected.EstadoReparacionId,
                         Observations = null,
                         EntryDate = projected.CreadoEn.ToString("yyyy-MM-dd"),
                         ExitDate = projected.FechaEntrega?.ToString("yyyy-MM-dd"),
@@ -2153,6 +2193,7 @@ internal class ProjectedOrder
     public string? DireccionCodigoPostal { get; set; }
     public string MarcaNombre { get; set; } = string.Empty;
     public string TipoDispositivoNombre { get; set; } = string.Empty;
+    public int EstadoReparacionId { get; set; }
     public string EstadoNombre { get; set; } = string.Empty;
     // ReparacionDetalle fields
     public string? DetalleModelo { get; set; }

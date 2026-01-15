@@ -26,47 +26,43 @@ public class CustomerTools
     }
 
     /// <summary>
-    /// Search for customers by name.
+    /// Search for customers by name, address, or phone number.
+    /// Returns matching customers with their order counts.
     /// </summary>
     [McpServerTool(Name = "SearchCustomerByName")]
-    [Description("Search for customers by name. Returns matching customers with their order counts.")]
+    [Description("Search for customers by name, address, or phone. Returns matching customers with their order counts.")]
     public async Task<string> SearchCustomerByNameAsync(
-        [Description("The customer name to search for (partial matches allowed)")] string name,
+        [Description("The search term (name, address, phone or DNI)")] string name,
         [Description("Maximum number of results to return")] int maxResults = 10)
     {
         try
         {
-            _logger.LogInformation("Searching customers by name: {Name}", name);
+            _logger.LogInformation("Searching customers by name: {SearchTerm}", name);
 
-            var customers = await _clientService.SearchClientsAsync(name, maxResults);
+            var customers = await _clientService.SearchClientsFuzzyAsync(name.Trim(), maxResults);
 
             if (customers.Count == 0)
             {
-                return ToolResponseHelper.NotFound("customers", new { name });
+                return ToolResponseHelper.NotFound("customers", new { searchTerm = name });
             }
 
-            // Transform to include order counts
             var results = customers.Select(c => new
             {
-                c.ClienteId,
-                c.Dni,
-                c.Nombre,
-                c.Apellido,
-                FullName = $"{c.Nombre} {c.Apellido}",
-                c.Email,
-                c.Telefono,
-                c.Celular,
-                c.Direccion,
-                c.Localidad
+                customerId = c.ClienteId,
+                name = $"{c.Nombre} {c.Apellido}".Trim(),
+                dni = c.Dni,
+                phone = c.Telefono ?? c.Celular,
+                email = c.Email,
+                orderCount = c.OrderCount
             }).ToList();
 
             return ToolResponseHelper.SuccessWithCount(results, results.Count,
-                $"Found {results.Count} customer(s) matching '{name}'");
+                $"Encontré {results.Count} cliente(s) que coinciden con '{name}'");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error searching customers by name: {Name}", name);
-            return ToolResponseHelper.Error($"Error searching customers: {ex.Message}", new { name });
+            _logger.LogError(ex, "Error searching customers: {SearchTerm}", name);
+            return ToolResponseHelper.Error($"Error al buscar clientes: {ex.Message}", new { searchTerm = name });
         }
     }
 

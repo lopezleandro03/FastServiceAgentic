@@ -121,57 +121,6 @@ export const useChat = (options: UseChatOptions = {}): UseChatReturn => {
   const [repDomicilioStep, setRepDomicilioStep] = useState<'monto' | 'metodo' | null>(null);
   const [repDomicilioMonto, setRepDomicilioMonto] = useState<number | null>(null);
 
-  const extractOrdersFromMessage = (message: string): OrderSummary[] => {
-    // Try to extract JSON from the message
-    const jsonMatch = message.match(/```json\s*([\s\S]*?)\s*```/);
-    if (!jsonMatch) {
-      console.log('No JSON block found in message');
-      return [];
-    }
-
-    try {
-      console.log('Parsing JSON:', jsonMatch[1]);
-      const data = JSON.parse(jsonMatch[1]);
-      
-      // Check if it's an array of orders
-      if (Array.isArray(data)) {
-        const orders = data.map(item => ({
-          orderNumber: item.orderNumber || item.OrderNumber || 0,
-          customerName: item.customerName || item.CustomerName || '',
-          deviceInfo: item.deviceInfo || item.DeviceInfo || `${item.brand || ''} ${item.deviceType || ''}`.trim(),
-          status: item.status || item.Status || '',
-          entryDate: item.entryDate || item.EntryDate || new Date().toISOString(),
-          estimatedPrice: item.estimatedPrice || item.EstimatedPrice,
-        }));
-        console.log('Extracted orders:', orders);
-        return orders;
-      }
-    } catch (error) {
-      console.error('Failed to parse orders from message:', error);
-    }
-
-    return [];
-  };
-
-  const extractSingleOrderNumber = (message: string): number | null => {
-    // Check if message indicates a single order was found
-    const singleOrderPatterns = [
-      /Order #(\d+)/i,
-      /Orden #(\d+)/i,
-      /order number[:\s]+(\d+)/i,
-      /número de orden[:\s]+(\d+)/i,
-    ];
-
-    for (const pattern of singleOrderPatterns) {
-      const match = message.match(pattern);
-      if (match) {
-        return parseInt(match[1], 10);
-      }
-    }
-
-    return null;
-  };
-
   // Check if input is a # prefixed order number (fast lookup shortcut)
   const isOrderNumberShortcut = (input: string): number | null => {
     const trimmed = input.trim();
@@ -1194,35 +1143,8 @@ export const useChat = (options: UseChatOptions = {}): UseChatReturn => {
 
       setMessages((prev) => [...prev, assistantMessage]);
 
-      // Extract orders from the response if present
-      const extractedOrders = extractOrdersFromMessage(data.message);
-      console.log('Setting orders:', extractedOrders);
-      
-      // Check if this is a single order response
-      const singleOrderNumber = extractSingleOrderNumber(data.message);
-      
-      if (singleOrderNumber && extractedOrders.length === 0) {
-        // Single order - fetch details and show in detail view
-        console.log('Single order detected:', singleOrderNumber);
-        try {
-          const orderResponse = await fetch(`${API_BASE_URL}/api/orders/${singleOrderNumber}`);
-          if (orderResponse.ok) {
-            const orderDetails = await orderResponse.json();
-            setSelectedOrderDetails(orderDetails);
-            setOrders([]); // Clear list view
-          }
-        } catch (err) {
-          console.error('Failed to fetch order details:', err);
-        }
-      } else if (extractedOrders.length > 0) {
-        // Multiple orders - show list view
-        setOrders(extractedOrders);
-        setSelectedOrderDetails(null); // Clear detail view
-      } else {
-        // No orders - clear both views
-        setOrders([]);
-        setSelectedOrderDetails(null);
-      }
+      // Orders are now displayed directly in chat as tables
+      // No need to update the main panel views
     } catch (err) {
       // Check if it's a network error vs an error message we created
       let userFriendlyMessage: string;

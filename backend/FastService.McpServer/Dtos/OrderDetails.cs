@@ -46,6 +46,7 @@ namespace FastService.McpServer.Dtos
     public class RepairInfo
     {
         public string Status { get; set; } = string.Empty;
+        public int? EstadoReparacionId { get; set; }
         public string? Observations { get; set; }
         public string? EntryDate { get; set; }
         public string? ExitDate { get; set; }

@@ -80,4 +80,12 @@ public static class ToolResponseHelper
     {
         return JsonSerializer.Serialize(obj, DefaultOptions);
     }
+
+    /// <summary>
+    /// Creates a JSON response from any object (for navigation actions, etc.)
+    /// </summary>
+    public static string SuccessJson<T>(T data)
+    {
+        return JsonSerializer.Serialize(data, DefaultOptions);
+    }
 }

@@ -102,6 +102,8 @@ public partial class FastServiceDbContext : DbContext
 
     public virtual DbSet<VwVentasMensuale> VwVentasMensuales { get; set; }
 
+    public virtual DbSet<WhatsAppTemplate> WhatsAppTemplates { get; set; }
+
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
         // Connection string configured in Program.cs via dependency injection
@@ -1343,6 +1345,45 @@ public partial class FastServiceDbContext : DbContext
 
             entity.Property(e => e.Facturado).HasColumnName("facturado");
             entity.Property(e => e.Total).HasColumnType("money");
+        });
+
+        modelBuilder.Entity<WhatsAppTemplate>(entity =>
+        {
+            entity.HasKey(e => e.WhatsAppTemplateId).HasName("pk_WhatsAppTemplateId");
+
+            entity.ToTable("WhatsAppTemplate");
+
+            entity.Property(e => e.Nombre)
+                .HasMaxLength(100)
+                .IsUnicode(false);
+            entity.Property(e => e.Descripcion)
+                .HasMaxLength(500)
+                .IsUnicode(false);
+            entity.Property(e => e.TipoTemplate)
+                .HasMaxLength(50)
+                .IsUnicode(false)
+                .HasDefaultValue("estado");
+            entity.Property(e => e.Mensaje)
+                .HasMaxLength(2000)
+                .IsUnicode(false);
+            entity.Property(e => e.Activo)
+                .HasDefaultValue(true);
+            entity.Property(e => e.Orden)
+                .HasDefaultValue(0);
+            entity.Property(e => e.EsDefault)
+                .HasDefaultValue(false);
+            entity.Property(e => e.CreadoEn)
+                .HasColumnType("datetime")
+                .HasDefaultValueSql("GETUTCDATE()");
+            entity.Property(e => e.ModificadoEn)
+                .HasColumnType("datetime")
+                .HasDefaultValueSql("GETUTCDATE()");
+
+            entity.HasOne(d => d.EstadoReparacion)
+                .WithMany()
+                .HasForeignKey(d => d.EstadoReparacionId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("FK_WhatsAppTemplate_EstadoReparacion");
         });
 
         OnModelCreatingPartial(modelBuilder);

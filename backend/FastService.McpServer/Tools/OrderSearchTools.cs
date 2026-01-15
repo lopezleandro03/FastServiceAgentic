@@ -161,6 +161,43 @@ public class OrderSearchTools
     }
 
     /// <summary>
+    /// Search for repair orders by customer address.
+    /// Performs fuzzy matching on the customer's address.
+    /// </summary>
+    [McpServerTool(Name = "SearchOrdersByAddress")]
+    [Description("Search for repair orders by customer address. Supports partial address matching (street name, neighborhood, city).")]
+    public async Task<string> SearchOrdersByAddressAsync(
+        [Description("The address to search for (street name, neighborhood, or city)")] string address,
+        [Description("Maximum number of results to return")] int maxResults = 15)
+    {
+        try
+        {
+            _logger.LogInformation("Searching orders by address: {Address}", address);
+
+            var criteria = new OrderSearchCriteria
+            {
+                Address = address,
+                MaxResults = maxResults
+            };
+
+            var orders = await _orderService.SearchOrdersAsync(criteria);
+
+            if (orders.Count == 0)
+            {
+                return ToolResponseHelper.NotFound("orders", new { address });
+            }
+
+            return ToolResponseHelper.SuccessWithCount(orders, orders.Count,
+                $"Found {orders.Count} order(s) for address containing '{address}'");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error searching orders by address: {Address}", address);
+            return ToolResponseHelper.Error($"Error searching orders: {ex.Message}", new { address });
+        }
+    }
+
+    /// <summary>
     /// Get all available repair statuses.
     /// </summary>
     [McpServerTool(Name = "GetAllStatuses")]
@@ -226,6 +263,49 @@ public class OrderSearchTools
         {
             _logger.LogError(ex, "Error searching orders by device - Brand: {Brand}, Type: {DeviceType}", brand, deviceType);
             return ToolResponseHelper.Error($"Error searching orders: {ex.Message}", new { brand, deviceType });
+        }
+    }
+
+    /// <summary>
+    /// Search orders by model name and optionally filter by status.
+    /// Performs fuzzy matching on device model.
+    /// </summary>
+    [McpServerTool(Name = "SearchOrdersByModel")]
+    [Description("Search for repair orders by device model name (fuzzy match) and optionally filter by repair status. Common use: find orders for a specific device model like 'iPhone 14', 'Galaxy S23', 'MacBook Pro'.")]
+    public async Task<string> SearchOrdersByModelAsync(
+        [Description("The device model to search for (partial matches allowed, e.g., 'iPhone 14', 'Galaxy', 'MacBook')")] string model,
+        [Description("Optional: Filter by repair status (e.g., 'Pendiente', 'En reparación', 'Finalizado')")] string? status = null,
+        [Description("Maximum number of results to return")] int maxResults = 20)
+    {
+        try
+        {
+            _logger.LogInformation("Searching orders by model: {Model}, status: {Status}", model, status);
+
+            var criteria = new OrderSearchCriteria
+            {
+                Model = model,
+                Status = status,
+                MaxResults = maxResults
+            };
+
+            var orders = await _orderService.SearchOrdersAsync(criteria);
+
+            string searchDescription = status != null 
+                ? $"model '{model}' with status '{status}'"
+                : $"model '{model}'";
+
+            if (orders.Count == 0)
+            {
+                return ToolResponseHelper.NotFound("orders", new { model, status });
+            }
+
+            return ToolResponseHelper.SuccessWithCount(orders, orders.Count,
+                $"Found {orders.Count} order(s) for {searchDescription}");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error searching orders by model: {Model}, status: {Status}", model, status);
+            return ToolResponseHelper.Error($"Error searching orders: {ex.Message}", new { model, status });
         }
     }
 }

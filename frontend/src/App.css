@@ -30,7 +30,7 @@
 }
 
 .split-layout__main {
-  flex: 1 1 70%;
+  flex: 1 1 65%;
   padding: 0;
   min-width: 0;
   overflow: hidden;
@@ -41,9 +41,9 @@
 }
 
 .split-layout__chat {
-  flex: 0 0 30%;
-  max-width: 30%;
-  min-width: 300px;
+  flex: 0 0 35%;
+  max-width: 35%;
+  min-width: 350px;
   height: 100%;
   overflow: hidden;
   padding: 0;

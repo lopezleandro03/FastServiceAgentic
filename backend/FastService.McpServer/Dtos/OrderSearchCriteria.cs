@@ -5,6 +5,7 @@ namespace FastService.McpServer.Dtos
         public int? OrderNumber { get; set; }
         public string? CustomerName { get; set; }
         public string? DNI { get; set; }
+        public string? Address { get; set; }
         public string? TechnicianName { get; set; }
         public string? Status { get; set; }
         public List<string>? Statuses { get; set; }

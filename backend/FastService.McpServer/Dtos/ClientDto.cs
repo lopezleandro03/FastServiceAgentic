@@ -111,3 +111,23 @@ public class ClientAutocompleteDto
     public double? Latitud { get; set; }
     public double? Longitud { get; set; }
 }
+
+/// <summary>
+/// DTO for fuzzy search results with match score and order info
+/// </summary>
+public class ClientSearchResultDto
+{
+    public int ClienteId { get; set; }
+    public int? Dni { get; set; }
+    public string Nombre { get; set; } = string.Empty;
+    public string Apellido { get; set; } = string.Empty;
+    public string FullName { get; set; } = string.Empty;
+    public string? Email { get; set; }
+    public string? Telefono { get; set; }
+    public string? Celular { get; set; }
+    public string Direccion { get; set; } = string.Empty;
+    public string? Localidad { get; set; }
+    public int OrderCount { get; set; }
+    public DateTime? LastOrderDate { get; set; }
+    public double MatchScore { get; set; }
+}

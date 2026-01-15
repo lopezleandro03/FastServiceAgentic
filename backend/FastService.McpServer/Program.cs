@@ -27,6 +27,7 @@ builder.Services.AddScoped<OrderUpdateTools>();
 builder.Services.AddScoped<AgentService>();
 builder.Services.AddScoped<AccountingService>();
 builder.Services.AddScoped<ClientService>();
+builder.Services.AddScoped<WhatsAppService>();
 
 // Configure CORS for frontend
 // Supports: AllowedOrigins config array, ALLOWED_ORIGINS env var (comma-separated), or defaults to localhost
@@ -186,8 +187,9 @@ app.MapPost("/api/chat", async (ChatRequest request, AgentService agentService) 
 {
     try
     {
-        var response = await agentService.GetResponseAsync(request.Message, request.ConversationHistory, request.CanAccessAccounting, request.SelectedOrder);
-        return Results.Ok(new ChatResponse(response));
+        var agentResponse = await agentService.GetResponseAsync(request.Message, request.ConversationHistory, request.CanAccessAccounting, request.SelectedOrder);
+        
+        return Results.Ok(new ChatResponse(agentResponse.Message));
     }
     catch (Exception ex)
     {
@@ -805,6 +807,170 @@ app.MapPost("/api/admin/update-password", async (UpdatePasswordRequest request, 
         return Results.Problem(detail: ex.Message, statusCode: 500);
     }
 });
+
+// ===== WhatsApp Templates API =====
+
+// Get all WhatsApp templates (admin view)
+app.MapGet("/api/whatsapp/templates", async (WhatsAppService whatsAppService) =>
+{
+    try
+    {
+        var templates = await whatsAppService.GetAllTemplatesAdminAsync();
+        return Results.Ok(templates);
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(detail: ex.Message, statusCode: 500);
+    }
+}).WithName("GetWhatsAppTemplates").WithOpenApi();
+
+// Get single WhatsApp template by ID
+app.MapGet("/api/whatsapp/templates/{templateId:int}", async (int templateId, WhatsAppService whatsAppService) =>
+{
+    try
+    {
+        var template = await whatsAppService.GetTemplateByIdAsync(templateId);
+        if (template == null)
+        {
+            return Results.NotFound(new { message = "Template no encontrado" });
+        }
+        return Results.Ok(template);
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(detail: ex.Message, statusCode: 500);
+    }
+}).WithName("GetWhatsAppTemplateById").WithOpenApi();
+
+// Get templates for a specific repair state
+app.MapGet("/api/whatsapp/templates/state/{estadoReparacionId:int}", async (int estadoReparacionId, WhatsAppService whatsAppService) =>
+{
+    try
+    {
+        var templates = await whatsAppService.GetTemplatesForStateAsync(estadoReparacionId);
+        return Results.Ok(templates);
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(detail: ex.Message, statusCode: 500);
+    }
+}).WithName("GetWhatsAppTemplatesForState").WithOpenApi();
+
+// Get reminder templates
+app.MapGet("/api/whatsapp/templates/reminders", async (WhatsAppService whatsAppService) =>
+{
+    try
+    {
+        var templates = await whatsAppService.GetReminderTemplatesAsync();
+        return Results.Ok(templates);
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(detail: ex.Message, statusCode: 500);
+    }
+}).WithName("GetReminderTemplates").WithOpenApi();
+
+// Create new WhatsApp template
+app.MapPost("/api/whatsapp/templates", async (WhatsAppTemplateCreateDto dto, WhatsAppService whatsAppService) =>
+{
+    try
+    {
+        var template = await whatsAppService.CreateTemplateAsync(dto);
+        return Results.Created($"/api/whatsapp/templates/{template.WhatsAppTemplateId}", template);
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(detail: ex.Message, statusCode: 500);
+    }
+}).WithName("CreateWhatsAppTemplate").WithOpenApi();
+
+// Update WhatsApp template
+app.MapPut("/api/whatsapp/templates/{templateId:int}", async (int templateId, WhatsAppTemplateUpdateDto dto, WhatsAppService whatsAppService) =>
+{
+    try
+    {
+        var template = await whatsAppService.UpdateTemplateAsync(templateId, dto);
+        if (template == null)
+        {
+            return Results.NotFound(new { message = "Template no encontrado" });
+        }
+        return Results.Ok(template);
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(detail: ex.Message, statusCode: 500);
+    }
+}).WithName("UpdateWhatsAppTemplate").WithOpenApi();
+
+// Delete WhatsApp template
+app.MapDelete("/api/whatsapp/templates/{templateId:int}", async (int templateId, WhatsAppService whatsAppService) =>
+{
+    try
+    {
+        var result = await whatsAppService.DeleteTemplateAsync(templateId);
+        if (!result)
+        {
+            return Results.NotFound(new { message = "Template no encontrado" });
+        }
+        return Results.Ok(new { success = true });
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(detail: ex.Message, statusCode: 500);
+    }
+}).WithName("DeleteWhatsAppTemplate").WithOpenApi();
+
+// Generate message from template for an order
+app.MapGet("/api/whatsapp/templates/{templateId:int}/generate/{orderNumber:int}", async (int templateId, int orderNumber, WhatsAppService whatsAppService) =>
+{
+    try
+    {
+        var message = await whatsAppService.GenerateMessageAsync(templateId, orderNumber);
+        return Results.Ok(message);
+    }
+    catch (ArgumentException ex)
+    {
+        return Results.NotFound(new { message = ex.Message });
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(detail: ex.Message, statusCode: 500);
+    }
+}).WithName("GenerateWhatsAppMessage").WithOpenApi();
+
+// Generate message for order using default template for its current state
+app.MapGet("/api/whatsapp/generate/{orderNumber:int}", async (int orderNumber, FastServiceDbContext db, WhatsAppService whatsAppService) =>
+{
+    try
+    {
+        // Get the order's current state
+        var reparacion = await db.Reparacions.FindAsync(orderNumber);
+        if (reparacion == null)
+        {
+            return Results.NotFound(new { message = $"Orden #{orderNumber} no encontrada" });
+        }
+
+        var message = await whatsAppService.GenerateMessageForStateAsync(orderNumber, reparacion.EstadoReparacionId);
+        if (message == null)
+        {
+            return Results.NotFound(new { message = "No hay template disponible para el estado actual" });
+        }
+        return Results.Ok(message);
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(detail: ex.Message, statusCode: 500);
+    }
+}).WithName("GenerateWhatsAppMessageForOrder").WithOpenApi();
+
+// Get available placeholders for templates
+app.MapGet("/api/whatsapp/placeholders", () =>
+{
+    var placeholders = WhatsAppService.GetAvailablePlaceholders()
+        .Select(p => new PlaceholderInfoDto { Placeholder = p.Key, Description = p.Value })
+        .ToList();
+    return Results.Ok(placeholders);
+}).WithName("GetWhatsAppPlaceholders").WithOpenApi();
 
 app.Run();
 
