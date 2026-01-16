@@ -365,6 +365,7 @@ const OrderDetailsView: React.FC<OrderDetailsViewProps> = ({ order, isLoading, o
               Imprimir Dorso
             </Button>
           )}
+          {/* Delete order button hidden - too risky for production use
           <Button 
             variant="outline" 
             size="sm" 
@@ -380,6 +381,7 @@ const OrderDetailsView: React.FC<OrderDetailsViewProps> = ({ order, isLoading, o
             )}
             Eliminar
           </Button>
+          */}
         </div>
       </div>
 

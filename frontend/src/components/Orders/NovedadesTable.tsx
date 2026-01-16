@@ -96,6 +96,7 @@ const NovedadesTable: React.FC<NovedadesTableProps> = ({ novedades, orderNumber,
           <TableHeader className="sticky top-0 bg-muted/95 backdrop-blur-sm">
             <TableRow>
               <TableHead className="w-[140px]">Fecha</TableHead>
+              <TableHead className="w-[100px]">Usuario</TableHead>
               <TableHead className="w-[140px]">Novedad</TableHead>
               <TableHead className="w-[100px] text-right">Monto</TableHead>
               <TableHead>Observación</TableHead>
@@ -107,6 +108,9 @@ const NovedadesTable: React.FC<NovedadesTableProps> = ({ novedades, orderNumber,
               <TableRow key={novedad.id}>
                 <TableCell className="text-sm text-muted-foreground">
                   {formatDate(novedad.fecha)}
+                </TableCell>
+                <TableCell className="text-sm font-medium text-muted-foreground">
+                  {novedad.usuarioNombre || '-'}
                 </TableCell>
                 <TableCell className="font-medium">
                   {novedad.tipo}

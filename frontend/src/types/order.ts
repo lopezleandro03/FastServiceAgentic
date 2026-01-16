@@ -82,6 +82,7 @@ export interface NovedadInfo {
   monto?: number;
   observacion?: string;
   usuarioId: number;
+  usuarioNombre?: string;
 }
 
 export interface RepairInfo {

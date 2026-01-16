@@ -372,6 +372,13 @@ namespace FastService.McpServer.Services
                     .AsNoTracking()
                     .ToDictionaryAsync(t => t.TipoNovedadId, t => t.Nombre);
 
+                // Get user lookup for names - load all users (small table) to avoid OPENJSON issues
+                var allUsuarios = await _context.Usuarios
+                    .AsNoTracking()
+                    .Select(u => new { u.UserId, u.Nombre })
+                    .ToListAsync();
+                var usuarioLookup = allUsuarios.ToDictionary(u => u.UserId, u => u.Nombre);
+
                 // Map to DTOs
                 var novedades = novedadesRaw.Select(n => new NovedadInfo
                 {
@@ -380,7 +387,8 @@ namespace FastService.McpServer.Services
                     Tipo = tipoNovedadLookup.GetValueOrDefault(n.TipoNovedadId, "Desconocido"),
                     Monto = n.Monto,
                     Observacion = n.Observacion,
-                    UsuarioId = n.UserId
+                    UsuarioId = n.UserId,
+                    UsuarioNombre = usuarioLookup.GetValueOrDefault(n.UserId)
                 }).ToList();
 
                 return novedades;

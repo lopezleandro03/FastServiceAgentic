@@ -30,20 +30,12 @@
 }
 
 .split-layout__main {
-  flex: 1 1 65%;
   padding: 0;
   min-width: 0;
   overflow: hidden;
 }
 
-.split-layout__main--expanded {
-  flex: 1 1 calc(100% - 60px);
-}
-
 .split-layout__chat {
-  flex: 0 0 35%;
-  max-width: 35%;
-  min-width: 350px;
   height: 100%;
   overflow: hidden;
   padding: 0;
@@ -51,9 +43,6 @@
 }
 
 .split-layout__chat--collapsed {
-  flex: 0 0 60px;
-  max-width: 60px;
-  min-width: 60px;
   padding-left: 0.75rem;
   padding-right: 0.75rem;
   background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);

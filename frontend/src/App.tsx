@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './App.css';
 import SplitLayout from './components/Layout/SplitLayout';
 import MainPanel, { MainView } from './components/MainPanel/MainPanel';
@@ -66,8 +66,13 @@ function AppContent() {
     canAccessAccounting: permissions?.canAccessAccounting
   });
 
-  // Handle view change
+  // Handle view change with permission check
   const handleViewChange = (view: MainView) => {
+    // Check if user has permission to access the view
+    if (view === 'accounting' && !permissions?.canAccessAccounting) {
+      return; // Silently ignore if no permission
+    }
+    
     setActiveView(view);
     
     // Clear selected order when navigating to a different view
@@ -75,6 +80,16 @@ function AppContent() {
       setSelectedOrder(null);
     }
   };
+
+  // Reset to default view if current view is not accessible after permissions load
+  useEffect(() => {
+    if (!isLoadingPermissions && permissions) {
+      // If on accounting but no permission, go to kanban
+      if (activeView === 'accounting' && !permissions.canAccessAccounting) {
+        setActiveView('kanban');
+      }
+    }
+  }, [permissions, isLoadingPermissions, activeView]);
 
   if (!isAuthenticated) {
     return <LoginPage />;
@@ -318,13 +333,18 @@ function AppContent() {
             {user ? `${user.nombre} ${user.apellido}` : 'Usuario'}
           </span>
           <img
-            src="https://api.dicebear.com/7.x/avataaars/svg?seed=FastService"
+            src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.nombre || 'User'}&backgroundColor=b6e3f4,c0aede,d1d4f9${
+              ['Nadia', 'Maria', 'Ana', 'Laura', 'Sofia', 'Carolina', 'Valeria', 'Lucia'].includes(user?.nombre || '') 
+                ? '&top=longHair&facialHairProbability=0' 
+                : ''
+            }`}
             alt="User avatar"
             className="h-8 w-8 rounded-full border-2 border-white/40 bg-white/20"
           />
           <button
             onClick={() => {
               clearMessages();
+              setActiveView('kanban'); // Reset view on logout
               logout();
             }}
             className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-white/90 hover:bg-white/20 hover:text-white transition-all"

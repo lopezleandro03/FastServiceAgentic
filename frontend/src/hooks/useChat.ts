@@ -124,9 +124,14 @@ export const useChat = (options: UseChatOptions = {}): UseChatReturn => {
   // Check if input is a # prefixed order number (fast lookup shortcut)
   const isOrderNumberShortcut = (input: string): number | null => {
     const trimmed = input.trim();
-    // Match # followed by 4-7 digits (e.g., #128001)
-    const match = trimmed.match(/^#(\d{4,7})$/);
-    return match ? parseInt(match[1], 10) : null;
+    // Match # followed by 4-7 digits (e.g., #128001) OR just 4-7 digits alone (e.g., 128001)
+    const matchWithHash = trimmed.match(/^#(\d{4,7})$/);
+    if (matchWithHash) return parseInt(matchWithHash[1], 10);
+    
+    const matchPureNumber = trimmed.match(/^(\d{4,7})$/);
+    if (matchPureNumber) return parseInt(matchPureNumber[1], 10);
+    
+    return null;
   };
 
   const sendMessage = useCallback(async (content: string) => {
@@ -153,9 +158,34 @@ export const useChat = (options: UseChatOptions = {}): UseChatReturn => {
           setSelectedOrderDetails(orderDetails);
           setOrders([]);
           
+          // Build summary with modelo and last novedad
+          const modelo = orderDetails.device?.model || '';
+          const lastNovedad = orderDetails.novedades && orderDetails.novedades.length > 0 
+            ? orderDetails.novedades[0] 
+            : null;
+          
+          let summaryContent = `✅ Orden #${orderNumberShortcut} encontrada.\n\n**Cliente:** ${orderDetails.customer?.fullName || 'N/A'}\n**Equipo:** ${orderDetails.device?.brand || ''} ${orderDetails.device?.deviceType || ''}`;
+          
+          if (modelo) {
+            summaryContent += `\n**Modelo:** ${modelo}`;
+          }
+          
+          summaryContent += `\n**Estado:** ${orderDetails.status || 'N/A'}`;
+          
+          if (lastNovedad) {
+            const novedadDate = new Date(lastNovedad.fecha).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' });
+            summaryContent += `\n**Última novedad:** ${lastNovedad.tipo} (${novedadDate})`;
+            if (lastNovedad.observacion) {
+              const obs = lastNovedad.observacion.length > 50 
+                ? lastNovedad.observacion.substring(0, 50) + '...' 
+                : lastNovedad.observacion;
+              summaryContent += ` - ${obs}`;
+            }
+          }
+          
           const assistantMessage: ChatMessage = {
             id: (Date.now() + 1).toString(),
-            content: `✅ Orden #${orderNumberShortcut} encontrada.\n\n**Cliente:** ${orderDetails.customer?.fullName || 'N/A'}\n**Equipo:** ${orderDetails.device?.brand || ''} ${orderDetails.device?.deviceType || ''}\n**Estado:** ${orderDetails.status || 'N/A'}`,
+            content: summaryContent,
             role: 'assistant',
             timestamp: new Date(),
           };

@@ -22,5 +22,8 @@ namespace FastService.McpServer.Dtos
         
         /// <summary>User who created the event</summary>
         public int UsuarioId { get; set; }
+        
+        /// <summary>User name who created the event</summary>
+        public string? UsuarioNombre { get; set; }
     }
 }

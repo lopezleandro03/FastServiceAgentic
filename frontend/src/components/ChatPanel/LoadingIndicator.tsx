@@ -8,7 +8,7 @@ export const LoadingIndicator: React.FC = () => {
         <div className="h-2 w-2 rounded-full bg-cyan-200 animate-bounce" style={{ animationDelay: '120ms' }}></div>
         <div className="h-2 w-2 rounded-full bg-cyan-100 animate-bounce" style={{ animationDelay: '240ms' }}></div>
       </div>
-      <span className="text-xs tracking-wide uppercase">Analizando...</span>
+      <span className="text-xs tracking-wide uppercase">Pensando...</span>
     </div>
   );
 };
