@@ -111,11 +111,12 @@ namespace FastService.McpServer.Services
                     query = query.Where(r => EF.Functions.Like(r.EstadoReparacion!.Nombre, statusPattern));
                 }
 
-                // Handle multiple statuses
+                // Handle multiple statuses - use EF.Functions.Like for each status with OR logic
                 if (criteria.Statuses != null && criteria.Statuses.Count > 0)
                 {
-                    var statusList = criteria.Statuses.Select(s => s.ToLower()).ToList();
-                    query = query.Where(r => statusList.Contains(r.EstadoReparacion!.Nombre.ToLower()));
+                    // Build OR condition for multiple statuses using Contains (EF translates this to IN clause)
+                    var statusNames = criteria.Statuses.ToList();
+                    query = query.Where(r => statusNames.Contains(r.EstadoReparacion!.Nombre));
                 }
 
                 if (!string.IsNullOrWhiteSpace(criteria.CustomerName))
