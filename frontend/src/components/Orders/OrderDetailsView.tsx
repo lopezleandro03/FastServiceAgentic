@@ -3,7 +3,7 @@ import { OrderDetails } from '../../types/order';
 import StatusBadge from './StatusBadge';
 import NovedadesTable from './NovedadesTable';
 import { deleteOrder, fetchOrderDetails } from '../../services/orderApi';
-import { generateMessageForOrder, getTemplatesForState, getReminderTemplates, generateMessage, openWhatsApp } from '../../services/whatsappApi';
+import { getTemplatesForState, getReminderTemplates, generateMessage, openWhatsApp } from '../../services/whatsappApi';
 import { WhatsAppTemplate, GeneratedMessage } from '../../types/whatsapp';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
@@ -17,7 +17,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '../ui/dialog';
-import { ArrowLeft, Printer, Trash2, Loader2, ChevronDown, Clock, Send } from 'lucide-react';
+import { ArrowLeft, Printer, Trash2, Loader2, Clock, Send } from 'lucide-react';
 
 // WhatsApp icon SVG component
 const WhatsAppIcon: React.FC<{ className?: string }> = ({ className }) => (
@@ -279,26 +279,6 @@ const OrderDetailsView: React.FC<OrderDetailsViewProps> = ({ order, isLoading, o
       setIsWhatsAppDialogOpen(false);
     } catch (error) {
       setWhatsAppError(error instanceof Error ? error.message : 'Error al abrir WhatsApp');
-    }
-  };
-
-  // Quick send - use default template directly
-  const handleQuickSend = async () => {
-    if (!currentOrder) return;
-    
-    const phone = getWhatsAppPhone();
-    if (!phone) {
-      alert('Este cliente no tiene número de teléfono registrado');
-      return;
-    }
-    
-    try {
-      const message = await generateMessageForOrder(currentOrder.orderNumber);
-      openWhatsApp(message);
-    } catch (error) {
-      console.error('Error with quick send:', error);
-      // Fall back to dialog if no template available
-      handleWhatsAppClick();
     }
   };
 

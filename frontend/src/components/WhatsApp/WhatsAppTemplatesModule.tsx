@@ -210,13 +210,6 @@ const WhatsAppTemplatesModule: React.FC = () => {
     }
   };
 
-  const insertPlaceholder = (placeholder: string) => {
-    setFormData(prev => ({
-      ...prev,
-      mensaje: prev.mensaje + placeholder,
-    }));
-  };
-
   const copyPlaceholder = (placeholder: string) => {
     navigator.clipboard.writeText(placeholder);
   };

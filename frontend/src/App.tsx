@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import './App.css';
 import SplitLayout from './components/Layout/SplitLayout';
 import MainPanel, { MainView } from './components/MainPanel/MainPanel';
