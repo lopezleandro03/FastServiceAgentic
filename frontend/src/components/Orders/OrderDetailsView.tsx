@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { OrderDetails } from '../../types/order';
 import StatusBadge from './StatusBadge';
 import NovedadesTable from './NovedadesTable';
-import { deleteOrder, fetchOrderDetails } from '../../services/orderApi';
+import { fetchOrderDetails } from '../../services/orderApi';
 import { getTemplatesForState, getReminderTemplates, generateMessage, openWhatsApp } from '../../services/whatsappApi';
 import { WhatsAppTemplate, GeneratedMessage } from '../../types/whatsapp';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
@@ -17,7 +17,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '../ui/dialog';
-import { ArrowLeft, Printer, Trash2, Loader2, Clock, Send } from 'lucide-react';
+import { ArrowLeft, Printer, Loader2, Clock, Send } from 'lucide-react';
 
 // WhatsApp icon SVG component
 const WhatsAppIcon: React.FC<{ className?: string }> = ({ className }) => (
@@ -82,7 +82,6 @@ const OrderDetailsSkeleton: React.FC = () => (
 );
 
 const OrderDetailsView: React.FC<OrderDetailsViewProps> = ({ order, isLoading, onBack, onPrint, onPrintDorso, onOrderDeleted, onOrderRefresh }) => {
-  const [isDeletingOrder, setIsDeletingOrder] = useState(false);
   const [currentOrder, setCurrentOrder] = useState<OrderDetails | null>(order);
   
   // WhatsApp template states
@@ -100,29 +99,9 @@ const OrderDetailsView: React.FC<OrderDetailsViewProps> = ({ order, isLoading, o
     setCurrentOrder(order);
   }, [order]);
 
-  const handleDeleteOrder = async () => {
-    if (!currentOrder) return;
-    
-    if (!window.confirm(`¿Estás seguro de eliminar la orden #${currentOrder.orderNumber}? Esta acción no se puede deshacer.`)) {
-      return;
-    }
-
-    setIsDeletingOrder(true);
-    try {
-      await deleteOrder(currentOrder.orderNumber);
-      if (onOrderDeleted) {
-        onOrderDeleted();
-      }
-      if (onBack) {
-        onBack();
-      }
-    } catch (error) {
-      console.error('Error deleting order:', error);
-      alert(error instanceof Error ? error.message : 'Error al eliminar la orden');
-    } finally {
-      setIsDeletingOrder(false);
-    }
-  };
+  // Delete order functionality hidden - kept for future use
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _onOrderDeleted = onOrderDeleted;
 
   const handleNovedadDeleted = async () => {
     if (!currentOrder) return;
