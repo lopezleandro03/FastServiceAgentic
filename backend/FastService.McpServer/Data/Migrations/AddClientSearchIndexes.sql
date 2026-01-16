@@ -160,16 +160,16 @@ GO
 -- REPARACION_DETALLE TABLE INDEXES
 -- ============================================================================
 
--- Index for model searches (common filter in order search)
-IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_ReparacionDetalle_ReparacionId' AND object_id = OBJECT_ID('dbo.ReparacionDetalle'))
+-- Index for ReparacionDetalleId lookups (1:1 relation with Reparacion)
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_ReparacionDetalle_ReparacionDetalleId' AND object_id = OBJECT_ID('dbo.ReparacionDetalle'))
 BEGIN
-    CREATE NONCLUSTERED INDEX IX_ReparacionDetalle_ReparacionId 
-    ON dbo.ReparacionDetalle (ReparacionId)
+    CREATE NONCLUSTERED INDEX IX_ReparacionDetalle_ReparacionDetalleId 
+    ON dbo.ReparacionDetalle (ReparacionDetalleId)
     INCLUDE (Modelo, Serie, Precio, EsGarantia, EsDomicilio, Presupuesto);
-    PRINT 'Created index IX_ReparacionDetalle_ReparacionId';
+    PRINT 'Created index IX_ReparacionDetalle_ReparacionDetalleId';
 END
 ELSE
-    PRINT 'Index IX_ReparacionDetalle_ReparacionId already exists';
+    PRINT 'Index IX_ReparacionDetalle_ReparacionDetalleId already exists';
 GO
 
 -- Index on Modelo column for LIKE searches (model text search)
@@ -177,7 +177,7 @@ IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_ReparacionDetalle_Mode
 BEGIN
     CREATE NONCLUSTERED INDEX IX_ReparacionDetalle_Modelo 
     ON dbo.ReparacionDetalle (Modelo)
-    INCLUDE (ReparacionId)
+    INCLUDE (ReparacionDetalleId)
     WHERE Modelo IS NOT NULL;
     PRINT 'Created index IX_ReparacionDetalle_Modelo';
 END
