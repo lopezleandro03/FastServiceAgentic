@@ -444,15 +444,17 @@ namespace FastService.McpServer.Services
             // Two types of rejection:
             // - RECHAZADO (por técnico): Internal rejection, can't repair (no parts, etc.)
             // - RECHAZO_PRESUP (por cliente): Client rejects the budget quote
+            // - PEND_RETIRO: Equipment assembled, waiting for customer pickup
             var columnDefinitions = new[]
             {
                 ("INGRESADO", "INGRESADO", new[] { "INGRESADO" }),
                 ("A_REPARAR", "A REPARAR", new[] { "A REPARAR", "REINGRESADO" }), // Merged column
                 ("RECHAZO_PRESUP", "Rechazado (cliente)", new[] { "RECHAZO PRESUP." }),
                 ("PRESUPUESTADO", "PRESUPUESTADO", new[] { "PRESUPUESTADO" }),
-                ("ESP_REPUESTO", "ESP. REPUESTO", new[] { "ESP. REPUESTO" }),
                 ("REPARADO", "REPARADO", new[] { "REPARADO" }),
-                ("RECHAZADO", "Rechazado (técnico)", new[] { "RECHAZADO" })
+                ("RECHAZADO", "Rechazado (técnico)", new[] { "RECHAZADO" }),
+                ("PEND_RETIRO", "Pend. Retiro", new[] { "PEND. RETIRO" }),
+                ("ESP_REPUESTO", "ESP. REPUESTO", new[] { "ESP. REPUESTO" })
             };
 
             try
@@ -1795,6 +1797,264 @@ namespace FastService.McpServer.Services
         }
 
         /// <summary>
+        /// Process Armado - TECHNICIAN assembles/packs equipment for pickup
+        /// Changes status from RECHAZADO or RECHAZO PRESUP. to PEND. RETIRO
+        /// </summary>
+        public async Task<ProcessArmadoResponse> ProcessArmadoAsync(int orderNumber, ProcessArmadoRequest request)
+        {
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            _logger.LogInformation("ProcessArmado: Starting for order #{OrderNumber}", orderNumber);
+
+            using var transaction = await _context.Database.BeginTransactionAsync();
+
+            try
+            {
+                var order = await _context.Reparacions
+                    .Include(r => r.EstadoReparacion)
+                    .FirstOrDefaultAsync(r => r.ReparacionId == orderNumber);
+
+                if (order == null)
+                {
+                    throw new InvalidOperationException($"Order #{orderNumber} not found");
+                }
+
+                var previousStatus = order.EstadoReparacion?.Nombre ?? "Desconocido";
+
+                // Validate that order is in a rejected state
+                var validStatuses = new[] { "RECHAZADO", "RECHAZO PRESUP." };
+                if (!validStatuses.Contains(previousStatus.ToUpper()))
+                {
+                    throw new InvalidOperationException($"La orden debe estar en estado RECHAZADO o RECHAZO PRESUP. para poder armarla. Estado actual: {previousStatus}");
+                }
+
+                // Get or create the PEND. RETIRO status
+                var newStatus = await _context.EstadoReparacions
+                    .FirstOrDefaultAsync(e => e.Nombre != null && e.Nombre.ToUpper() == ReparacionEstado.PEND_RETIRO.ToUpper());
+
+                if (newStatus == null)
+                {
+                    // Create the status if it doesn't exist
+                    newStatus = new EstadoReparacion
+                    {
+                        Nombre = ReparacionEstado.PEND_RETIRO,
+                        Descripcion = "Equipo armado, pendiente de retiro por el cliente",
+                        Activo = true
+                    };
+                    _context.EstadoReparacions.Add(newStatus);
+                    await _context.SaveChangesAsync();
+                }
+
+                // Get or create the ARMADO novedad type
+                var tipoNovedad = await _context.TipoNovedads
+                    .FirstOrDefaultAsync(t => t.TipoNovedadId == NovedadTipoIds.ARMADO);
+
+                if (tipoNovedad == null)
+                {
+                    tipoNovedad = new TipoNovedad
+                    {
+                        TipoNovedadId = NovedadTipoIds.ARMADO,
+                        Nombre = "ARMADO",
+                        Descripcion = "Equipo armado y listo para retiro por el cliente",
+                        Activo = true,
+                        ModificadoEn = DateTime.Now,
+                        ModificadoPor = 1
+                    };
+                    _context.TipoNovedads.Add(tipoNovedad);
+                    await _context.SaveChangesAsync();
+                }
+
+                // Create Novedad record with combined observation
+                var observacion = string.IsNullOrWhiteSpace(request.Observacion)
+                    ? "Equipo armado y listo para retiro"
+                    : $"Equipo armado y listo para retiro. {request.Observacion}";
+
+                var userId = request.UserId ?? 1;
+                var novedad = new Novedad
+                {
+                    ReparacionId = orderNumber,
+                    TipoNovedadId = NovedadTipoIds.ARMADO,
+                    Observacion = observacion,
+                    Monto = 0,
+                    UserId = userId,
+                    ModificadoPor = userId,
+                    ModificadoEn = DateTime.Now
+                };
+                _context.Novedads.Add(novedad);
+
+                // Update order status
+                order.EstadoReparacionId = newStatus.EstadoReparacionId;
+                order.ModificadoPor = userId;
+                order.ModificadoEn = DateTime.Now;
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                sw.Stop();
+                _logger.LogInformation("ProcessArmado: Order #{OrderNumber} assembled for pickup in {Elapsed}ms", 
+                    orderNumber, sw.ElapsedMilliseconds);
+
+                return new ProcessArmadoResponse
+                {
+                    Success = true,
+                    Message = "Equipo armado y listo para retiro",
+                    OrderNumber = orderNumber,
+                    PreviousStatus = previousStatus,
+                    NewStatus = ReparacionEstado.PEND_RETIRO,
+                    NovedadId = novedad.NovedadId
+                };
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                sw.Stop();
+                _logger.LogError(ex, "Error processing armado for order #{OrderNumber} (elapsed {Elapsed}ms)", 
+                    orderNumber, sw.ElapsedMilliseconds);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Process Archivar - ADMIN archives equipment to stock (equipment becomes shop property)
+        /// Changes status to ARCHIVADO, records the storage location
+        /// </summary>
+        public async Task<ProcessArchivarResponse> ProcessArchivarAsync(int orderNumber, ProcessArchivarRequest request)
+        {
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            _logger.LogInformation("ProcessArchivar: Starting for order #{OrderNumber}, Ubicacion: {Ubicacion}", 
+                orderNumber, request.Ubicacion);
+
+            if (string.IsNullOrWhiteSpace(request.Ubicacion))
+            {
+                throw new ArgumentException("Debe indicar la ubicación donde se guardará el equipo");
+            }
+
+            using var transaction = await _context.Database.BeginTransactionAsync();
+
+            try
+            {
+                var order = await _context.Reparacions
+                    .Include(r => r.EstadoReparacion)
+                    .Include(r => r.ReparacionDetalle)
+                    .FirstOrDefaultAsync(r => r.ReparacionId == orderNumber);
+
+                if (order == null)
+                {
+                    throw new InvalidOperationException($"Order #{orderNumber} not found");
+                }
+
+                var previousStatus = order.EstadoReparacion?.Nombre ?? "Desconocido";
+
+                // Get or create the ARCHIVADO status
+                var newStatus = await _context.EstadoReparacions
+                    .FirstOrDefaultAsync(e => e.Nombre != null && e.Nombre.ToUpper() == ReparacionEstado.ARCHIVADO.ToUpper());
+
+                if (newStatus == null)
+                {
+                    // Create the status if it doesn't exist
+                    newStatus = new EstadoReparacion
+                    {
+                        Nombre = ReparacionEstado.ARCHIVADO,
+                        Descripcion = "Equipo pasó a stock del negocio para repuestos",
+                        Activo = true
+                    };
+                    _context.EstadoReparacions.Add(newStatus);
+                    await _context.SaveChangesAsync();
+                }
+
+                // Get or create the ARCHIVADO novedad type
+                var tipoNovedad = await _context.TipoNovedads
+                    .FirstOrDefaultAsync(t => t.TipoNovedadId == NovedadTipoIds.ARCHIVADO);
+
+                if (tipoNovedad == null)
+                {
+                    tipoNovedad = new TipoNovedad
+                    {
+                        TipoNovedadId = NovedadTipoIds.ARCHIVADO,
+                        Nombre = "ARCHIVADO",
+                        Descripcion = "Equipo archivado en stock del negocio",
+                        Activo = true,
+                        ModificadoEn = DateTime.Now,
+                        ModificadoPor = 1
+                    };
+                    _context.TipoNovedads.Add(tipoNovedad);
+                    await _context.SaveChangesAsync();
+                }
+
+                // Create detailed Novedad record with location info
+                var observacionParts = new List<string> { "Equipo archivado - pasó a stock del negocio" };
+                if (!string.IsNullOrWhiteSpace(request.Observacion))
+                {
+                    observacionParts.Add(request.Observacion);
+                }
+                observacionParts.Add($"UBICACION EN STOCK: {request.Ubicacion}");
+                var observacion = string.Join("\n", observacionParts);
+
+                var userId = request.UserId ?? 1;
+                var novedad = new Novedad
+                {
+                    ReparacionId = orderNumber,
+                    TipoNovedadId = NovedadTipoIds.ARCHIVADO,
+                    Observacion = observacion,
+                    Monto = 0,
+                    UserId = userId,
+                    ModificadoPor = userId,
+                    ModificadoEn = DateTime.Now
+                };
+                _context.Novedads.Add(novedad);
+
+                // Update order status
+                order.EstadoReparacionId = newStatus.EstadoReparacionId;
+                order.ModificadoPor = userId;
+                order.ModificadoEn = DateTime.Now;
+
+                // Update ubicacion in ReparacionDetalle
+                if (order.ReparacionDetalle != null)
+                {
+                    order.ReparacionDetalle.Unicacion = request.Ubicacion;
+                    order.ReparacionDetalle.ModificadoPor = userId;
+                    order.ReparacionDetalle.ModificadoEn = DateTime.Now;
+                }
+                else if (order.ReparacionDetalleId.HasValue)
+                {
+                    // Load detalle separately if not included
+                    var detalle = await _context.ReparacionDetalles.FindAsync(order.ReparacionDetalleId.Value);
+                    if (detalle != null)
+                    {
+                        detalle.Unicacion = request.Ubicacion;
+                        detalle.ModificadoPor = userId;
+                        detalle.ModificadoEn = DateTime.Now;
+                    }
+                }
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                sw.Stop();
+                _logger.LogInformation("ProcessArchivar: Order #{OrderNumber} archived to stock at '{Ubicacion}' in {Elapsed}ms", 
+                    orderNumber, request.Ubicacion, sw.ElapsedMilliseconds);
+
+                return new ProcessArchivarResponse
+                {
+                    Success = true,
+                    Message = "Equipo archivado - pasó a stock del negocio",
+                    OrderNumber = orderNumber,
+                    PreviousStatus = previousStatus,
+                    NewStatus = ReparacionEstado.ARCHIVADO,
+                    Ubicacion = request.Ubicacion,
+                    NovedadId = novedad.NovedadId
+                };
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                sw.Stop();
+                _logger.LogError(ex, "Error processing archivar for order #{OrderNumber} (elapsed {Elapsed}ms)", 
+                    orderNumber, sw.ElapsedMilliseconds);
+                throw;
+            }
+        }
+
+        /// <summary>
         /// Get all active payment methods
         /// </summary>
         public async Task<List<MetodoPagoDto>> GetMetodosPagoAsync()
@@ -2250,4 +2510,8 @@ public static class ReparacionEstado
     public const string PRESUPUESTADO = "PRESUPUESTADO";
     public const string REPARADO = "REPARADO";
     public const string INGRESADO = "INGRESADO";
+    public const string RECHAZADO = "RECHAZADO";
+    public const string RECHAZO_PRESUP = "RECHAZO PRESUP.";
+    public const string PEND_RETIRO = "PEND. RETIRO";
+    public const string ARCHIVADO = "ARCHIVADO";
 }

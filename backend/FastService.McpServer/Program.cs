@@ -568,6 +568,52 @@ app.MapPost("/api/orders/{orderNumber:int}/rep-domicilio", async (int orderNumbe
     }
 }).WithName("ProcessRepDomicilio").WithOpenApi();
 
+// Process Armado - TECHNICIAN assembles/packs equipment for pickup (rejected orders)
+app.MapPost("/api/orders/{orderNumber:int}/armado", async (int orderNumber, ProcessArmadoRequest request, OrderService orderService) =>
+{
+    try
+    {
+        request.OrderNumber = orderNumber;
+        var result = await orderService.ProcessArmadoAsync(orderNumber, request);
+        return Results.Ok(result);
+    }
+    catch (ArgumentException ex)
+    {
+        return Results.BadRequest(new { error = ex.Message });
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.NotFound(new { error = ex.Message });
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(detail: ex.Message, statusCode: 500);
+    }
+}).WithName("ProcessArmado").WithOpenApi();
+
+// Process Archivar - ADMIN archives equipment to stock
+app.MapPost("/api/orders/{orderNumber:int}/archivar", async (int orderNumber, ProcessArchivarRequest request, OrderService orderService) =>
+{
+    try
+    {
+        request.OrderNumber = orderNumber;
+        var result = await orderService.ProcessArchivarAsync(orderNumber, request);
+        return Results.Ok(result);
+    }
+    catch (ArgumentException ex)
+    {
+        return Results.BadRequest(new { error = ex.Message });
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.NotFound(new { error = ex.Message });
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(detail: ex.Message, statusCode: 500);
+    }
+}).WithName("ProcessArchivar").WithOpenApi();
+
 // Get all payment methods
 app.MapGet("/api/payment-methods", async (OrderService orderService) =>
 {

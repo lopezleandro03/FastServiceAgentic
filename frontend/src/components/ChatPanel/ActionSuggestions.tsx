@@ -37,6 +37,8 @@ interface ActionSuggestionsProps {
   onStartRechazar?: (orderNumber: number) => void; // Technician rejects (can't repair)
   onStartEsperaRepuesto?: (orderNumber: number) => void;
   onStartRepDomicilio?: (orderNumber: number) => void;
+  onStartArmado?: (orderNumber: number) => void; // Technician marks rejected order as ready for pickup
+  onStartArchivar?: (orderNumber: number) => void; // Admin archives order to stock
   permissions?: UserPermissions | null;
   className?: string;
 }
@@ -62,6 +64,8 @@ const ActionSuggestions: React.FC<ActionSuggestionsProps> = ({
   onStartRechazar,
   onStartEsperaRepuesto,
   onStartRepDomicilio,
+  onStartArmado,
+  onStartArchivar,
   permissions,
   className,
 }) => {
@@ -307,6 +311,40 @@ const ActionSuggestions: React.FC<ActionSuggestionsProps> = ({
           content: `🏠 **Reparación a Domicilio - Orden #${orderNumber}**\n\n¿Cuál es el monto cobrado por la reparación a domicilio? Ingresa el monto (ej: 25000):`,
         });
         onStartRepDomicilio(orderNumber);
+      }
+      return;
+    }
+
+    // Handle armado (TECHNICIAN marks rejected order as ready for pickup) conversationally
+    if (actionType === 'armado') {
+      if (onStartArmado) {
+        onAddMessage({
+          role: 'user',
+          content: `Quiero marcar como armado la orden #${orderNumber}`,
+        });
+        
+        onAddMessage({
+          role: 'assistant',
+          content: `📦 **Armado para Retiro - Orden #${orderNumber}**\n\nEl equipo quedará listo para ser retirado por el cliente.\n\n¿Deseas agregar alguna observación? (Escribe la observación o "no" para continuar sin observación)`,
+        });
+        onStartArmado(orderNumber);
+      }
+      return;
+    }
+
+    // Handle archivar (ADMIN archives order to stock) conversationally
+    if (actionType === 'archivar') {
+      if (onStartArchivar) {
+        onAddMessage({
+          role: 'user',
+          content: `Quiero archivar la orden #${orderNumber}`,
+        });
+        
+        onAddMessage({
+          role: 'assistant',
+          content: `📁 **Archivar Equipo - Orden #${orderNumber}**\n\nEl equipo pasará a stock de repuestos.\n\n📍 ¿En qué ubicación se guardará el equipo? (Ej: "Estante 3", "Depósito A"):`,
+        });
+        onStartArchivar(orderNumber);
       }
       return;
     }

@@ -616,3 +616,81 @@ export async function processRepDomicilio(
   
   return response.json();
 }
+
+// ============= Armado (Technician Assembles Equipment for Pickup) =============
+
+export interface ArmadoRequest {
+  observacion?: string;
+  userId?: number;
+}
+
+export interface ArmadoResponse {
+  success: boolean;
+  message: string;
+  orderNumber: number;
+  previousStatus: string;
+  newStatus: string;
+  novedadId: number;
+}
+
+/**
+ * Process Armado - TECHNICIAN assembles/packs equipment for pickup
+ * Used for rejected orders (by client or technician) to prepare for customer pickup
+ */
+export async function processArmado(
+  orderNumber: number, 
+  request: ArmadoRequest
+): Promise<ArmadoResponse> {
+  const response = await fetch(`${API_BASE_URL}/api/orders/${orderNumber}/armado`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(request),
+  });
+  
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: response.statusText }));
+    throw new Error(error.error || `Failed to process armado: ${response.statusText}`);
+  }
+  
+  return response.json();
+}
+
+// ============= Archivar (Admin Archives Equipment to Stock) =============
+
+export interface ArchivarRequest {
+  ubicacion: string;
+  observacion?: string;
+  userId?: number;
+}
+
+export interface ArchivarResponse {
+  success: boolean;
+  message: string;
+  orderNumber: number;
+  previousStatus: string;
+  newStatus: string;
+  ubicacion: string;
+  novedadId: number;
+}
+
+/**
+ * Process Archivar - ADMIN archives equipment to stock
+ * Equipment becomes shop property for spare parts
+ */
+export async function processArchivar(
+  orderNumber: number, 
+  request: ArchivarRequest
+): Promise<ArchivarResponse> {
+  const response = await fetch(`${API_BASE_URL}/api/orders/${orderNumber}/archivar`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(request),
+  });
+  
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: response.statusText }));
+    throw new Error(error.error || `Failed to process archivar: ${response.statusText}`);
+  }
+  
+  return response.json();
+}

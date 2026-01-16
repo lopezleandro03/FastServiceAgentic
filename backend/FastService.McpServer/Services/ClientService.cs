@@ -38,7 +38,8 @@ public class ClientService
                 c.Apellido.ToLower().Contains(searchLower) ||
                 (c.Mail != null && c.Mail.ToLower().Contains(searchLower)) ||
                 c.Direccion.ToLower().Contains(searchLower) ||
-                (c.Telefono1 != null && c.Telefono1.Contains(search)));
+                (c.Telefono1 != null && c.Telefono1.Contains(search)) ||
+                (c.Telefono2 != null && c.Telefono2.Contains(search)));
         }
 
         // Get total count
@@ -222,11 +223,13 @@ public class ClientService
         }
         else if (searchParts.Length == 1)
         {
-            // Single term - search in name or surname
+            // Single term - search in name, surname, or phone
             var term = searchParts[0];
             baseQuery = baseQuery.Where(c =>
                 c.Nombre.ToLower().Contains(term) ||
-                c.Apellido.ToLower().Contains(term));
+                c.Apellido.ToLower().Contains(term) ||
+                (c.Telefono1 != null && c.Telefono1.Contains(searchTerm)) ||
+                (c.Telefono2 != null && c.Telefono2.Contains(searchTerm)));
         }
         else if (searchParts.Length == 2)
         {

@@ -54,4 +54,6 @@ public static class NovedadTipoIds
     public const int VERIFICAR = 39;
     public const int REPDOMICILIO = 40;
     public const int LLAMADO = 43;
+    public const int ARMADO = 44;      // New: Technician assembled/packed the equipment
+    public const int ARCHIVADO = 45;   // New: Admin archived equipment (moved to stock)
 }

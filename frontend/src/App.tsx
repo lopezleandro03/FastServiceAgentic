@@ -41,6 +41,10 @@ function AppContent() {
     pendingRechazarOrderNumber,
     pendingEsperaRepuestoOrderNumber,
     pendingRepDomicilioOrderNumber,
+    pendingArmadoOrderNumber,
+    // Admin action states
+    pendingArchivarOrderNumber,
+    archivarStep,
     sendMessage, 
     addMessage, 
     clearMessages,
@@ -63,6 +67,9 @@ function AppContent() {
     startRechazar,
     startEsperaRepuesto,
     startRepDomicilio,
+    startArmado,
+    // Admin action functions
+    startArchivar,
   } = useChat({ 
     canAccessAccounting: permissions?.canAccessAccounting,
     userId: user?.userId
@@ -146,7 +153,7 @@ function AppContent() {
         <DefaultSuggestions onSendMessage={sendMessage} onAddMessage={addMessage} onStartOrderCreation={startOrderCreation} />
       )}
       {/* Action suggestions chips above input - like real AI chips */}
-      {selectedOrderDetails && !pendingNotaOrderNumber && !pendingRetiraOrderNumber && !pendingSenaOrderNumber && !pendingInformarPresupOrderNumber && !pendingReingresoOrderNumber && !pendingRechazaPresupOrderNumber && !pendingPresupuestoOrderNumber && !pendingReparadoOrderNumber && !pendingRechazarOrderNumber && !pendingEsperaRepuestoOrderNumber && !pendingRepDomicilioOrderNumber && (
+      {selectedOrderDetails && !pendingNotaOrderNumber && !pendingRetiraOrderNumber && !pendingSenaOrderNumber && !pendingInformarPresupOrderNumber && !pendingReingresoOrderNumber && !pendingRechazaPresupOrderNumber && !pendingPresupuestoOrderNumber && !pendingReparadoOrderNumber && !pendingRechazarOrderNumber && !pendingEsperaRepuestoOrderNumber && !pendingRepDomicilioOrderNumber && !pendingArmadoOrderNumber && !pendingArchivarOrderNumber && (
         <ActionSuggestions
           orderNumber={selectedOrderDetails.orderNumber}
           presupuesto={selectedOrderDetails.presupuesto}
@@ -162,6 +169,8 @@ function AppContent() {
           onStartRechazar={startRechazar}
           onStartEsperaRepuesto={startEsperaRepuesto}
           onStartRepDomicilio={startRepDomicilio}
+          onStartArmado={startArmado}
+          onStartArchivar={startArchivar}
           permissions={permissions}
         />
       )}
@@ -193,7 +202,13 @@ function AppContent() {
                               ? "Describe qué repuesto se necesita..."
                               : pendingRepDomicilioOrderNumber
                                 ? "Ingresa el monto cobrado..."
-                                : undefined
+                                : pendingArmadoOrderNumber
+                                  ? "Ingresa observación o 'no' para continuar..."
+                                  : pendingArchivarOrderNumber
+                                    ? archivarStep === 'ubicacion'
+                                      ? "Ingresa la ubicación del equipo..."
+                                      : "Ingresa observación o 'no' para continuar..."
+                                    : undefined
         } 
       />
       {error && (

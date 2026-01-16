@@ -13,6 +13,8 @@ import {
   processRechazar,
   processEsperaRepuesto,
   processRepDomicilio,
+  processArmado,
+  processArchivar,
   PaymentMethod 
 } from '../services/orderApi';
 
@@ -49,6 +51,11 @@ interface UseChatReturn {
   pendingRepDomicilioOrderNumber: number | null;
   repDomicilioStep: 'monto' | 'metodo' | null;
   repDomicilioMonto: number | null;
+  // New: Armado and Archivar states
+  pendingArmadoOrderNumber: number | null;
+  pendingArchivarOrderNumber: number | null;
+  archivarStep: 'ubicacion' | 'observacion' | null;
+  archivarUbicacion: string | null;
   paymentMethods: { id: number; nombre: string }[];
   sendMessage: (content: string) => Promise<void>;
   addMessage: (message: { role: 'assistant' | 'user'; content: string }) => void;
@@ -83,6 +90,11 @@ interface UseChatReturn {
   cancelEsperaRepuesto: () => void;
   startRepDomicilio: (orderNumber: number) => void;
   cancelRepDomicilio: () => void;
+  // New: Armado and Archivar action functions
+  startArmado: (orderNumber: number) => void;
+  cancelArmado: () => void;
+  startArchivar: (orderNumber: number) => void;
+  cancelArchivar: () => void;
 }
 
 interface UseChatOptions {
@@ -125,6 +137,11 @@ export const useChat = (options: UseChatOptions = {}): UseChatReturn => {
   const [pendingRepDomicilioOrderNumber, setPendingRepDomicilioOrderNumber] = useState<number | null>(null);
   const [repDomicilioStep, setRepDomicilioStep] = useState<'monto' | 'metodo' | null>(null);
   const [repDomicilioMonto, setRepDomicilioMonto] = useState<number | null>(null);
+  // New: Armado and Archivar states
+  const [pendingArmadoOrderNumber, setPendingArmadoOrderNumber] = useState<number | null>(null);
+  const [pendingArchivarOrderNumber, setPendingArchivarOrderNumber] = useState<number | null>(null);
+  const [archivarStep, setArchivarStep] = useState<'ubicacion' | 'observacion' | null>(null);
+  const [archivarUbicacion, setArchivarUbicacion] = useState<string | null>(null);
 
   // Check if input is a # prefixed order number (fast lookup shortcut)
   // Only match # followed by digits - plain numbers should not trigger quick search
@@ -1161,6 +1178,135 @@ export const useChat = (options: UseChatOptions = {}): UseChatReturn => {
       return;
     }
 
+    // Check if we're in pending armado mode (TECHNICIAN marks rejected order as ready for pickup)
+    if (pendingArmadoOrderNumber !== null) {
+      const trimmedContent = content.trim().toLowerCase();
+      
+      // "no" means no observation
+      const observacion = (trimmedContent === 'no' || trimmedContent === 'n') 
+        ? undefined 
+        : content.trim();
+      
+      try {
+        const result = await processArmado(pendingArmadoOrderNumber, {
+          observacion: observacion,
+          userId: userId,
+        });
+        
+        const observacionText = observacion ? `\n📝 **Observación:** ${observacion}` : '';
+        const successMessage: ChatMessage = {
+          id: (Date.now() + 1).toString(),
+          content: `📦 **¡Equipo armado para retiro!**\n\n📋 **Orden #${result.orderNumber}**${observacionText}\n📊 **Estado anterior:** ${result.previousStatus}\n📊 **Nuevo estado:** ${result.newStatus}\n\n*El equipo está listo para ser retirado por el cliente.*`,
+          role: 'assistant',
+          timestamp: new Date(),
+        };
+        setMessages((prev) => [...prev, successMessage]);
+        
+        // Refresh order details
+        if (selectedOrderDetails && selectedOrderDetails.orderNumber === pendingArmadoOrderNumber) {
+          const orderResponse = await fetch(`${API_BASE_URL}/api/orders/${pendingArmadoOrderNumber}`);
+          if (orderResponse.ok) {
+            const updatedOrder = await orderResponse.json();
+            setSelectedOrderDetails(updatedOrder);
+          }
+        }
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : 'Error desconocido';
+        const errorResponseMessage: ChatMessage = {
+          id: (Date.now() + 1).toString(),
+          content: `❌ Error al marcar como armado: ${errorMessage}`,
+          role: 'assistant',
+          timestamp: new Date(),
+        };
+        setMessages((prev) => [...prev, errorResponseMessage]);
+      } finally {
+        setPendingArmadoOrderNumber(null);
+        setIsLoading(false);
+      }
+      return;
+    }
+
+    // Check if we're in pending archivar mode (ADMIN archives order to stock)
+    if (pendingArchivarOrderNumber !== null) {
+      const trimmedContent = content.trim();
+      
+      // Step 1: Get ubicación
+      if (archivarStep === 'ubicacion') {
+        if (trimmedContent.length < 2) {
+          const errorMessage: ChatMessage = {
+            id: (Date.now() + 1).toString(),
+            content: `❌ La ubicación es muy corta. Por favor indica dónde se guardará el equipo (ej: "Estante 3", "Depósito A"):`,
+            role: 'assistant',
+            timestamp: new Date(),
+          };
+          setMessages((prev) => [...prev, errorMessage]);
+          setIsLoading(false);
+          return;
+        }
+        
+        setArchivarUbicacion(trimmedContent);
+        setArchivarStep('observacion');
+        
+        const promptMessage: ChatMessage = {
+          id: (Date.now() + 1).toString(),
+          content: `📍 Ubicación: **${trimmedContent}**\n\n¿Querés agregar una observación adicional? Escribí "no" si no querés agregar ninguna:`,
+          role: 'assistant',
+          timestamp: new Date(),
+        };
+        setMessages((prev) => [...prev, promptMessage]);
+        setIsLoading(false);
+        return;
+      }
+      
+      // Step 2: Get optional observación and process
+      if (archivarStep === 'observacion') {
+        const observacion = (trimmedContent.toLowerCase() === 'no' || trimmedContent.toLowerCase() === 'n') 
+          ? undefined 
+          : trimmedContent;
+        
+        try {
+          const result = await processArchivar(pendingArchivarOrderNumber, {
+            ubicacion: archivarUbicacion!,
+            observacion: observacion,
+            userId: userId,
+          });
+          
+          const observacionText = observacion ? `\n📝 **Observación:** ${observacion}` : '';
+          const successMessage: ChatMessage = {
+            id: (Date.now() + 1).toString(),
+            content: `📁 **¡Equipo archivado correctamente!**\n\n📋 **Orden #${result.orderNumber}**\n📍 **Ubicación:** ${archivarUbicacion}${observacionText}\n📊 **Estado anterior:** ${result.previousStatus}\n📊 **Nuevo estado:** ${result.newStatus}\n\n*El equipo pasó a stock de repuestos.*`,
+            role: 'assistant',
+            timestamp: new Date(),
+          };
+          setMessages((prev) => [...prev, successMessage]);
+          
+          // Refresh order details
+          if (selectedOrderDetails && selectedOrderDetails.orderNumber === pendingArchivarOrderNumber) {
+            const orderResponse = await fetch(`${API_BASE_URL}/api/orders/${pendingArchivarOrderNumber}`);
+            if (orderResponse.ok) {
+              const updatedOrder = await orderResponse.json();
+              setSelectedOrderDetails(updatedOrder);
+            }
+          }
+        } catch (err) {
+          const errorMessage = err instanceof Error ? err.message : 'Error desconocido';
+          const errorResponseMessage: ChatMessage = {
+            id: (Date.now() + 1).toString(),
+            content: `❌ Error al archivar: ${errorMessage}`,
+            role: 'assistant',
+            timestamp: new Date(),
+          };
+          setMessages((prev) => [...prev, errorResponseMessage]);
+        } finally {
+          setPendingArchivarOrderNumber(null);
+          setArchivarStep('ubicacion');
+          setArchivarUbicacion(null);
+          setIsLoading(false);
+        }
+        return;
+      }
+    }
+
     try {
       const response = await fetch(`${API_BASE_URL}/api/chat`, {
         method: 'POST',
@@ -1243,7 +1389,7 @@ export const useChat = (options: UseChatOptions = {}): UseChatReturn => {
       setIsLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLoading, pendingNotaOrderNumber, pendingRetiraOrderNumber, retiraStep, retiraMonto, retiraPresupuesto, pendingSenaOrderNumber, senaStep, senaMonto, pendingInformarPresupOrderNumber, informarPresupStep, informarPresupAccion, informarPresupPresupuesto, pendingReingresoOrderNumber, pendingRechazaPresupOrderNumber, pendingPresupuestoOrderNumber, presupuestoStep, presupuestoTrabajo, pendingReparadoOrderNumber, pendingRechazarOrderNumber, pendingEsperaRepuestoOrderNumber, pendingRepDomicilioOrderNumber, repDomicilioStep, repDomicilioMonto, paymentMethods, selectedOrderDetails]);
+  }, [isLoading, pendingNotaOrderNumber, pendingRetiraOrderNumber, retiraStep, retiraMonto, retiraPresupuesto, pendingSenaOrderNumber, senaStep, senaMonto, pendingInformarPresupOrderNumber, informarPresupStep, informarPresupAccion, informarPresupPresupuesto, pendingReingresoOrderNumber, pendingRechazaPresupOrderNumber, pendingPresupuestoOrderNumber, presupuestoStep, presupuestoTrabajo, pendingReparadoOrderNumber, pendingRechazarOrderNumber, pendingEsperaRepuestoOrderNumber, pendingRepDomicilioOrderNumber, repDomicilioStep, repDomicilioMonto, paymentMethods, selectedOrderDetails, pendingArmadoOrderNumber, pendingArchivarOrderNumber, archivarStep, archivarUbicacion, userId]);
 
   const clearMessages = useCallback(() => {
     setMessages([]);
@@ -1560,6 +1706,45 @@ export const useChat = (options: UseChatOptions = {}): UseChatReturn => {
     setMessages((prev) => [...prev, assistantMessage]);
   }, []);
 
+  // Start armado flow (TECHNICIAN assembles equipment for pickup)
+  const startArmado = useCallback((orderNumber: number) => {
+    setPendingArmadoOrderNumber(orderNumber);
+  }, []);
+
+  // Cancel armado flow
+  const cancelArmado = useCallback(() => {
+    setPendingArmadoOrderNumber(null);
+    
+    const assistantMessage: ChatMessage = {
+      id: Date.now().toString(),
+      content: 'Armado cancelado. ¿En qué más puedo ayudarte?',
+      role: 'assistant',
+      timestamp: new Date(),
+    };
+    setMessages((prev) => [...prev, assistantMessage]);
+  }, []);
+
+  // Start archivar flow (ADMIN archives equipment to stock)
+  const startArchivar = useCallback((orderNumber: number) => {
+    setPendingArchivarOrderNumber(orderNumber);
+    setArchivarStep('ubicacion');
+  }, []);
+
+  // Cancel archivar flow
+  const cancelArchivar = useCallback(() => {
+    setPendingArchivarOrderNumber(null);
+    setArchivarStep(null);
+    setArchivarUbicacion(null);
+    
+    const assistantMessage: ChatMessage = {
+      id: Date.now().toString(),
+      content: 'Archivar cancelado. ¿En qué más puedo ayudarte?',
+      role: 'assistant',
+      timestamp: new Date(),
+    };
+    setMessages((prev) => [...prev, assistantMessage]);
+  }, []);
+
   return {
     messages,
     isLoading,
@@ -1591,6 +1776,11 @@ export const useChat = (options: UseChatOptions = {}): UseChatReturn => {
     pendingRepDomicilioOrderNumber,
     repDomicilioStep,
     repDomicilioMonto,
+    // New: Armado and Archivar states
+    pendingArmadoOrderNumber,
+    pendingArchivarOrderNumber,
+    archivarStep,
+    archivarUbicacion,
     paymentMethods,
     sendMessage,
     addMessage,
@@ -1625,5 +1815,10 @@ export const useChat = (options: UseChatOptions = {}): UseChatReturn => {
     cancelEsperaRepuesto,
     startRepDomicilio,
     cancelRepDomicilio,
+    // New: Armado and Archivar action functions
+    startArmado,
+    cancelArmado,
+    startArchivar,
+    cancelArchivar,
   };
 };

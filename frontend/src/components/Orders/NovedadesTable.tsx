@@ -112,27 +112,14 @@ const NovedadesTable: React.FC<NovedadesTableProps> = ({ novedades, orderNumber,
                 <TableCell className="text-sm font-medium text-muted-foreground">
                   {novedad.usuarioNombre || '-'}
                 </TableCell>
-                <TableCell className="font-medium">
+                <TableCell className="font-medium uppercase">
                   {novedad.tipo}
                 </TableCell>
                 <TableCell className="text-right text-sm">
                   {formatCurrency(novedad.monto)}
                 </TableCell>
-                <TableCell className="text-sm">
-                  {novedad.observacion && novedad.observacion.length > 50 ? (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <span className="cursor-help">
-                          {truncateText(novedad.observacion)}
-                        </span>
-                      </TooltipTrigger>
-                      <TooltipContent className="max-w-sm">
-                        <p className="whitespace-pre-wrap">{novedad.observacion}</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  ) : (
-                    truncateText(novedad.observacion)
-                  )}
+                <TableCell className="text-sm whitespace-pre-wrap break-words">
+                  {novedad.observacion || '-'}
                 </TableCell>
                 {orderNumber && (
                   <TableCell className="text-center">

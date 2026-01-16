@@ -12,12 +12,14 @@ export type OrderActionType =
   | 'llamado'
   | 'coord_entrega'
   | 'rechaza_presup' // Client rejects budget
+  | 'archivar' // Admin archives equipment to stock
   // Técnico actions
   | 'presupuesto'
   | 'reparado'
   | 'rechazar' // Technician rejects (can't repair)
   | 'espera_repuesto'
-  | 'rep_domicilio';
+  | 'rep_domicilio'
+  | 'armado'; // Technician assembles equipment for pickup
 
 export type ActionGroup = 'common' | 'admin' | 'tecnico';
 
@@ -118,6 +120,14 @@ export const ADMIN_ACTIONS: OrderAction[] = [
     isSpecial: true,
     group: 'admin',
   },
+  {
+    type: 'archivar',
+    label: 'Archivar',
+    icon: '📦',
+    description: 'Archivar equipo a stock (pasa a propiedad del negocio)',
+    isSpecial: true,
+    group: 'admin',
+  },
 ];
 
 // Técnico actions
@@ -159,6 +169,14 @@ export const TECNICO_ACTIONS: OrderAction[] = [
     label: 'Rep. Domicilio',
     icon: '🏠',
     description: 'Reparación en domicilio',
+    isSpecial: true,
+    group: 'tecnico',
+  },
+  {
+    type: 'armado',
+    label: 'Armado',
+    icon: '📦',
+    description: 'Equipo armado listo para retiro (rechazados)',
     isSpecial: true,
     group: 'tecnico',
   },
