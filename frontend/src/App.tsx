@@ -149,8 +149,8 @@ function AppContent() {
         </div>
         {isLoading && <LoadingIndicator />}
       </div>
-      {/* Default suggestions when no conversation started */}
-      {!hasConversation && !isLoading && (
+      {/* Default suggestions - show when no conversation OR when conversation exists but no order selected */}
+      {((!hasConversation || (hasConversation && !selectedOrderDetails && !isCreatingOrder)) && !isLoading) && (
         <DefaultSuggestions onSendMessage={sendMessage} onAddMessage={addMessage} onStartOrderCreation={startOrderCreation} />
       )}
       {/* Action suggestions chips above input - like real AI chips */}
