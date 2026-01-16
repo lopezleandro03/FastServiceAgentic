@@ -172,6 +172,19 @@ ELSE
     PRINT 'Index IX_ReparacionDetalle_ReparacionId already exists';
 GO
 
+-- Index on Modelo column for LIKE searches (model text search)
+IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_ReparacionDetalle_Modelo' AND object_id = OBJECT_ID('dbo.ReparacionDetalle'))
+BEGIN
+    CREATE NONCLUSTERED INDEX IX_ReparacionDetalle_Modelo 
+    ON dbo.ReparacionDetalle (Modelo)
+    INCLUDE (ReparacionId)
+    WHERE Modelo IS NOT NULL;
+    PRINT 'Created index IX_ReparacionDetalle_Modelo';
+END
+ELSE
+    PRINT 'Index IX_ReparacionDetalle_Modelo already exists';
+GO
+
 -- ============================================================================
 -- ESTADO_REPARACION TABLE INDEX (for status name lookups)
 -- ============================================================================

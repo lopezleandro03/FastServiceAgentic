@@ -74,55 +74,80 @@ namespace FastService.McpServer.Services
         {
             try
             {
-                var query = _context.Reparacions
-                    .Include(r => r.Cliente)
-                    .Include(r => r.EstadoReparacion)
-                    .Include(r => r.Marca)
-                    .Include(r => r.TipoDispositivo)
-                    .Include(r => r.TecnicoAsignado)
-                    .Include(r => r.ReparacionDetalle)
-                    .AsQueryable();
+                // Use AsNoTracking for read-only queries and avoid eager loading - use projection instead
+                var query = _context.Reparacions.AsNoTracking().AsQueryable();
 
-                // Apply filters
+                // Apply filters BEFORE joins for better performance
                 if (criteria.OrderNumber.HasValue)
                 {
                     query = query.Where(r => r.ReparacionId == criteria.OrderNumber.Value);
                 }
 
+                // Model filter - apply early using EF.Functions.Like for index usage
+                if (!string.IsNullOrWhiteSpace(criteria.Model))
+                {
+                    var modelSearch = criteria.Model.Trim();
+                    var searchTerm = modelSearch.Trim('*');
+                    var likePattern = $"%{searchTerm}%"; // Default contains
+                    
+                    if (modelSearch.StartsWith("*") && !modelSearch.EndsWith("*"))
+                    {
+                        likePattern = $"%{searchTerm}"; // Ends with
+                    }
+                    else if (!modelSearch.StartsWith("*") && modelSearch.EndsWith("*"))
+                    {
+                        likePattern = $"{searchTerm}%"; // Starts with
+                    }
+                    
+                    query = query.Where(r => r.ReparacionDetalle != null && 
+                        r.ReparacionDetalle.Modelo != null &&
+                        EF.Functions.Like(r.ReparacionDetalle.Modelo, likePattern));
+                }
+
+                // Status filter - apply early for efficiency
+                if (!string.IsNullOrWhiteSpace(criteria.Status))
+                {
+                    var statusPattern = $"%{criteria.Status}%";
+                    query = query.Where(r => EF.Functions.Like(r.EstadoReparacion!.Nombre, statusPattern));
+                }
+
+                // Handle multiple statuses
+                if (criteria.Statuses != null && criteria.Statuses.Count > 0)
+                {
+                    var statusList = criteria.Statuses.Select(s => s.ToLower()).ToList();
+                    query = query.Where(r => statusList.Contains(r.EstadoReparacion!.Nombre.ToLower()));
+                }
+
                 if (!string.IsNullOrWhiteSpace(criteria.CustomerName))
                 {
-                    var searchTerm = criteria.CustomerName.ToLower().Trim();
+                    var searchTerm = criteria.CustomerName.Trim();
                     var searchParts = searchTerm.Split(' ', StringSplitOptions.RemoveEmptyEntries);
                     
-                    // Build SQL-compatible query without using collection.Any() which causes OPENJSON issues
+                    // Use EF.Functions.Like for SQL LIKE which is case-insensitive with default collation
                     if (searchParts.Length == 1)
                     {
-                        // Single term - search in name or surname
-                        var term = searchParts[0];
+                        var term = $"%{searchParts[0]}%";
                         query = query.Where(r =>
-                            r.Cliente!.Nombre.ToLower().Contains(term) ||
-                            r.Cliente.Apellido.ToLower().Contains(term));
+                            EF.Functions.Like(r.Cliente!.Nombre, term) ||
+                            EF.Functions.Like(r.Cliente.Apellido, term));
                     }
                     else if (searchParts.Length == 2)
                     {
-                        // Two terms - common "nombre apellido" pattern
-                        var part1 = searchParts[0];
-                        var part2 = searchParts[1];
+                        var part1 = $"%{searchParts[0]}%";
+                        var part2 = $"%{searchParts[1]}%";
+                        var fullTerm = $"%{searchTerm}%";
                         query = query.Where(r =>
-                            // Full term match
-                            r.Cliente!.Nombre.ToLower().Contains(searchTerm) ||
-                            r.Cliente.Apellido.ToLower().Contains(searchTerm) ||
-                            // Match "nombre apellido" order
-                            (r.Cliente.Nombre.ToLower().Contains(part1) && r.Cliente.Apellido.ToLower().Contains(part2)) ||
-                            // Or reversed "apellido nombre"
-                            (r.Cliente.Nombre.ToLower().Contains(part2) && r.Cliente.Apellido.ToLower().Contains(part1)));
+                            EF.Functions.Like(r.Cliente!.Nombre, fullTerm) ||
+                            EF.Functions.Like(r.Cliente.Apellido, fullTerm) ||
+                            (EF.Functions.Like(r.Cliente.Nombre, part1) && EF.Functions.Like(r.Cliente.Apellido, part2)) ||
+                            (EF.Functions.Like(r.Cliente.Nombre, part2) && EF.Functions.Like(r.Cliente.Apellido, part1)));
                     }
                     else
                     {
-                        // 3+ terms - fallback to full search term
+                        var fullTerm = $"%{searchTerm}%";
                         query = query.Where(r =>
-                            r.Cliente!.Nombre.ToLower().Contains(searchTerm) ||
-                            r.Cliente.Apellido.ToLower().Contains(searchTerm));
+                            EF.Functions.Like(r.Cliente!.Nombre, fullTerm) ||
+                            EF.Functions.Like(r.Cliente.Apellido, fullTerm));
                     }
                 }
 
@@ -137,69 +162,22 @@ namespace FastService.McpServer.Services
                 // Address search - fuzzy match on cliente direccion or localidad
                 if (!string.IsNullOrWhiteSpace(criteria.Address))
                 {
-                    var addressTerm = criteria.Address.ToLower().Trim();
+                    var addressPattern = $"%{criteria.Address.Trim()}%";
                     query = query.Where(r =>
-                        r.Cliente!.Direccion.ToLower().Contains(addressTerm) ||
-                        (r.Cliente.Localidad != null && r.Cliente.Localidad.ToLower().Contains(addressTerm)));
-                }
-
-                if (!string.IsNullOrWhiteSpace(criteria.Status))
-                {
-                    query = query.Where(r => r.EstadoReparacion!.Nombre.ToLower().Contains(criteria.Status.ToLower()));
-                }
-
-                // Handle multiple statuses
-                if (criteria.Statuses != null && criteria.Statuses.Count > 0)
-                {
-                    var statusList = criteria.Statuses.Select(s => s.ToLower()).ToList();
-                    query = query.Where(r => statusList.Contains(r.EstadoReparacion!.Nombre.ToLower()));
+                        EF.Functions.Like(r.Cliente!.Direccion, addressPattern) ||
+                        (r.Cliente.Localidad != null && EF.Functions.Like(r.Cliente.Localidad, addressPattern)));
                 }
 
                 if (!string.IsNullOrWhiteSpace(criteria.Brand))
                 {
-                    query = query.Where(r => r.Marca!.Nombre.ToLower().Contains(criteria.Brand.ToLower()));
+                    var brandPattern = $"%{criteria.Brand}%";
+                    query = query.Where(r => EF.Functions.Like(r.Marca!.Nombre, brandPattern));
                 }
 
                 if (!string.IsNullOrWhiteSpace(criteria.DeviceType))
                 {
-                    query = query.Where(r => r.TipoDispositivo!.Nombre.ToLower().Contains(criteria.DeviceType.ToLower()));
-                }
-
-                if (!string.IsNullOrWhiteSpace(criteria.Model))
-                {
-                    var modelSearch = criteria.Model.Trim();
-                    var startsWithWildcard = modelSearch.StartsWith("*");
-                    var endsWithWildcard = modelSearch.EndsWith("*");
-                    var searchTerm = modelSearch.Trim('*').ToLower();
-                    
-                    if (startsWithWildcard && endsWithWildcard)
-                    {
-                        // *term* - contains
-                        query = query.Where(r => r.ReparacionDetalle != null && 
-                            r.ReparacionDetalle.Modelo != null &&
-                            r.ReparacionDetalle.Modelo.ToLower().Contains(searchTerm));
-                    }
-                    else if (startsWithWildcard)
-                    {
-                        // *term - ends with
-                        query = query.Where(r => r.ReparacionDetalle != null && 
-                            r.ReparacionDetalle.Modelo != null &&
-                            r.ReparacionDetalle.Modelo.ToLower().EndsWith(searchTerm));
-                    }
-                    else if (endsWithWildcard)
-                    {
-                        // term* - starts with
-                        query = query.Where(r => r.ReparacionDetalle != null && 
-                            r.ReparacionDetalle.Modelo != null &&
-                            r.ReparacionDetalle.Modelo.ToLower().StartsWith(searchTerm));
-                    }
-                    else
-                    {
-                        // no wildcard - default to contains for flexibility
-                        query = query.Where(r => r.ReparacionDetalle != null && 
-                            r.ReparacionDetalle.Modelo != null &&
-                            r.ReparacionDetalle.Modelo.ToLower().Contains(searchTerm));
-                    }
+                    var devicePattern = $"%{criteria.DeviceType}%";
+                    query = query.Where(r => EF.Functions.Like(r.TipoDispositivo!.Nombre, devicePattern));
                 }
 
                 if (criteria.FromDate.HasValue)
