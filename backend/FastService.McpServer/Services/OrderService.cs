@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using FastService.McpServer.Data;
 using FastService.McpServer.Data.Entities;
 using FastService.McpServer.Dtos;
+using System.Linq.Expressions;
 
 namespace FastService.McpServer.Services
 {
@@ -111,12 +112,41 @@ namespace FastService.McpServer.Services
                     query = query.Where(r => EF.Functions.Like(r.EstadoReparacion!.Nombre, statusPattern));
                 }
 
-                // Handle multiple statuses - use EF.Functions.Like for each status with OR logic
+                // Handle multiple statuses - build dynamic OR expression to avoid EF Core OPENJSON issues
                 if (criteria.Statuses != null && criteria.Statuses.Count > 0)
                 {
-                    // Build OR condition for multiple statuses using Contains (EF translates this to IN clause)
-                    var statusNames = criteria.Statuses.ToList();
-                    query = query.Where(r => statusNames.Contains(r.EstadoReparacion!.Nombre));
+                    // Get all statuses and filter in memory to get IDs
+                    var allStatuses = await _context.EstadoReparacions
+                        .AsNoTracking()
+                        .Select(e => new { e.EstadoReparacionId, e.Nombre })
+                        .ToListAsync();
+                    
+                    var statusIds = allStatuses
+                        .Where(e => criteria.Statuses.Contains(e.Nombre))
+                        .Select(e => e.EstadoReparacionId)
+                        .ToList();
+                    
+                    if (statusIds.Count > 0)
+                    {
+                        // Build dynamic OR expression: r.EstadoReparacionId == id1 || r.EstadoReparacionId == id2 || ...
+                        var parameter = Expression.Parameter(typeof(Reparacion), "r");
+                        var property = Expression.Property(parameter, nameof(Reparacion.EstadoReparacionId));
+                        
+                        Expression? combinedExpression = null;
+                        foreach (var statusId in statusIds)
+                        {
+                            var equality = Expression.Equal(property, Expression.Constant(statusId));
+                            combinedExpression = combinedExpression == null 
+                                ? equality 
+                                : Expression.OrElse(combinedExpression, equality);
+                        }
+                        
+                        if (combinedExpression != null)
+                        {
+                            var lambda = Expression.Lambda<Func<Reparacion, bool>>(combinedExpression, parameter);
+                            query = query.Where(lambda);
+                        }
+                    }
                 }
 
                 if (!string.IsNullOrWhiteSpace(criteria.CustomerName))

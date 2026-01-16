@@ -109,8 +109,8 @@ export function useAccounting(): UseAccountingReturn {
   const [movements, setMovements] = useState<SalesMovementsResponse | null>(null);
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   
-  const [selectedPeriod, setSelectedPeriod] = useState<ChartPeriod>('m');
-  const [timePreset, setTimePreset] = useState<TimeFilterPreset>('month');
+  const [selectedPeriod, setSelectedPeriod] = useState<ChartPeriod>('d');
+  const [timePreset, setTimePreset] = useState<TimeFilterPreset>('today');
   const [selectedYear, setSelectedYear] = useState<number>(currentYear);
   const [selectedMonth, setSelectedMonth] = useState<number | null>(new Date().getMonth());
   const [filter, setFilter] = useState<SalesMovementFilter>({ page: 1, pageSize: 15, sortDesc: true });
