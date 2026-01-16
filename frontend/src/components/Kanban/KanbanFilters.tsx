@@ -2,15 +2,20 @@ import React, { useEffect, useState } from 'react';
 import { KanbanFilters as KanbanFiltersType, UserInfo, BusinessInfo } from '../../types/kanban';
 import { fetchTechnicians, fetchResponsibles, fetchBusinesses } from '../../services/orderApi';
 import { Button } from '../ui/button';
+import { RefreshCw } from 'lucide-react';
 
 interface KanbanFiltersProps {
   filters: KanbanFiltersType;
   onFiltersChange: (filters: KanbanFiltersType) => void;
+  onRefresh?: () => void;
+  isLoading?: boolean;
 }
 
 export const KanbanFilters: React.FC<KanbanFiltersProps> = ({
   filters,
   onFiltersChange,
+  onRefresh,
+  isLoading,
 }) => {
   const [technicians, setTechnicians] = useState<UserInfo[]>([]);
   const [responsibles, setResponsibles] = useState<UserInfo[]>([]);
@@ -174,6 +179,18 @@ export const KanbanFilters: React.FC<KanbanFiltersProps> = ({
             className="h-9"
           >
             Borrar Filtros
+          </Button>
+        )}
+        {onRefresh && (
+          <Button
+            variant="default"
+            size="sm"
+            onClick={onRefresh}
+            disabled={isLoading}
+            className="h-9 bg-blue-600 hover:bg-blue-700 text-white"
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+            Actualizar
           </Button>
         )}
       </div>

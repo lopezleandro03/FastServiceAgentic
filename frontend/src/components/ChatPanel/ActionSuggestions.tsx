@@ -24,7 +24,6 @@ interface ActionSuggestionsProps {
   orderNumber: number;
   presupuesto?: number;
   onAddMessage: (message: { role: 'assistant' | 'user'; content: string }) => void;
-  onEditOrder?: () => void;
   onStartAddNota?: () => void;
   onStartRetira?: (orderNumber: number, presupuesto?: number) => void;
   onStartSena?: (orderNumber: number) => void;
@@ -50,7 +49,6 @@ const ActionSuggestions: React.FC<ActionSuggestionsProps> = ({
   orderNumber,
   presupuesto,
   onAddMessage,
-  onEditOrder,
   onStartAddNota,
   onStartRetira,
   onStartSena,
@@ -82,22 +80,6 @@ const ActionSuggestions: React.FC<ActionSuggestionsProps> = ({
   const handleActionClick = async (actionType: OrderActionType) => {
     const action = ORDER_ACTIONS.find((a) => a.type === actionType);
     if (!action) return;
-
-    // Handle edit action specially
-    if (actionType === 'edit') {
-      if (onEditOrder) {
-        onAddMessage({
-          role: 'user',
-          content: `Quiero editar la orden #${orderNumber}`,
-        });
-        onAddMessage({
-          role: 'assistant',
-          content: '✏️ Puedes modificar los datos de la orden en el formulario. Haz los cambios necesarios y guarda cuando estés listo.',
-        });
-        onEditOrder();
-      }
-      return;
-    }
 
     // Handle nota/reclamo conversationally
     if (actionType === 'nota_reclamo') {
@@ -244,7 +226,7 @@ const ActionSuggestions: React.FC<ActionSuggestionsProps> = ({
 
     // === TÉCNICO ACTIONS ===
 
-    // Handle presupuesto conversationally
+    // Handle presupuesto conversationally - Two step: trabajo first, then monto
     if (actionType === 'presupuesto') {
       if (onStartPresupuesto) {
         onAddMessage({
@@ -254,7 +236,7 @@ const ActionSuggestions: React.FC<ActionSuggestionsProps> = ({
         
         onAddMessage({
           role: 'assistant',
-          content: `📊 **Presupuesto - Orden #${orderNumber}**\n\n¿Cuál es el monto del presupuesto?`,
+          content: `📊 **Presupuesto - Orden #${orderNumber}**\n\n🔧 ¿Cuál es el trabajo que hay que realizar?`,
         });
         onStartPresupuesto(orderNumber);
       }

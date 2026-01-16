@@ -41,6 +41,8 @@ interface UseChatReturn {
   pendingRechazaPresupOrderNumber: number | null; // Client rejects budget
   // Técnico action states
   pendingPresupuestoOrderNumber: number | null;
+  presupuestoStep: 'trabajo' | 'monto' | null;
+  presupuestoTrabajo: string | null;
   pendingReparadoOrderNumber: number | null;
   pendingRechazarOrderNumber: number | null;
   pendingEsperaRepuestoOrderNumber: number | null;
@@ -114,6 +116,8 @@ export const useChat = (options: UseChatOptions = {}): UseChatReturn => {
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   // Técnico action states
   const [pendingPresupuestoOrderNumber, setPendingPresupuestoOrderNumber] = useState<number | null>(null);
+  const [presupuestoStep, setPresupuestoStep] = useState<'trabajo' | 'monto' | null>(null);
+  const [presupuestoTrabajo, setPresupuestoTrabajo] = useState<string | null>(null);
   const [pendingReparadoOrderNumber, setPendingReparadoOrderNumber] = useState<number | null>(null);
   const [pendingRechazarOrderNumber, setPendingRechazarOrderNumber] = useState<number | null>(null);
   const [pendingEsperaRepuestoOrderNumber, setPendingEsperaRepuestoOrderNumber] = useState<number | null>(null);
@@ -122,14 +126,13 @@ export const useChat = (options: UseChatOptions = {}): UseChatReturn => {
   const [repDomicilioMonto, setRepDomicilioMonto] = useState<number | null>(null);
 
   // Check if input is a # prefixed order number (fast lookup shortcut)
+  // Only match # followed by digits - plain numbers should not trigger quick search
+  // as they may be part of other flows (e.g., entering amounts for presupuesto)
   const isOrderNumberShortcut = (input: string): number | null => {
     const trimmed = input.trim();
-    // Match # followed by 4-7 digits (e.g., #128001) OR just 4-7 digits alone (e.g., 128001)
+    // Match # followed by 4-7 digits (e.g., #128001)
     const matchWithHash = trimmed.match(/^#(\d{4,7})$/);
     if (matchWithHash) return parseInt(matchWithHash[1], 10);
-    
-    const matchPureNumber = trimmed.match(/^(\d{4,7})$/);
-    if (matchPureNumber) return parseInt(matchPureNumber[1], 10);
     
     return null;
   };
@@ -724,60 +727,97 @@ export const useChat = (options: UseChatOptions = {}): UseChatReturn => {
     // ============= TÉCNICO ACTIONS =============
 
     // Check if we're in pending presupuesto mode (TECHNICIAN creates budget)
+    // Two-step flow: 1) Work to be done (trabajo), 2) Amount (monto)
     if (pendingPresupuestoOrderNumber !== null) {
       const trimmedContent = content.trim();
       
-      // Try to parse as number
-      const parsedMonto = parseFloat(trimmedContent.replace(/[^0-9.,]/g, '').replace(',', '.'));
-      
-      if (isNaN(parsedMonto) || parsedMonto <= 0) {
-        const errorMessage: ChatMessage = {
+      // Step 1: Get the work description (trabajo)
+      if (presupuestoStep === 'trabajo') {
+        if (trimmedContent.length < 3) {
+          const errorMessage: ChatMessage = {
+            id: (Date.now() + 1).toString(),
+            content: `❌ Por favor ingresa una descripción del trabajo a realizar (mínimo 3 caracteres):`,
+            role: 'assistant',
+            timestamp: new Date(),
+          };
+          setMessages((prev) => [...prev, errorMessage]);
+          setIsLoading(false);
+          return;
+        }
+        
+        // Save the work description and move to monto step
+        setPresupuestoTrabajo(trimmedContent);
+        setPresupuestoStep('monto');
+        
+        const nextStepMessage: ChatMessage = {
           id: (Date.now() + 1).toString(),
-          content: `❌ No pude entender el monto. Por favor ingresa el monto del presupuesto (ej: 25000):`,
+          content: `✅ **Trabajo a realizar:** ${trimmedContent}\n\n💵 ¿Cuál es el monto del presupuesto?`,
           role: 'assistant',
           timestamp: new Date(),
         };
-        setMessages((prev) => [...prev, errorMessage]);
+        setMessages((prev) => [...prev, nextStepMessage]);
         setIsLoading(false);
         return;
       }
       
-      // Process the presupuesto
-      try {
-        const result = await processPresupuesto(pendingPresupuestoOrderNumber, {
-          monto: parsedMonto,
-        });
+      // Step 2: Get the amount (monto)
+      if (presupuestoStep === 'monto') {
+        // Try to parse as number
+        const parsedMonto = parseFloat(trimmedContent.replace(/[^0-9.,]/g, '').replace(',', '.'));
         
-        const successMessage: ChatMessage = {
-          id: (Date.now() + 1).toString(),
-          content: `💰 **¡Presupuesto creado exitosamente!**\n\n📋 **Orden #${result.orderNumber}**\n💵 **Monto:** $${result.monto.toLocaleString('es-AR')}\n📊 **Estado anterior:** ${result.previousStatus}\n📊 **Nuevo estado:** ${result.newStatus}\n\n*El presupuesto ha sido registrado. Ahora se puede informar al cliente.*`,
-          role: 'assistant',
-          timestamp: new Date(),
-        };
-        setMessages((prev) => [...prev, successMessage]);
-        
-        // Refresh order details to show updated status
-        if (selectedOrderDetails && selectedOrderDetails.orderNumber === pendingPresupuestoOrderNumber) {
-          const orderResponse = await fetch(`${API_BASE_URL}/api/orders/${pendingPresupuestoOrderNumber}`);
-          if (orderResponse.ok) {
-            const updatedOrder = await orderResponse.json();
-            setSelectedOrderDetails(updatedOrder);
-          }
+        if (isNaN(parsedMonto) || parsedMonto <= 0) {
+          const errorMessage: ChatMessage = {
+            id: (Date.now() + 1).toString(),
+            content: `❌ No pude entender el monto. Por favor ingresa el monto del presupuesto (ej: 25000):`,
+            role: 'assistant',
+            timestamp: new Date(),
+          };
+          setMessages((prev) => [...prev, errorMessage]);
+          setIsLoading(false);
+          return;
         }
-      } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : 'Error desconocido';
-        const errorResponseMessage: ChatMessage = {
-          id: (Date.now() + 1).toString(),
-          content: `❌ Error al crear el presupuesto: ${errorMessage}`,
-          role: 'assistant',
-          timestamp: new Date(),
-        };
-        setMessages((prev) => [...prev, errorResponseMessage]);
-      } finally {
-        setPendingPresupuestoOrderNumber(null);
-        setIsLoading(false);
+        
+        // Process the presupuesto with both trabajo and monto
+        try {
+          const result = await processPresupuesto(pendingPresupuestoOrderNumber, {
+            monto: parsedMonto,
+            observacion: presupuestoTrabajo || undefined, // Work description goes to observacion (saved in Novedades)
+          });
+          
+          const successMessage: ChatMessage = {
+            id: (Date.now() + 1).toString(),
+            content: `💰 **¡Presupuesto creado exitosamente!**\n\n📋 **Orden #${result.orderNumber}**\n🔧 **Trabajo:** ${presupuestoTrabajo}\n💵 **Monto:** $${result.monto.toLocaleString('es-AR')}\n📊 **Estado anterior:** ${result.previousStatus}\n📊 **Nuevo estado:** ${result.newStatus}\n\n*El presupuesto ha sido registrado. Ahora se puede informar al cliente.*`,
+            role: 'assistant',
+            timestamp: new Date(),
+          };
+          setMessages((prev) => [...prev, successMessage]);
+          
+          // Refresh order details to show updated status
+          if (selectedOrderDetails && selectedOrderDetails.orderNumber === pendingPresupuestoOrderNumber) {
+            const orderResponse = await fetch(`${API_BASE_URL}/api/orders/${pendingPresupuestoOrderNumber}`);
+            if (orderResponse.ok) {
+              const updatedOrder = await orderResponse.json();
+              setSelectedOrderDetails(updatedOrder);
+            }
+          }
+        } catch (err) {
+          const errorMessage = err instanceof Error ? err.message : 'Error desconocido';
+          const errorResponseMessage: ChatMessage = {
+            id: (Date.now() + 1).toString(),
+            content: `❌ Error al crear el presupuesto: ${errorMessage}`,
+            role: 'assistant',
+            timestamp: new Date(),
+          };
+          setMessages((prev) => [...prev, errorResponseMessage]);
+        } finally {
+          // Reset all presupuesto state
+          setPendingPresupuestoOrderNumber(null);
+          setPresupuestoStep(null);
+          setPresupuestoTrabajo(null);
+          setIsLoading(false);
+        }
+        return;
       }
-      return;
     }
 
     // Check if we're in pending reparado mode (TECHNICIAN marks as repaired)
@@ -1199,13 +1239,13 @@ export const useChat = (options: UseChatOptions = {}): UseChatReturn => {
       setIsLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLoading, pendingNotaOrderNumber, pendingRetiraOrderNumber, retiraStep, retiraMonto, retiraPresupuesto, pendingSenaOrderNumber, senaStep, senaMonto, pendingInformarPresupOrderNumber, informarPresupStep, informarPresupAccion, informarPresupPresupuesto, pendingReingresoOrderNumber, pendingRechazaPresupOrderNumber, pendingPresupuestoOrderNumber, pendingReparadoOrderNumber, pendingRechazarOrderNumber, pendingEsperaRepuestoOrderNumber, pendingRepDomicilioOrderNumber, repDomicilioStep, repDomicilioMonto, paymentMethods, selectedOrderDetails]);
+  }, [isLoading, pendingNotaOrderNumber, pendingRetiraOrderNumber, retiraStep, retiraMonto, retiraPresupuesto, pendingSenaOrderNumber, senaStep, senaMonto, pendingInformarPresupOrderNumber, informarPresupStep, informarPresupAccion, informarPresupPresupuesto, pendingReingresoOrderNumber, pendingRechazaPresupOrderNumber, pendingPresupuestoOrderNumber, presupuestoStep, presupuestoTrabajo, pendingReparadoOrderNumber, pendingRechazarOrderNumber, pendingEsperaRepuestoOrderNumber, pendingRepDomicilioOrderNumber, repDomicilioStep, repDomicilioMonto, paymentMethods, selectedOrderDetails]);
 
   const clearMessages = useCallback(() => {
     setMessages([]);
     setError(null);
     setOrders([]);
-    setSelectedOrderDetails(null);
+    // Don't clear selectedOrderDetails - keep action chips visible when order detail is open
     setIsCreatingOrder(false);
     setPendingNotaOrderNumber(null);
     setPendingRetiraOrderNumber(null);
@@ -1273,21 +1313,13 @@ export const useChat = (options: UseChatOptions = {}): UseChatReturn => {
   const startOrderEdit = useCallback((order: OrderDetails) => {
     setEditingOrderDetails(order);
     setIsEditingOrder(true);
-    setSelectedOrderDetails(null);
+    // Keep selectedOrderDetails so action chips remain visible after edit
   }, []);
 
-  // Cancel order editing with message
+  // Cancel order editing (no chat message since edit is done in detail screen)
   const cancelOrderEdit = useCallback(() => {
     setIsEditingOrder(false);
     setEditingOrderDetails(null);
-    
-    const assistantMessage: ChatMessage = {
-      id: Date.now().toString(),
-      content: 'Edición de orden cancelada. ¿En qué más puedo ayudarte?',
-      role: 'assistant',
-      timestamp: new Date(),
-    };
-    setMessages((prev) => [...prev, assistantMessage]);
   }, []);
 
   // Exit edit mode silently (used after successful save)
@@ -1426,14 +1458,18 @@ export const useChat = (options: UseChatOptions = {}): UseChatReturn => {
 
   // ============= TÉCNICO ACTIONS =============
 
-  // Start presupuesto flow (TECHNICIAN creates budget)
+  // Start presupuesto flow (TECHNICIAN creates budget) - Two step: trabajo, then monto
   const startPresupuesto = useCallback((orderNumber: number) => {
     setPendingPresupuestoOrderNumber(orderNumber);
+    setPresupuestoStep('trabajo');
+    setPresupuestoTrabajo(null);
   }, []);
 
   // Cancel presupuesto flow
   const cancelPresupuesto = useCallback(() => {
     setPendingPresupuestoOrderNumber(null);
+    setPresupuestoStep(null);
+    setPresupuestoTrabajo(null);
     
     const assistantMessage: ChatMessage = {
       id: Date.now().toString(),
@@ -1543,6 +1579,8 @@ export const useChat = (options: UseChatOptions = {}): UseChatReturn => {
     pendingRechazaPresupOrderNumber,
     // Técnico action states
     pendingPresupuestoOrderNumber,
+    presupuestoStep,
+    presupuestoTrabajo,
     pendingReparadoOrderNumber,
     pendingRechazarOrderNumber,
     pendingEsperaRepuestoOrderNumber,

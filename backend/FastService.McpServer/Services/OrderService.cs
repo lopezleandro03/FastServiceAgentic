@@ -424,7 +424,7 @@ namespace FastService.McpServer.Services
 
         /// <summary>
         /// Get Kanban board data with orders grouped by repair status.
-        /// Returns 7 fixed columns: INGRESADO, PRESUPUESTADO, ESP_REPUESTO, A_REPARAR, REPARADO, RECHAZADO (técnico), RECHAZO_PRESUP (cliente)
+        /// Returns 7 fixed columns: INGRESADO, A_REPARAR, RECHAZO_PRESUP (cliente), PRESUPUESTADO, ESP_REPUESTO, REPARADO, RECHAZADO (técnico)
         /// </summary>
         public async Task<KanbanBoardData> GetKanbanBoardAsync(
             int? technicianId = null,
@@ -440,18 +440,19 @@ namespace FastService.McpServer.Services
             var hasta = toDate ?? DateTime.Now.AddDays(1); // Include today
 
             // Column definitions with status mappings (baseline compatible)
+            // Reordered: INGRESADO → A_REPARAR → RECHAZO_PRESUP → PRESUPUESTADO → ESP_REPUESTO → REPARADO → RECHAZADO
             // Two types of rejection:
             // - RECHAZADO (por técnico): Internal rejection, can't repair (no parts, etc.)
             // - RECHAZO_PRESUP (por cliente): Client rejects the budget quote
             var columnDefinitions = new[]
             {
                 ("INGRESADO", "INGRESADO", new[] { "INGRESADO" }),
+                ("A_REPARAR", "A REPARAR", new[] { "A REPARAR", "REINGRESADO" }), // Merged column
+                ("RECHAZO_PRESUP", "Rechazado (cliente)", new[] { "RECHAZO PRESUP." }),
                 ("PRESUPUESTADO", "PRESUPUESTADO", new[] { "PRESUPUESTADO" }),
                 ("ESP_REPUESTO", "ESP. REPUESTO", new[] { "ESP. REPUESTO" }),
-                ("A_REPARAR", "A REPARAR", new[] { "A REPARAR", "REINGRESADO" }), // Merged column
                 ("REPARADO", "REPARADO", new[] { "REPARADO" }),
-                ("RECHAZADO", "Rechazado (técnico)", new[] { "RECHAZADO" }),
-                ("RECHAZO_PRESUP", "Rechazado (cliente)", new[] { "RECHAZO PRESUP." })
+                ("RECHAZADO", "Rechazado (técnico)", new[] { "RECHAZADO" })
             };
 
             try
@@ -1346,9 +1347,10 @@ namespace FastService.McpServer.Services
                 }
 
                 // Create Novedad record
+                // Observacion contains the work description (trabajo a realizar) entered by the technician
                 var observacion = string.IsNullOrWhiteSpace(request.Observacion)
                     ? $"Presupuesto: ${request.Monto:N0}"
-                    : request.Observacion;
+                    : $"Trabajo: {request.Observacion} - Presupuesto: ${request.Monto:N0}";
 
                 var novedad = new Novedad
                 {
@@ -1382,6 +1384,7 @@ namespace FastService.McpServer.Services
                     PreviousStatus = previousStatus,
                     NewStatus = newStatusName,
                     Monto = request.Monto,
+                    Trabajo = request.Observacion,
                     NovedadId = novedad.NovedadId
                 };
             }

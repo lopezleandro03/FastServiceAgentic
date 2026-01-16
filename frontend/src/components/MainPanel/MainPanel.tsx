@@ -25,6 +25,7 @@ interface MainPanelProps {
   onExitEdit?: () => void;
   onOrderUpdated?: () => void;
   onViewChange?: (view: MainView) => void;
+  onEditOrder?: (order: OrderDetails) => void;
 }
 
 const MainPanel: React.FC<MainPanelProps> = ({ 
@@ -42,6 +43,7 @@ const MainPanel: React.FC<MainPanelProps> = ({
   onExitEdit,
   onOrderUpdated,
   onViewChange,
+  onEditOrder,
 }) => {
   const [viewingOrderDetails, setViewingOrderDetails] = useState<OrderDetails | null>(null);
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
@@ -251,6 +253,7 @@ const MainPanel: React.FC<MainPanelProps> = ({
           onBack={handleBackToList}
           onPrint={handlePrint}
           onPrintDorso={handlePrintDorso}
+          onEdit={onEditOrder ? () => onEditOrder(viewingOrderDetails) : undefined}
         />
       </div>
     );

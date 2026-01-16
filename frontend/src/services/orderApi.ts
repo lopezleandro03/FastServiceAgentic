@@ -441,6 +441,7 @@ export interface PresupuestoResponse {
   previousStatus: string;
   newStatus: string;
   monto: number;
+  trabajo?: string;
   novedadId: number;
 }
 

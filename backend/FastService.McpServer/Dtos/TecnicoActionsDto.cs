@@ -28,6 +28,7 @@ public class PresupuestoResponse
     public string PreviousStatus { get; set; } = string.Empty;
     public string NewStatus { get; set; } = string.Empty;
     public decimal Monto { get; set; }
+    public string? Trabajo { get; set; }
     public int NovedadId { get; set; }
 }
 

@@ -66,6 +66,8 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({ onOrderClick }) => {
       <KanbanFilters
         filters={filters}
         onFiltersChange={setFilters}
+        onRefresh={loadBoard}
+        isLoading={isLoading}
       />
 
       {/* Board Header with Total Count */}

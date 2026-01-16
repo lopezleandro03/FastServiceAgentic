@@ -33,15 +33,8 @@ export interface OrderAction {
 }
 
 // Common actions - available to all roles
+// Note: 'edit' action moved to OrderDetailsView header button
 export const COMMON_ACTIONS: OrderAction[] = [
-  {
-    type: 'edit',
-    label: 'Editar',
-    icon: '✏️',
-    description: 'Editar datos de la orden',
-    isSpecial: true,
-    group: 'common',
-  },
   {
     type: 'nota_reclamo',
     label: 'Nota',

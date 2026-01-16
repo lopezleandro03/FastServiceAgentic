@@ -36,6 +36,7 @@ function AppContent() {
     pendingRechazaPresupOrderNumber,
     // Técnico action states
     pendingPresupuestoOrderNumber,
+    presupuestoStep,
     pendingReparadoOrderNumber,
     pendingRechazarOrderNumber,
     pendingEsperaRepuestoOrderNumber,
@@ -106,17 +107,7 @@ function AppContent() {
   };
 
   const handleOrderUpdated = async () => {
-    // Add success message
-    addMessage({
-      role: 'assistant',
-      content: '✅ ¡Orden actualizada exitosamente! ¿Hay algo más en lo que pueda ayudarte?',
-    });
-  };
-
-  const handleEditOrder = () => {
-    if (selectedOrderDetails) {
-      startOrderEdit(selectedOrderDetails);
-    }
+    // Edit is done directly in the detail screen, no chat message needed
   };
 
   const handleStartAddNota = () => {
@@ -149,8 +140,8 @@ function AppContent() {
         </div>
         {isLoading && <LoadingIndicator />}
       </div>
-      {/* Default suggestions - show when no conversation OR when conversation exists but no order selected */}
-      {((!hasConversation || (hasConversation && !selectedOrderDetails && !isCreatingOrder)) && !isLoading) && (
+      {/* Default suggestions - show when no order selected AND (no conversation OR conversation but no order selected) */}
+      {(!selectedOrderDetails && ((!hasConversation || (hasConversation && !isCreatingOrder)) && !isLoading)) && (
         <DefaultSuggestions onSendMessage={sendMessage} onAddMessage={addMessage} onStartOrderCreation={startOrderCreation} />
       )}
       {/* Action suggestions chips above input - like real AI chips */}
@@ -159,7 +150,6 @@ function AppContent() {
           orderNumber={selectedOrderDetails.orderNumber}
           presupuesto={selectedOrderDetails.presupuesto}
           onAddMessage={addMessage}
-          onEditOrder={handleEditOrder}
           onStartAddNota={handleStartAddNota}
           onStartRetira={startRetira}
           onStartSena={startSena}
@@ -191,7 +181,9 @@ function AppContent() {
                     : pendingRechazaPresupOrderNumber
                       ? "Ingresa observación o 'no' para continuar..."
                       : pendingPresupuestoOrderNumber
-                        ? "Ingresa el monto del presupuesto..."
+                        ? presupuestoStep === 'trabajo'
+                          ? "Describe el trabajo a realizar..."
+                          : "Ingresa el monto del presupuesto..."
                         : pendingReparadoOrderNumber
                           ? "Ingresa observación o 'no' para continuar..."
                           : pendingRechazarOrderNumber
@@ -375,6 +367,7 @@ function AppContent() {
               onExitEdit={exitOrderEdit}
               onOrderUpdated={handleOrderUpdated}
               onViewChange={setActiveView}
+              onEditOrder={startOrderEdit}
             />
           }
           chatPanel={<ChatPanel onClearChat={clearMessages}>{chatPanelContent}</ChatPanel>}

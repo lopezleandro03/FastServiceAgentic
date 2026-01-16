@@ -7,8 +7,8 @@ namespace FastService.McpServer.Dtos;
 public class KanbanBoardData
 {
     /// <summary>
-    /// Fixed array of 6 Kanban columns in display order:
-    /// INGRESADO, PRESUPUESTADO, ESP_REPUESTO, A_REPARAR, REPARADO, RECHAZADO, RECHAZO_PRESUP
+    /// Fixed array of 7 Kanban columns in display order:
+    /// INGRESADO, A_REPARAR, RECHAZO_PRESUP, PRESUPUESTADO, ESP_REPUESTO, REPARADO, RECHAZADO
     /// </summary>
     public List<KanbanColumn> Columns { get; set; } = new();
 

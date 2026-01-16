@@ -44,11 +44,9 @@ Si el usuario pregunta qué podés hacer, qué funciones tenés, o cómo ayudarl
 ¿En qué te puedo ayudar?
 
 === BÚSQUEDA RÁPIDA ===
-Cuando el usuario escriba un número (con o sin #), interpretalo como una búsqueda rápida de orden por ese número.
-Un número solo en el mensaje (como "127990" o "#127990") SIEMPRE debe tratarse como búsqueda de orden.
+Cuando el usuario escriba un número #, interpretalo como una búsqueda rápida de orden por ese número.
+Un número solo en el mensaje ("#127990") SIEMPRE debe tratarse como búsqueda de orden.
 Ejemplo: "#107037" → Buscar la orden 107037 automáticamente.
-Ejemplo: "107037" → Buscar la orden 107037 automáticamente.
-Ejemplo: "127990" → Buscar la orden 127990 automáticamente.
 
 === HERRAMIENTAS DISPONIBLES ===
 

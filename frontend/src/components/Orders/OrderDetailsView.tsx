@@ -34,6 +34,7 @@ interface OrderDetailsViewProps {
   order: OrderDetails | null;
   isLoading?: boolean;
   onBack?: () => void;
+  onEdit?: () => void;
   onPrint?: () => void;
   onPrintDorso?: () => void;
   onOrderDeleted?: () => void;
@@ -81,7 +82,7 @@ const OrderDetailsSkeleton: React.FC = () => (
   </div>
 );
 
-const OrderDetailsView: React.FC<OrderDetailsViewProps> = ({ order, isLoading, onBack, onPrint, onPrintDorso, onOrderDeleted, onOrderRefresh }) => {
+const OrderDetailsView: React.FC<OrderDetailsViewProps> = ({ order, isLoading, onBack, onEdit, onPrint, onPrintDorso, onOrderDeleted, onOrderRefresh }) => {
   const [currentOrder, setCurrentOrder] = useState<OrderDetails | null>(order);
   
   // WhatsApp template states
@@ -308,6 +309,20 @@ const OrderDetailsView: React.FC<OrderDetailsViewProps> = ({ order, isLoading, o
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {onEdit && (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={onEdit}
+              className="h-9 px-3 bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-300"
+              title="Editar orden"
+            >
+              <svg className="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+              Editar
+            </Button>
+          )}
           {getWhatsAppPhone() && (
             <Button 
               variant="outline" 
