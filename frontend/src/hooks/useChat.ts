@@ -87,10 +87,11 @@ interface UseChatReturn {
 
 interface UseChatOptions {
   canAccessAccounting?: boolean;
+  userId?: number;
 }
 
 export const useChat = (options: UseChatOptions = {}): UseChatReturn => {
-  const { canAccessAccounting = false } = options;
+  const { canAccessAccounting = false, userId } = options;
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -320,6 +321,7 @@ export const useChat = (options: UseChatOptions = {}): UseChatReturn => {
             monto: retiraMonto!,
             metodoPagoId: selectedMethod.id,
             facturado: false, // Default to non-invoiced for now
+            userId: userId, // Include logged-in user's ID
           });
           
           const successMessage: ChatMessage = {
@@ -449,6 +451,7 @@ export const useChat = (options: UseChatOptions = {}): UseChatReturn => {
             monto: senaMonto!,
             metodoPagoId: selectedMethod.id,
             facturado: false, // Default to non-invoiced for now
+            userId: userId, // Include logged-in user's ID
           });
           
           const successMessage: ChatMessage = {
@@ -1112,6 +1115,7 @@ export const useChat = (options: UseChatOptions = {}): UseChatReturn => {
           body: JSON.stringify({
             tipoNovedadId: 17, // NOTA type
             observacion: content.trim(),
+            userId: userId, // Include logged-in user's ID
           }),
         });
 

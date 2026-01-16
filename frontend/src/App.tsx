@@ -64,7 +64,8 @@ function AppContent() {
     startEsperaRepuesto,
     startRepDomicilio,
   } = useChat({ 
-    canAccessAccounting: permissions?.canAccessAccounting
+    canAccessAccounting: permissions?.canAccessAccounting,
+    userId: user?.userId
   });
 
   // Handle view change with permission check
