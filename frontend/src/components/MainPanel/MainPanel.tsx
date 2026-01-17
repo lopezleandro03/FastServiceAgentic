@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { OrderSummary, OrderDetails } from '../../types/order';
+import { UserPermissions } from '../../types/auth';
 import { OrderList, OrderDetailsView, OrderCreateView, OrderAdvancedSearch } from '../Orders';
 import { KanbanBoard } from '../Kanban';
 import { AccountingDashboard } from '../Accounting';
@@ -26,6 +27,8 @@ interface MainPanelProps {
   onOrderUpdated?: () => void;
   onViewChange?: (view: MainView) => void;
   onEditOrder?: (order: OrderDetails) => void;
+  permissions?: UserPermissions | null;
+  userId?: number;
 }
 
 const MainPanel: React.FC<MainPanelProps> = ({ 
@@ -44,6 +47,8 @@ const MainPanel: React.FC<MainPanelProps> = ({
   onOrderUpdated,
   onViewChange,
   onEditOrder,
+  permissions,
+  userId,
 }) => {
   const [viewingOrderDetails, setViewingOrderDetails] = useState<OrderDetails | null>(null);
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
@@ -241,7 +246,7 @@ const MainPanel: React.FC<MainPanelProps> = ({
     // Show Advanced Search view (handles its own order details internally)
     mainBodyContent = (
       <div className="h-full min-w-0 overflow-hidden p-4">
-        <OrderAdvancedSearch onOrderSelected={onOrderSelected} />
+        <OrderAdvancedSearch onOrderSelected={onOrderSelected} permissions={permissions} userId={userId} />
       </div>
     );
   } else if (isShowingOrderDetails && viewingOrderDetails) {
@@ -254,6 +259,9 @@ const MainPanel: React.FC<MainPanelProps> = ({
           onPrint={handlePrint}
           onPrintDorso={handlePrintDorso}
           onEdit={onEditOrder ? () => onEditOrder(viewingOrderDetails) : undefined}
+          permissions={permissions}
+          userId={userId}
+          onOrderRefresh={setViewingOrderDetails}
         />
       </div>
     );

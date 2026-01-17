@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { OrderSearchCriteria, OrderSummary, OrderStatus, OrderDetails } from '../../types/order';
+import { UserPermissions } from '../../types/auth';
 import { searchOrders, fetchStatuses, fetchOrderDetails } from '../../services/orderApi';
 import { OrderList } from './index';
 import OrderDetailsView from './OrderDetailsView';
@@ -11,9 +12,11 @@ import { Search, X, Filter, Loader2, ChevronDown, Check } from 'lucide-react';
 interface OrderAdvancedSearchProps {
   onOrderClick?: (orderNumber: number) => void;
   onOrderSelected?: (order: OrderDetails | null) => void;
+  permissions?: UserPermissions | null;
+  userId?: number;
 }
 
-const OrderAdvancedSearch: React.FC<OrderAdvancedSearchProps> = ({ onOrderClick, onOrderSelected }) => {
+const OrderAdvancedSearch: React.FC<OrderAdvancedSearchProps> = ({ onOrderClick, onOrderSelected, permissions, userId }) => {
   // Search criteria state
   const [model, setModel] = useState('');
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
@@ -146,6 +149,9 @@ const OrderAdvancedSearch: React.FC<OrderAdvancedSearchProps> = ({ onOrderClick,
           order={selectedOrder}
           isLoading={isLoadingOrder}
           onBack={handleBackToResults}
+          permissions={permissions}
+          userId={userId}
+          onOrderRefresh={setSelectedOrder}
         />
       </div>
     );

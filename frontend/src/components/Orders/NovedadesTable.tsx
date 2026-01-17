@@ -72,12 +72,6 @@ const NovedadesTable: React.FC<NovedadesTableProps> = ({ novedades, orderNumber,
     }).format(amount);
   };
 
-  const truncateText = (text: string | undefined, maxLength: number = 50): string => {
-    if (!text) return '-';
-    if (text.length <= maxLength) return text;
-    return text.substring(0, maxLength) + '...';
-  };
-
   if (!novedades || novedades.length === 0) {
     return (
       <div className="flex items-center justify-center py-8 text-muted-foreground">

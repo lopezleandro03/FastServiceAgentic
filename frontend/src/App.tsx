@@ -384,6 +384,8 @@ function AppContent() {
               onOrderUpdated={handleOrderUpdated}
               onViewChange={setActiveView}
               onEditOrder={startOrderEdit}
+              permissions={permissions}
+              userId={user?.userId}
             />
           }
           chatPanel={<ChatPanel onClearChat={clearMessages}>{chatPanelContent}</ChatPanel>}

@@ -187,16 +187,18 @@ export async function getPlaceholders(): Promise<PlaceholderInfo[]> {
 
 /**
  * Open WhatsApp with a pre-filled message
+ * Uses whatsapp:// protocol to open directly in desktop app
  */
 export function openWhatsApp(generatedMessage: GeneratedMessage): void {
-  if (generatedMessage.whatsAppUrl) {
-    window.open(generatedMessage.whatsAppUrl, '_blank');
-  } else if (generatedMessage.phoneNumber) {
-    // Fallback: construct URL manually
-    const encodedMessage = encodeURIComponent(generatedMessage.message);
-    const url = `https://wa.me/${generatedMessage.phoneNumber}?text=${encodedMessage}`;
-    window.open(url, '_blank');
-  } else {
+  const phoneNumber = generatedMessage.phoneNumber;
+  const message = generatedMessage.message;
+  
+  if (!phoneNumber) {
     throw new Error('No hay número de teléfono disponible para este cliente');
   }
+  
+  const encodedMessage = encodeURIComponent(message);
+  // Use whatsapp:// protocol to open directly in desktop app (skips web/desktop choice)
+  const url = `whatsapp://send?phone=${phoneNumber}&text=${encodedMessage}`;
+  window.open(url, '_blank');
 }

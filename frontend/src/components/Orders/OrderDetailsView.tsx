@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { OrderDetails } from '../../types/order';
+import { UserPermissions } from '../../types/auth';
 import StatusBadge from './StatusBadge';
 import NovedadesTable from './NovedadesTable';
 import { fetchOrderDetails } from '../../services/orderApi';
@@ -39,6 +40,8 @@ interface OrderDetailsViewProps {
   onPrintDorso?: () => void;
   onOrderDeleted?: () => void;
   onOrderRefresh?: (order: OrderDetails) => void;
+  permissions?: UserPermissions | null;
+  userId?: number;
 }
 
 // Compact field component for dense layout
@@ -82,7 +85,7 @@ const OrderDetailsSkeleton: React.FC = () => (
   </div>
 );
 
-const OrderDetailsView: React.FC<OrderDetailsViewProps> = ({ order, isLoading, onBack, onEdit, onPrint, onPrintDorso, onOrderDeleted, onOrderRefresh }) => {
+const OrderDetailsView: React.FC<OrderDetailsViewProps> = ({ order, isLoading, onBack, onEdit, onPrint, onPrintDorso, onOrderDeleted, onOrderRefresh, permissions, userId }) => {
   const [currentOrder, setCurrentOrder] = useState<OrderDetails | null>(order);
   
   // WhatsApp template states
@@ -250,15 +253,42 @@ const OrderDetailsView: React.FC<OrderDetailsViewProps> = ({ order, isLoading, o
     await loadTemplates();
   };
 
-  // Send the WhatsApp message
-  const handleSendWhatsApp = () => {
-    if (!generatedMessage) return;
+  // Send the WhatsApp message and add a note
+  const handleSendWhatsApp = async () => {
+    if (!generatedMessage || !currentOrder) return;
     
     try {
+      // First add the nota before opening WhatsApp
+      const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080';
+      const response = await fetch(`${API_BASE_URL}/api/orders/${currentOrder.orderNumber}/novedades`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          tipoNovedadId: 17, // NOTA type
+          observacion: 'Se comunicó por WhatsApp',
+          userId: userId,
+        }),
+      });
+      
+      if (!response.ok) {
+        console.error('Error adding WhatsApp nota:', response.status);
+      }
+      
+      // Then refresh order to show the new nota
+      const updatedOrder = await fetchOrderDetails(currentOrder.orderNumber);
+      setCurrentOrder(updatedOrder); // Update local state
+      if (onOrderRefresh) {
+        onOrderRefresh(updatedOrder); // Also update parent state
+      }
+      
+      // Now open WhatsApp and close dialog
       openWhatsApp(generatedMessage);
       setIsWhatsAppDialogOpen(false);
     } catch (error) {
-      setWhatsAppError(error instanceof Error ? error.message : 'Error al abrir WhatsApp');
+      console.error('Error in handleSendWhatsApp:', error);
+      setWhatsAppError(error instanceof Error ? error.message : 'Error al enviar WhatsApp');
     }
   };
 
@@ -323,7 +353,7 @@ const OrderDetailsView: React.FC<OrderDetailsViewProps> = ({ order, isLoading, o
               Editar
             </Button>
           )}
-          {getWhatsAppPhone() && (
+          {getWhatsAppPhone() && permissions?.isAdmin && (
             <Button 
               variant="outline" 
               size="sm" 
