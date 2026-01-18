@@ -6,10 +6,11 @@ import { KanbanBoard } from '../Kanban';
 import { AccountingDashboard } from '../Accounting';
 import { ClientsModule } from '../Clients';
 import { WhatsAppTemplatesModule } from '../WhatsApp';
+import { AdminModule } from '../Admin';
 import { LoadingSpinner } from '../ui/loading-spinner';
 import { openPrintWindow, ReceiptData } from '../Print';
 
-export type MainView = 'kanban' | 'orders' | 'accounting' | 'clients' | 'search' | 'whatsapp';
+export type MainView = 'kanban' | 'orders' | 'accounting' | 'clients' | 'search' | 'whatsapp' | 'admin';
 
 interface MainPanelProps {
   orders?: OrderSummary[];
@@ -74,7 +75,7 @@ const MainPanel: React.FC<MainPanelProps> = ({
 
   // When activeView changes to a non-orders view, clear order details
   useEffect(() => {
-    if (activeView === 'accounting' || activeView === 'clients' || activeView === 'kanban' || activeView === 'whatsapp') {
+    if (activeView === 'accounting' || activeView === 'clients' || activeView === 'kanban' || activeView === 'whatsapp' || activeView === 'admin') {
       setViewingOrderDetails(null);
     }
   }, [activeView]);
@@ -310,6 +311,13 @@ const MainPanel: React.FC<MainPanelProps> = ({
     mainBodyContent = (
       <div className="h-full min-w-0 overflow-hidden">
         <WhatsAppTemplatesModule />
+      </div>
+    );
+  } else if (activeView === 'admin') {
+    // Show Admin module (Tipos y Marcas management)
+    mainBodyContent = (
+      <div className="h-full min-w-0 overflow-hidden">
+        <AdminModule />
       </div>
     );
   } else {

@@ -743,6 +743,314 @@ app.MapGet("/api/brands", async (FastServiceDbContext db) =>
     }
 }).WithName("GetBrands").WithOpenApi();
 
+// =============================================================================
+// Admin endpoints - Device Types (Tipos) Management
+// =============================================================================
+
+// Get all device types (including inactive) for admin
+app.MapGet("/api/admin/device-types", async (FastServiceDbContext db) =>
+{
+    try
+    {
+        var deviceTypes = await db.TipoDispositivos
+            .OrderBy(t => t.Nombre)
+            .Select(t => new AdminItemDto(t.TipoDispositivoId, t.Nombre, t.Descripcion, t.Activo, t.ModificadoEn, t.ModificadoPor))
+            .ToListAsync();
+        return Results.Ok(deviceTypes);
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(detail: ex.Message, statusCode: 500);
+    }
+}).WithName("GetAllDeviceTypes").WithOpenApi();
+
+// Create new device type
+app.MapPost("/api/admin/device-types", async (AdminItemCreateRequest request, FastServiceDbContext db) =>
+{
+    try
+    {
+        // Check if name already exists
+        var exists = await db.TipoDispositivos.AnyAsync(t => t.Nombre.ToLower() == request.Nombre.ToLower());
+        if (exists)
+        {
+            return Results.BadRequest(new { error = "Ya existe un tipo de dispositivo con ese nombre" });
+        }
+
+        var entity = new TipoDispositivo
+        {
+            Nombre = request.Nombre.Trim(),
+            Descripcion = request.Descripcion?.Trim(),
+            Activo = true,
+            ModificadoEn = DateTime.Now,
+            ModificadoPor = request.UserId
+        };
+
+        db.TipoDispositivos.Add(entity);
+        await db.SaveChangesAsync();
+
+        return Results.Created($"/api/admin/device-types/{entity.TipoDispositivoId}", 
+            new AdminItemDto(entity.TipoDispositivoId, entity.Nombre, entity.Descripcion, entity.Activo, entity.ModificadoEn, entity.ModificadoPor));
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(detail: ex.Message, statusCode: 500);
+    }
+}).WithName("CreateDeviceType").WithOpenApi();
+
+// Update device type
+app.MapPut("/api/admin/device-types/{id:int}", async (int id, AdminItemUpdateRequest request, FastServiceDbContext db) =>
+{
+    try
+    {
+        var entity = await db.TipoDispositivos.FindAsync(id);
+        if (entity == null)
+        {
+            return Results.NotFound(new { error = "Tipo de dispositivo no encontrado" });
+        }
+
+        // Check if new name already exists (excluding current record)
+        if (!string.IsNullOrEmpty(request.Nombre))
+        {
+            var exists = await db.TipoDispositivos.AnyAsync(t => t.Nombre.ToLower() == request.Nombre.ToLower() && t.TipoDispositivoId != id);
+            if (exists)
+            {
+                return Results.BadRequest(new { error = "Ya existe un tipo de dispositivo con ese nombre" });
+            }
+            entity.Nombre = request.Nombre.Trim();
+        }
+
+        if (request.Descripcion != null)
+        {
+            entity.Descripcion = request.Descripcion.Trim();
+        }
+
+        if (request.Activo.HasValue)
+        {
+            entity.Activo = request.Activo.Value;
+        }
+
+        entity.ModificadoEn = DateTime.Now;
+        entity.ModificadoPor = request.UserId;
+
+        await db.SaveChangesAsync();
+
+        return Results.Ok(new AdminItemDto(entity.TipoDispositivoId, entity.Nombre, entity.Descripcion, entity.Activo, entity.ModificadoEn, entity.ModificadoPor));
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(detail: ex.Message, statusCode: 500);
+    }
+}).WithName("UpdateDeviceType").WithOpenApi();
+
+// Toggle device type active status
+app.MapPatch("/api/admin/device-types/{id:int}/toggle", async (int id, [FromQuery] int userId, FastServiceDbContext db) =>
+{
+    try
+    {
+        var entity = await db.TipoDispositivos.FindAsync(id);
+        if (entity == null)
+        {
+            return Results.NotFound(new { error = "Tipo de dispositivo no encontrado" });
+        }
+
+        entity.Activo = !entity.Activo;
+        entity.ModificadoEn = DateTime.Now;
+        entity.ModificadoPor = userId;
+
+        await db.SaveChangesAsync();
+
+        return Results.Ok(new AdminItemDto(entity.TipoDispositivoId, entity.Nombre, entity.Descripcion, entity.Activo, entity.ModificadoEn, entity.ModificadoPor));
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(detail: ex.Message, statusCode: 500);
+    }
+}).WithName("ToggleDeviceType").WithOpenApi();
+
+// Delete device type (only if not used in any orders)
+app.MapDelete("/api/admin/device-types/{id:int}", async (int id, FastServiceDbContext db) =>
+{
+    try
+    {
+        var entity = await db.TipoDispositivos
+            .Include(t => t.Reparacions)
+            .FirstOrDefaultAsync(t => t.TipoDispositivoId == id);
+            
+        if (entity == null)
+        {
+            return Results.NotFound(new { error = "Tipo de dispositivo no encontrado" });
+        }
+
+        if (entity.Reparacions.Any())
+        {
+            return Results.BadRequest(new { error = $"No se puede eliminar porque está siendo usado en {entity.Reparacions.Count} órdenes. Use desactivar en su lugar." });
+        }
+
+        db.TipoDispositivos.Remove(entity);
+        await db.SaveChangesAsync();
+
+        return Results.Ok(new { message = "Tipo de dispositivo eliminado correctamente" });
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(detail: ex.Message, statusCode: 500);
+    }
+}).WithName("DeleteDeviceType").WithOpenApi();
+
+// =============================================================================
+// Admin endpoints - Brands (Marcas) Management
+// =============================================================================
+
+// Get all brands (including inactive) for admin
+app.MapGet("/api/admin/brands", async (FastServiceDbContext db) =>
+{
+    try
+    {
+        var brands = await db.Marcas
+            .OrderBy(m => m.Nombre)
+            .Select(m => new AdminItemDto(m.MarcaId, m.Nombre, m.Descripcion, m.Activo, m.ModificadoEn, m.ModificadoPor))
+            .ToListAsync();
+        return Results.Ok(brands);
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(detail: ex.Message, statusCode: 500);
+    }
+}).WithName("GetAllBrands").WithOpenApi();
+
+// Create new brand
+app.MapPost("/api/admin/brands", async (AdminItemCreateRequest request, FastServiceDbContext db) =>
+{
+    try
+    {
+        // Check if name already exists
+        var exists = await db.Marcas.AnyAsync(m => m.Nombre.ToLower() == request.Nombre.ToLower());
+        if (exists)
+        {
+            return Results.BadRequest(new { error = "Ya existe una marca con ese nombre" });
+        }
+
+        var entity = new Marca
+        {
+            Nombre = request.Nombre.Trim(),
+            Descripcion = request.Descripcion?.Trim(),
+            Activo = true,
+            ModificadoEn = DateTime.Now,
+            ModificadoPor = request.UserId
+        };
+
+        db.Marcas.Add(entity);
+        await db.SaveChangesAsync();
+
+        return Results.Created($"/api/admin/brands/{entity.MarcaId}", 
+            new AdminItemDto(entity.MarcaId, entity.Nombre, entity.Descripcion, entity.Activo, entity.ModificadoEn, entity.ModificadoPor));
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(detail: ex.Message, statusCode: 500);
+    }
+}).WithName("CreateBrand").WithOpenApi();
+
+// Update brand
+app.MapPut("/api/admin/brands/{id:int}", async (int id, AdminItemUpdateRequest request, FastServiceDbContext db) =>
+{
+    try
+    {
+        var entity = await db.Marcas.FindAsync(id);
+        if (entity == null)
+        {
+            return Results.NotFound(new { error = "Marca no encontrada" });
+        }
+
+        // Check if new name already exists (excluding current record)
+        if (!string.IsNullOrEmpty(request.Nombre))
+        {
+            var exists = await db.Marcas.AnyAsync(m => m.Nombre.ToLower() == request.Nombre.ToLower() && m.MarcaId != id);
+            if (exists)
+            {
+                return Results.BadRequest(new { error = "Ya existe una marca con ese nombre" });
+            }
+            entity.Nombre = request.Nombre.Trim();
+        }
+
+        if (request.Descripcion != null)
+        {
+            entity.Descripcion = request.Descripcion.Trim();
+        }
+
+        if (request.Activo.HasValue)
+        {
+            entity.Activo = request.Activo.Value;
+        }
+
+        entity.ModificadoEn = DateTime.Now;
+        entity.ModificadoPor = request.UserId;
+
+        await db.SaveChangesAsync();
+
+        return Results.Ok(new AdminItemDto(entity.MarcaId, entity.Nombre, entity.Descripcion, entity.Activo, entity.ModificadoEn, entity.ModificadoPor));
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(detail: ex.Message, statusCode: 500);
+    }
+}).WithName("UpdateBrand").WithOpenApi();
+
+// Toggle brand active status
+app.MapPatch("/api/admin/brands/{id:int}/toggle", async (int id, [FromQuery] int userId, FastServiceDbContext db) =>
+{
+    try
+    {
+        var entity = await db.Marcas.FindAsync(id);
+        if (entity == null)
+        {
+            return Results.NotFound(new { error = "Marca no encontrada" });
+        }
+
+        entity.Activo = !entity.Activo;
+        entity.ModificadoEn = DateTime.Now;
+        entity.ModificadoPor = userId;
+
+        await db.SaveChangesAsync();
+
+        return Results.Ok(new AdminItemDto(entity.MarcaId, entity.Nombre, entity.Descripcion, entity.Activo, entity.ModificadoEn, entity.ModificadoPor));
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(detail: ex.Message, statusCode: 500);
+    }
+}).WithName("ToggleBrand").WithOpenApi();
+
+// Delete brand (only if not used in any orders)
+app.MapDelete("/api/admin/brands/{id:int}", async (int id, FastServiceDbContext db) =>
+{
+    try
+    {
+        var entity = await db.Marcas
+            .Include(m => m.Reparacions)
+            .FirstOrDefaultAsync(m => m.MarcaId == id);
+            
+        if (entity == null)
+        {
+            return Results.NotFound(new { error = "Marca no encontrada" });
+        }
+
+        if (entity.Reparacions.Any())
+        {
+            return Results.BadRequest(new { error = $"No se puede eliminar porque está siendo usada en {entity.Reparacions.Count} órdenes. Use desactivar en su lugar." });
+        }
+
+        db.Marcas.Remove(entity);
+        await db.SaveChangesAsync();
+
+        return Results.Ok(new { message = "Marca eliminada correctamente" });
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(detail: ex.Message, statusCode: 500);
+    }
+}).WithName("DeleteBrand").WithOpenApi();
+
 // T025: Comercios endpoint - returns active comercios for warranty cases
 app.MapGet("/api/comercios", async (FastServiceDbContext db) =>
 {
@@ -1029,3 +1337,8 @@ record UserInfoDto(int Id, string Name);
 record BusinessInfoDto(int Id, string Name);
 record DropdownItemDto(int Id, string Name);
 record ComercioDto(int Id, string Code, string? Telefono);
+
+// Admin DTOs
+record AdminItemDto(int Id, string Nombre, string? Descripcion, bool Activo, DateTime? ModificadoEn, int? ModificadoPor);
+record AdminItemCreateRequest(string Nombre, string? Descripcion, int UserId);
+record AdminItemUpdateRequest(string? Nombre, string? Descripcion, bool? Activo, int UserId);

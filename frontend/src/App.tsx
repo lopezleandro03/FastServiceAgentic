@@ -12,7 +12,7 @@ import { useChat } from './hooks/useChat';
 import { useIsMobile } from './hooks/useIsMobile';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import LoginPage from './components/Login/LoginPage';
-import { LayoutGrid, TrendingUp, LogOut, Loader2, Users, Search, MessageCircle } from 'lucide-react';
+import { LayoutGrid, TrendingUp, LogOut, Loader2, Users, Search, MessageCircle, Settings } from 'lucide-react';
 
 function AppContent() {
   const { isAuthenticated, user, logout, permissions, isLoadingPermissions } = useAuth();
@@ -333,6 +333,20 @@ function AppContent() {
             >
               <MessageCircle className="h-4 w-4" />
               WhatsApp
+            </button>
+          )}
+          {/* Admin - visible if user is admin */}
+          {permissions?.isAdmin && (
+            <button
+              onClick={() => handleViewChange('admin')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                activeView === 'admin'
+                  ? 'bg-white text-purple-600 shadow-md'
+                  : 'text-white/90 hover:bg-white/20 hover:text-white'
+              }`}
+            >
+              <Settings className="h-4 w-4" />
+              Admin
             </button>
           )}
         </div>
