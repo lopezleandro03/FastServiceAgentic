@@ -87,6 +87,7 @@ const OrderDetailsSkeleton: React.FC = () => (
 
 const OrderDetailsView: React.FC<OrderDetailsViewProps> = ({ order, isLoading, onBack, onEdit, onPrint, onPrintDorso, onOrderDeleted, onOrderRefresh, permissions, userId }) => {
   const [currentOrder, setCurrentOrder] = useState<OrderDetails | null>(order);
+  const [novedadesKey, setNovedadesKey] = useState(0); // Force re-render key
   
   // WhatsApp template states
   const [isWhatsAppDialogOpen, setIsWhatsAppDialogOpen] = useState(false);
@@ -107,16 +108,34 @@ const OrderDetailsView: React.FC<OrderDetailsViewProps> = ({ order, isLoading, o
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const _onOrderDeleted = onOrderDeleted;
 
-  const handleNovedadDeleted = async () => {
+  const handleRefreshNovedades = async () => {
     if (!currentOrder) return;
     try {
       const refreshedOrder = await fetchOrderDetails(currentOrder.orderNumber);
       setCurrentOrder(refreshedOrder);
+      setNovedadesKey(prev => prev + 1);
       if (onOrderRefresh) {
         onOrderRefresh(refreshedOrder);
       }
     } catch (error) {
-      console.error('Error refreshing order:', error);
+      console.error('Error refreshing novedades:', error);
+    }
+  };
+
+  const handleNovedadDeleted = (novedadId: number) => {
+    if (!currentOrder) return;
+    
+    const updatedNovedades = currentOrder.novedades.filter(n => n.id !== novedadId);
+    const updatedOrder = {
+      ...currentOrder,
+      novedades: updatedNovedades
+    };
+    
+    setCurrentOrder(updatedOrder);
+    
+    // Also update parent state so everything stays in sync
+    if (onOrderRefresh) {
+      onOrderRefresh(updatedOrder);
     }
   };
 
@@ -514,9 +533,11 @@ const OrderDetailsView: React.FC<OrderDetailsViewProps> = ({ order, isLoading, o
         </CardHeader>
         <CardContent className="py-3 px-4">
           <NovedadesTable 
+            key={`novedades-${novedadesKey}`}
             novedades={currentOrder?.novedades || []} 
             orderNumber={currentOrder?.orderNumber}
             onNovedadDeleted={handleNovedadDeleted}
+            onRefresh={handleRefreshNovedades}
           />
         </CardContent>
       </Card>

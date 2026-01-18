@@ -19,6 +19,8 @@ builder.Services.AddDbContext<FastServiceDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("FastServiceDb")));
 
 // Register application services
+builder.Services.AddSingleton<OrderCacheService>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<OrderCacheService>());
 builder.Services.AddScoped<OrderService>();
 builder.Services.AddScoped<OrderSearchTools>();
 builder.Services.AddScoped<CustomerTools>();

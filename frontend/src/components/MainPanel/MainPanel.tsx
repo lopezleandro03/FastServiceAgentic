@@ -261,7 +261,13 @@ const MainPanel: React.FC<MainPanelProps> = ({
           onEdit={onEditOrder ? () => onEditOrder(viewingOrderDetails) : undefined}
           permissions={permissions}
           userId={userId}
-          onOrderRefresh={setViewingOrderDetails}
+          onOrderRefresh={(updatedOrder) => {
+            setViewingOrderDetails(updatedOrder);
+            // Also notify parent (chat) so everything stays in sync
+            if (onOrderSelected) {
+              onOrderSelected(updatedOrder);
+            }
+          }}
         />
       </div>
     );

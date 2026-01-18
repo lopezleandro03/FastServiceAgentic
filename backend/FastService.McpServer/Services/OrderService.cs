@@ -10,6 +10,7 @@ namespace FastService.McpServer.Services
     {
         private readonly FastServiceDbContext _context;
         private readonly ILogger<OrderService> _logger;
+        private readonly OrderCacheService _cacheService;
         // Compiled query to avoid lambda compilation overhead on first run
         private static readonly Func<FastServiceDbContext, int, System.Threading.Tasks.Task<ProjectedOrder?>> _compiledOrderQuery
             = EF.CompileAsyncQuery((FastServiceDbContext ctx, int orderNumber) =>
@@ -65,10 +66,11 @@ namespace FastService.McpServer.Services
                        FechaEntrega = r.FechaEntrega
                    }).FirstOrDefault());
 
-        public OrderService(FastServiceDbContext context, ILogger<OrderService> logger)
+        public OrderService(FastServiceDbContext context, ILogger<OrderService> logger, OrderCacheService cacheService)
         {
             _context = context;
             _logger = logger;
+            _cacheService = cacheService;
         }
 
         public async Task<List<OrderSummary>> SearchOrdersAsync(OrderSearchCriteria criteria)
@@ -625,6 +627,9 @@ namespace FastService.McpServer.Services
                 _context.Novedads.Add(novedad);
                 await _context.SaveChangesAsync();
 
+                // Invalidate cache so next fetch gets fresh data
+                _cacheService.Invalidate(request.OrderNumber);
+
                 // Get type name for response
                 var tipoNombre = await _context.TipoNovedads
                     .Where(t => t.TipoNovedadId == request.TipoNovedadId)
@@ -678,6 +683,9 @@ namespace FastService.McpServer.Services
 
                 _context.Novedads.Remove(novedad);
                 await _context.SaveChangesAsync();
+
+                // Invalidate cache so next fetch gets fresh data
+                _cacheService.Invalidate(orderNumber);
 
                 _logger.LogInformation("Deleted novedad #{NovedadId} from order #{OrderNumber}", novedadId, orderNumber);
                 return true;
@@ -813,7 +821,7 @@ namespace FastService.McpServer.Services
                     {
                         var factura = new Data.Entities.Factura
                         {
-                            NroFactura = request.NroFactura,
+                            NroFactura = request.NroFactura ?? string.Empty,
                             TipoFacturaId = request.TipoFacturaId.Value,
                             ModificadoEn = DateTime.Now,
                             ModificadoPor = userId
@@ -933,7 +941,7 @@ namespace FastService.McpServer.Services
                     {
                         var factura = new Data.Entities.Factura
                         {
-                            NroFactura = request.NroFactura,
+                            NroFactura = request.NroFactura ?? string.Empty,
                             TipoFacturaId = request.TipoFacturaId.Value,
                             ModificadoEn = DateTime.Now,
                             ModificadoPor = userId

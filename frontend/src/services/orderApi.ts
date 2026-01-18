@@ -110,7 +110,12 @@ export async function fetchKanbanBoard(filters?: KanbanFilters): Promise<KanbanB
  * @returns OrderDetails
  */
 export async function fetchOrderDetails(orderNumber: number): Promise<OrderDetails> {
-  const response = await fetch(`${API_BASE_URL}/api/orders/${orderNumber}`);
+  const response = await fetch(`${API_BASE_URL}/api/orders/${orderNumber}`, {
+    headers: {
+      'Cache-Control': 'no-cache',
+      'Pragma': 'no-cache',
+    },
+  });
   if (!response.ok) {
     throw new Error(`Failed to fetch order ${orderNumber}: ${response.statusText}`);
   }

@@ -151,7 +151,13 @@ const OrderAdvancedSearch: React.FC<OrderAdvancedSearchProps> = ({ onOrderClick,
           onBack={handleBackToResults}
           permissions={permissions}
           userId={userId}
-          onOrderRefresh={setSelectedOrder}
+          onOrderRefresh={(updatedOrder) => {
+            setSelectedOrder(updatedOrder);
+            // Also notify parent (chat) so everything stays in sync
+            if (onOrderSelected) {
+              onOrderSelected(updatedOrder);
+            }
+          }}
         />
       </div>
     );

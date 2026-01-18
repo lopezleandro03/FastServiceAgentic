@@ -11,9 +11,6 @@ param imageTag = 'latest'
 // Docker Hub image (e.g., yourusername/fastservice-api)
 param dockerHubImage = 'yourusername/fastservice-api'
 
-// Existing App Service Plan
-param existingAppServicePlanId = '/subscriptions/05502140-2c2f-45e5-85dc-477c35e7a985/resourceGroups/fastservice-app/providers/Microsoft.Web/serverFarms/basic-serviceplan'
-
 // GitHub repository (optional - needed for SWA GitHub integration)
 param repositoryUrl = 'https://github.com/lopezleandro03/FastServiceAgentic'
 param repositoryBranch = 'main'

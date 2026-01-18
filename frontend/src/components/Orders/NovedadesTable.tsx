@@ -16,20 +16,22 @@ import {
   TooltipTrigger,
 } from '../ui/tooltip';
 import { Button } from '../ui/button';
-import { Trash2, Loader2 } from 'lucide-react';
+import { Trash2, Loader2, RefreshCw } from 'lucide-react';
 
 interface NovedadesTableProps {
   novedades: NovedadInfo[];
   orderNumber?: number;
-  onNovedadDeleted?: () => void;
+  onNovedadDeleted?: (novedadId: number) => void;
+  onRefresh?: () => Promise<void>;
 }
 
-const NovedadesTable: React.FC<NovedadesTableProps> = ({ novedades, orderNumber, onNovedadDeleted }) => {
+const NovedadesTable: React.FC<NovedadesTableProps> = ({ novedades, orderNumber, onNovedadDeleted, onRefresh }) => {
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const handleDeleteNovedad = async (novedadId: number) => {
     if (!orderNumber) return;
-    
+
     if (!window.confirm('¿Estás seguro de eliminar esta novedad?')) {
       return;
     }
@@ -37,14 +39,29 @@ const NovedadesTable: React.FC<NovedadesTableProps> = ({ novedades, orderNumber,
     setDeletingId(novedadId);
     try {
       await deleteNovedad(orderNumber, novedadId);
+      
+      if (onRefresh) {
+        await onRefresh();
+      }
+
       if (onNovedadDeleted) {
-        onNovedadDeleted();
+        onNovedadDeleted(novedadId);
       }
     } catch (error) {
       console.error('Error deleting novedad:', error);
       alert(error instanceof Error ? error.message : 'Error al eliminar la novedad');
     } finally {
       setDeletingId(null);
+    }
+  };
+
+  const handleRefresh = async () => {
+    if (!onRefresh) return;
+    setIsRefreshing(true);
+    try {
+      await onRefresh();
+    } finally {
+      setIsRefreshing(false);
     }
   };
 
@@ -74,19 +91,62 @@ const NovedadesTable: React.FC<NovedadesTableProps> = ({ novedades, orderNumber,
 
   if (!novedades || novedades.length === 0) {
     return (
-      <div className="flex items-center justify-center py-8 text-muted-foreground">
-        <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-        </svg>
-        Sin novedades registradas
+      <div className="flex flex-col items-center justify-center py-8 text-muted-foreground gap-2">
+        <div className="flex items-center">
+          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          Sin novedades registradas
+        </div>
+        {onRefresh && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="text-xs"
+          >
+            {isRefreshing ? (
+              <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+            ) : (
+              <RefreshCw className="h-3 w-3 mr-1" />
+            )}
+            Refrescar
+          </Button>
+        )}
       </div>
     );
   }
 
   return (
     <TooltipProvider>
-      <div className="max-h-64 overflow-y-auto border rounded-md">
-        <Table>
+      <div className="relative">
+        {onRefresh && (
+          <div className="absolute top-0 right-0 z-10 p-1">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleRefresh}
+                  disabled={isRefreshing}
+                  className="h-6 w-6 p-0"
+                >
+                  {isRefreshing ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-3 w-3" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Refrescar novedades</p>
+              </TooltipContent>
+            </Tooltip>
+          </div>
+        )}
+        <div className="max-h-64 overflow-y-auto border rounded-md">
+          <Table>
           <TableHeader className="sticky top-0 bg-muted/95 backdrop-blur-sm">
             <TableRow>
               <TableHead className="w-[140px]">Fecha</TableHead>
@@ -143,6 +203,7 @@ const NovedadesTable: React.FC<NovedadesTableProps> = ({ novedades, orderNumber,
             ))}
           </TableBody>
         </Table>
+        </div>
       </div>
     </TooltipProvider>
   );
