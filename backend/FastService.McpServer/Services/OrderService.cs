@@ -2159,14 +2159,23 @@ namespace FastService.McpServer.Services
                 // 3. Get next order number (Reparacion table does NOT use identity column)
                 var nextOrderId = await GetNextOrderNumberAsync();
 
-                // 4. Create Reparacion (main order)
+                // 4. Get the "INGRESADO" status ID
+                var ingresadoEstado = await _context.EstadoReparacions
+                    .FirstOrDefaultAsync(e => e.Nombre.ToUpper() == ReparacionEstado.INGRESADO);
+                
+                if (ingresadoEstado == null)
+                {
+                    throw new InvalidOperationException("Estado 'INGRESADO' not found in database");
+                }
+
+                // 5. Create Reparacion (main order)
                 var reparacion = new Reparacion
                 {
                     ReparacionId = nextOrderId, // Manually assign ID (not auto-generated)
                     ClienteId = customer.ClienteId,
                     EmpleadoAsignadoId = request.ResponsableId > 0 ? request.ResponsableId : 1,
                     TecnicoAsignadoId = request.TecnicoId > 0 ? request.TecnicoId : 1,
-                    EstadoReparacionId = 1, // Initial state: "Ingresado"
+                    EstadoReparacionId = ingresadoEstado.EstadoReparacionId, // Initial state: "INGRESADO"
                     ComercioId = request.Garantia && request.Comercio.ComercioId > 0 ? request.Comercio.ComercioId : null,
                     MarcaId = request.Device.MarcaId > 0 ? request.Device.MarcaId : 1,
                     TipoDispositivoId = request.Device.TipoId > 0 ? request.Device.TipoId : 1,
@@ -2179,7 +2188,7 @@ namespace FastService.McpServer.Services
                 _context.Reparacions.Add(reparacion);
                 await _context.SaveChangesAsync();
 
-                // 5. Create initial Novedad (INGRESO = 1) - mirrors baseline OrdenHelper behavior
+                // 6. Create initial Novedad (INGRESO = 1) - mirrors baseline OrdenHelper behavior
                 var novedad = new Novedad
                 {
                     ReparacionId = reparacion.ReparacionId,
