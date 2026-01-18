@@ -537,13 +537,105 @@ export const useChat = (options: UseChatOptions = {}): UseChatReturn => {
           return;
         }
         
+        // For "acepta" action: process immediately with existing presupuesto (following baseline logic)
+        // No need to ask if the presupuesto changes - just accept it as-is
+        if (accion === 'acepta') {
+          try {
+            const result = await processInformarPresupuesto(pendingInformarPresupOrderNumber, {
+              accion: 'acepta',
+              monto: informarPresupPresupuesto || undefined,
+              observacion: 'Presupuesto informado - Cliente acepta',
+            });
+            
+            const successMessage: ChatMessage = {
+              id: (Date.now() + 1).toString(),
+              content: `✅ **¡Presupuesto aceptado!**\n\n📋 **Orden #${result.orderNumber}**\n💰 **Presupuesto:** $${result.presupuesto.toLocaleString('es-AR')}\n📊 **Estado anterior:** ${result.previousStatus}\n📊 **Nuevo estado:** ${result.newStatus}\n\n*La orden pasó a estado "A REPARAR".*`,
+              role: 'assistant',
+              timestamp: new Date(),
+            };
+            setMessages((prev) => [...prev, successMessage]);
+            
+            // Refresh order details to show updated status
+            if (selectedOrderDetails && selectedOrderDetails.orderNumber === pendingInformarPresupOrderNumber) {
+              const orderResponse = await fetch(`${API_BASE_URL}/api/orders/${pendingInformarPresupOrderNumber}`);
+              if (orderResponse.ok) {
+                const updatedOrder = await orderResponse.json();
+                setSelectedOrderDetails(updatedOrder);
+              }
+            }
+          } catch (err) {
+            const errorMessage = err instanceof Error ? err.message : 'Error desconocido';
+            const errorResponseMessage: ChatMessage = {
+              id: (Date.now() + 1).toString(),
+              content: `❌ Error al procesar informar presupuesto: ${errorMessage}`,
+              role: 'assistant',
+              timestamp: new Date(),
+            };
+            setMessages((prev) => [...prev, errorResponseMessage]);
+          } finally {
+            // Reset informar presupuesto state
+            setPendingInformarPresupOrderNumber(null);
+            setInformarPresupStep(null);
+            setInformarPresupAccion(null);
+            setInformarPresupPresupuesto(null);
+            setIsLoading(false);
+          }
+          return;
+        }
+        
+        // For "rechaza" action: also process immediately (no need to change presupuesto)
+        if (accion === 'rechaza') {
+          try {
+            const result = await processInformarPresupuesto(pendingInformarPresupOrderNumber, {
+              accion: 'rechaza',
+              monto: informarPresupPresupuesto || undefined,
+              observacion: 'Presupuesto informado - Cliente rechaza',
+            });
+            
+            const successMessage: ChatMessage = {
+              id: (Date.now() + 1).toString(),
+              content: `❌ **Presupuesto rechazado por el cliente**\n\n📋 **Orden #${result.orderNumber}**\n💰 **Presupuesto:** $${result.presupuesto.toLocaleString('es-AR')}\n📊 **Estado anterior:** ${result.previousStatus}\n📊 **Nuevo estado:** ${result.newStatus}\n\n*La orden pasó a estado "RECHAZO PRESUP."*`,
+              role: 'assistant',
+              timestamp: new Date(),
+            };
+            setMessages((prev) => [...prev, successMessage]);
+            
+            // Refresh order details to show updated status
+            if (selectedOrderDetails && selectedOrderDetails.orderNumber === pendingInformarPresupOrderNumber) {
+              const orderResponse = await fetch(`${API_BASE_URL}/api/orders/${pendingInformarPresupOrderNumber}`);
+              if (orderResponse.ok) {
+                const updatedOrder = await orderResponse.json();
+                setSelectedOrderDetails(updatedOrder);
+              }
+            }
+          } catch (err) {
+            const errorMessage = err instanceof Error ? err.message : 'Error desconocido';
+            const errorResponseMessage: ChatMessage = {
+              id: (Date.now() + 1).toString(),
+              content: `❌ Error al procesar informar presupuesto: ${errorMessage}`,
+              role: 'assistant',
+              timestamp: new Date(),
+            };
+            setMessages((prev) => [...prev, errorResponseMessage]);
+          } finally {
+            // Reset informar presupuesto state
+            setPendingInformarPresupOrderNumber(null);
+            setInformarPresupStep(null);
+            setInformarPresupAccion(null);
+            setInformarPresupPresupuesto(null);
+            setIsLoading(false);
+          }
+          return;
+        }
+        
+        // For "confirma" action: ask for monto (pending confirmation may need quote adjustment)
         setInformarPresupAccion(accion);
         setInformarPresupStep('monto');
         
         // Ask for the quote amount
         const montoMessage: ChatMessage = {
           id: (Date.now() + 1).toString(),
-          content: `Respuesta del cliente: **${accion === 'acepta' ? '✅ Acepta' : accion === 'rechaza' ? '❌ Rechaza' : '⏳ A Confirmar'}**\n\n${
+          content: `Respuesta del cliente: **⏳ A Confirmar**\n\n${
             informarPresupPresupuesto && informarPresupPresupuesto > 0 
               ? `El presupuesto actual es **$${informarPresupPresupuesto.toLocaleString('es-AR')}**.\n\n¿Es este el monto final? Responde **"sí"** o ingresa un nuevo monto:`
               : `¿Cuál es el monto del presupuesto? (ej: 25000):`
