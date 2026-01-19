@@ -3,7 +3,7 @@ import { OrderDetails } from '../../types/order';
 import { UserPermissions } from '../../types/auth';
 import StatusBadge from './StatusBadge';
 import NovedadesTable from './NovedadesTable';
-import { fetchOrderDetails } from '../../services/orderApi';
+import { fetchOrderDetails, deleteOrder } from '../../services/orderApi';
 import { getTemplatesForState, getReminderTemplates, generateMessage, openWhatsApp } from '../../services/whatsappApi';
 import { WhatsAppTemplate, GeneratedMessage } from '../../types/whatsapp';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
@@ -18,7 +18,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '../ui/dialog';
-import { ArrowLeft, Printer, Loader2, Clock, Send } from 'lucide-react';
+import { ArrowLeft, Printer, Loader2, Clock, Send, Trash2 } from 'lucide-react';
 
 // WhatsApp icon SVG component
 const WhatsAppIcon: React.FC<{ className?: string }> = ({ className }) => (
@@ -38,7 +38,7 @@ interface OrderDetailsViewProps {
   onEdit?: () => void;
   onPrint?: () => void;
   onPrintDorso?: () => void;
-  onOrderDeleted?: () => void;
+  onOrderDeleted?: (orderNumber: number) => void;
   onOrderRefresh?: (order: OrderDetails) => void;
   permissions?: UserPermissions | null;
   userId?: number;
@@ -98,15 +98,38 @@ const OrderDetailsView: React.FC<OrderDetailsViewProps> = ({ order, isLoading, o
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
   const [isGeneratingMessage, setIsGeneratingMessage] = useState(false);
   const [whatsAppError, setWhatsAppError] = useState<string | null>(null);
+  
+  // Delete order state
+  const [isDeletingOrder, setIsDeletingOrder] = useState(false);
 
   // Update currentOrder when order prop changes
   useEffect(() => {
     setCurrentOrder(order);
   }, [order]);
 
-  // Delete order functionality hidden - kept for future use
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const _onOrderDeleted = onOrderDeleted;
+  // Handle order deletion
+  const handleDeleteOrder = async () => {
+    if (!currentOrder) return;
+    
+    const confirmed = window.confirm(
+      `¿Está seguro que desea eliminar la orden #${currentOrder.orderNumber}? Esta acción no se puede deshacer.`
+    );
+    
+    if (!confirmed) return;
+    
+    setIsDeletingOrder(true);
+    try {
+      await deleteOrder(currentOrder.orderNumber);
+      if (onOrderDeleted) {
+        onOrderDeleted(currentOrder.orderNumber);
+      }
+    } catch (error) {
+      console.error('Error deleting order:', error);
+      alert(`Error al eliminar la orden: ${error instanceof Error ? error.message : 'Error desconocido'}`);
+    } finally {
+      setIsDeletingOrder(false);
+    }
+  };
 
   const handleRefreshNovedades = async () => {
     if (!currentOrder) return;
@@ -408,23 +431,23 @@ const OrderDetailsView: React.FC<OrderDetailsViewProps> = ({ order, isLoading, o
               Imprimir Dorso
             </Button>
           )}
-          {/* Delete order button hidden - too risky for production use
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={handleDeleteOrder}
-            disabled={isDeletingOrder}
-            className="h-9 px-3 bg-red-50 hover:bg-red-100 text-red-700 border-red-300"
-            title="Eliminar orden"
-          >
-            {isDeletingOrder ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            ) : (
-              <Trash2 className="h-4 w-4 mr-2" />
-            )}
-            Eliminar
-          </Button>
-          */}
+          {permissions?.canDeleteOrders && (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleDeleteOrder}
+              disabled={isDeletingOrder}
+              className="h-9 px-3 bg-red-50 hover:bg-red-100 text-red-700 border-red-300"
+              title="Eliminar orden"
+            >
+              {isDeletingOrder ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Trash2 className="h-4 w-4 mr-2" />
+              )}
+              Eliminar
+            </Button>
+          )}
         </div>
       </div>
 

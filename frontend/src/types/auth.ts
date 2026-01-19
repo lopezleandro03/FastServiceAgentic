@@ -46,4 +46,5 @@ export interface UserPermissions {
   isManager: boolean;  // Gerente - sees all actions with collapsible groups
   isAdmin: boolean;  // FastServiceAdmin, Gerente, ElectroShopAdmin
   isTecnico: boolean;  // Tecnico role
+  canDeleteOrders: boolean;  // Gerente only - can delete orders
 }

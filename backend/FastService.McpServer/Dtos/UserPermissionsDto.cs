@@ -44,8 +44,10 @@ public class UserPermissionsResponse
     /// IsManager: Gerente (1) - sees all actions with collapsible groups
     /// IsAdmin: FastServiceAdmin (3), Gerente (1), ElectroShopAdmin (2)
     /// IsTecnico: Tecnico (4)
+    /// CanDeleteOrders: Gerente (1) only - can delete orders
     /// </summary>
     public bool IsManager { get; set; }
     public bool IsAdmin { get; set; }
     public bool IsTecnico { get; set; }
+    public bool CanDeleteOrders { get; set; }
 }

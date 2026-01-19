@@ -161,6 +161,8 @@ app.MapGet("/api/auth/permissions/{userId:int}", async (int userId, FastServiceD
         var isAdmin = roleIds.Contains(1) || roleIds.Contains(2) || roleIds.Contains(3);
         // Tecnico role: Tecnico (4)
         var isTecnico = roleIds.Contains(4);
+        // Can delete orders: Gerente (1) only - LUIS
+        var canDeleteOrders = roleIds.Contains(1);
 
         var response = new UserPermissionsResponse
         {
@@ -173,7 +175,8 @@ app.MapGet("/api/auth/permissions/{userId:int}", async (int userId, FastServiceD
             CanAccessKanban = true,  // All authenticated users can access kanban
             IsManager = isManager,
             IsAdmin = isAdmin,
-            IsTecnico = isTecnico
+            IsTecnico = isTecnico,
+            CanDeleteOrders = canDeleteOrders
         };
 
         return Results.Ok(response);

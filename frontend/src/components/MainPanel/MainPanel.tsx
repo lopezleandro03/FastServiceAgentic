@@ -260,6 +260,13 @@ const MainPanel: React.FC<MainPanelProps> = ({
           onPrint={handlePrint}
           onPrintDorso={handlePrintDorso}
           onEdit={onEditOrder ? () => onEditOrder(viewingOrderDetails) : undefined}
+          onOrderDeleted={() => {
+            // Go back to the list/kanban view after deletion
+            setViewingOrderDetails(null);
+            if (onOrderSelected) {
+              onOrderSelected(null);
+            }
+          }}
           permissions={permissions}
           userId={userId}
           onOrderRefresh={(updatedOrder) => {

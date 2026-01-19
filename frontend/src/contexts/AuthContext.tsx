@@ -89,6 +89,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
             isManager: false,
             isAdmin: false,
             isTecnico: false,
+            canDeleteOrders: false,
           });
         } finally {
           setIsLoadingPermissions(false);
