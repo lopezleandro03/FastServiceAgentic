@@ -27,9 +27,9 @@ public class AddNovedadRequest
     public decimal? Monto { get; set; }
 
     /// <summary>
-    /// The user ID performing the action (defaults to current technician if not provided)
+    /// The user ID performing the action (required)
     /// </summary>
-    public int? UserId { get; set; }
+    public required int UserId { get; set; }
 }
 
 /// <summary>

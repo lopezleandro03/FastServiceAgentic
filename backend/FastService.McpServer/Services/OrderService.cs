@@ -609,8 +609,8 @@ namespace FastService.McpServer.Services
                     throw new InvalidOperationException($"Order #{request.OrderNumber} not found");
                 }
 
-                // Get the user ID (default to technician if not provided)
-                var userId = request.UserId ?? order.TecnicoAsignadoId;
+                // Use the required user ID from request
+                var userId = request.UserId;
 
                 // Create the novedad
                 var novedad = new Novedad
@@ -783,15 +783,33 @@ namespace FastService.McpServer.Services
 
                 var metodoPagoNombre = metodoPago?.Nombre ?? "Desconocido";
 
-                // Get user ID
-                var userId = request.UserId ?? order.TecnicoAsignadoId;
+                // Use the required user ID from request
+                var userId = request.UserId;
+
+                // Check if order is under warranty
+                var esGarantia = order.ReparacionDetalle?.EsGarantia ?? false;
 
                 // 1. Create Novedad (RETIRA type = 5)
+                // For zero amount or warranty orders, indicate appropriate message
+                string observacion;
+                if (esGarantia)
+                {
+                    observacion = "Retiro sin cargo - Garantía";
+                }
+                else if (request.Monto > 0)
+                {
+                    observacion = $"Retiro - Monto: ${request.Monto:N2} - Método: {metodoPagoNombre}";
+                }
+                else
+                {
+                    observacion = "Retiro sin cargo";
+                }
+                    
                 var novedad = new Data.Entities.Novedad
                 {
                     ReparacionId = request.OrderNumber,
                     TipoNovedadId = NovedadTipoIds.RETIRA,
-                    Observacion = $"Retiro - Monto: ${request.Monto:N2} - Método: {metodoPagoNombre}",
+                    Observacion = observacion,
                     Monto = request.Monto,
                     UserId = userId,
                     ModificadoEn = DateTime.Now,
@@ -909,8 +927,8 @@ namespace FastService.McpServer.Services
 
                 var metodoPagoNombre = metodoPago?.Nombre ?? "Desconocido";
 
-                // Get user ID
-                var userId = request.UserId ?? order.TecnicoAsignadoId;
+                // Use the required user ID from request
+                var userId = request.UserId;
 
                 // 1. Create Novedad (SENA type = 26)
                 var novedad = new Data.Entities.Novedad
@@ -1067,15 +1085,15 @@ namespace FastService.McpServer.Services
                     TipoNovedadId = novedadTipoId,
                     Observacion = request.Observacion ?? $"Presupuesto informado - Cliente {request.Accion.ToLower()}",
                     Monto = request.Monto ?? 0,
-                    UserId = 1, // TODO: Get current user from context
-                    ModificadoPor = 1,
+                    UserId = request.UserId,
+                    ModificadoPor = request.UserId,
                     ModificadoEn = DateTime.Now
                 };
                 _context.Novedads.Add(novedad);
 
                 // Update order status
                 order.EstadoReparacionId = newStatus.EstadoReparacionId;
-                order.ModificadoPor = 1;
+                order.ModificadoPor = request.UserId;
                 order.ModificadoEn = DateTime.Now;
 
                 // Update ReparacionDetalle
@@ -1097,7 +1115,7 @@ namespace FastService.McpServer.Services
 
                 // Update informado fields
                 order.InformadoEn = DateTime.Now;
-                order.InformadoPor = 1; // TODO: Get current user
+                order.InformadoPor = request.UserId;
 
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
@@ -1170,15 +1188,15 @@ namespace FastService.McpServer.Services
                     TipoNovedadId = 24, // REINGRESO
                     Observacion = request.Observacion,
                     Monto = 0,
-                    UserId = 1, // TODO: Get current user from context
-                    ModificadoPor = 1,
+                    UserId = request.UserId,
+                    ModificadoPor = request.UserId,
                     ModificadoEn = DateTime.Now
                 };
                 _context.Novedads.Add(novedad);
 
                 // Update order status
                 order.EstadoReparacionId = newStatus.EstadoReparacionId;
-                order.ModificadoPor = 1;
+                order.ModificadoPor = request.UserId;
                 order.ModificadoEn = DateTime.Now;
 
                 await _context.SaveChangesAsync();
@@ -1255,15 +1273,15 @@ namespace FastService.McpServer.Services
                     TipoNovedadId = 6, // RECHAZA
                     Observacion = observacion,
                     Monto = 0,
-                    UserId = 1, // TODO: Get current user from context
-                    ModificadoPor = 1,
+                    UserId = request.UserId,
+                    ModificadoPor = request.UserId,
                     ModificadoEn = DateTime.Now
                 };
                 _context.Novedads.Add(novedad);
 
                 // Update order status
                 order.EstadoReparacionId = newStatus.EstadoReparacionId;
-                order.ModificadoPor = 1;
+                order.ModificadoPor = request.UserId;
                 order.ModificadoEn = DateTime.Now;
 
                 await _context.SaveChangesAsync();
@@ -1353,7 +1371,7 @@ namespace FastService.McpServer.Services
                     order.ReparacionDetalle.Presupuesto = request.Monto;
                     order.ReparacionDetalle.PresupuestoFecha = DateTime.Now;
                     order.ReparacionDetalle.ModificadoEn = DateTime.Now;
-                    order.ReparacionDetalle.ModificadoPor = 1;
+                    order.ReparacionDetalle.ModificadoPor = request.UserId;
                 }
 
                 // Create Novedad record
@@ -1368,15 +1386,15 @@ namespace FastService.McpServer.Services
                     TipoNovedadId = 2, // PRESUPUESTADO
                     Observacion = observacion,
                     Monto = request.Monto,
-                    UserId = 1, // TODO: Get current user
-                    ModificadoPor = 1,
+                    UserId = request.UserId,
+                    ModificadoPor = request.UserId,
                     ModificadoEn = DateTime.Now
                 };
                 _context.Novedads.Add(novedad);
 
                 // Update order status
                 order.EstadoReparacionId = newStatus.EstadoReparacionId;
-                order.ModificadoPor = 1;
+                order.ModificadoPor = request.UserId;
                 order.ModificadoEn = DateTime.Now;
 
                 await _context.SaveChangesAsync();
@@ -1448,7 +1466,7 @@ namespace FastService.McpServer.Services
                 {
                     order.ReparacionDetalle.ReparacionDesc = request.Observacion;
                     order.ReparacionDetalle.ModificadoEn = DateTime.Now;
-                    order.ReparacionDetalle.ModificadoPor = 1;
+                    order.ReparacionDetalle.ModificadoPor = request.UserId;
                 }
 
                 // Create Novedad record
@@ -1462,15 +1480,15 @@ namespace FastService.McpServer.Services
                     TipoNovedadId = 4, // REPARADO
                     Observacion = observacion,
                     Monto = 0,
-                    UserId = 1,
-                    ModificadoPor = 1,
+                    UserId = request.UserId,
+                    ModificadoPor = request.UserId,
                     ModificadoEn = DateTime.Now
                 };
                 _context.Novedads.Add(novedad);
 
                 // Update order status
                 order.EstadoReparacionId = newStatus.EstadoReparacionId;
-                order.ModificadoPor = 1;
+                order.ModificadoPor = request.UserId;
                 order.ModificadoEn = DateTime.Now;
 
                 await _context.SaveChangesAsync();
@@ -1547,15 +1565,15 @@ namespace FastService.McpServer.Services
                     TipoNovedadId = 6, // RECHAZA (technician rejection)
                     Observacion = request.Observacion,
                     Monto = 0,
-                    UserId = 1,
-                    ModificadoPor = 1,
+                    UserId = request.UserId,
+                    ModificadoPor = request.UserId,
                     ModificadoEn = DateTime.Now
                 };
                 _context.Novedads.Add(novedad);
 
                 // Update order status
                 order.EstadoReparacionId = newStatus.EstadoReparacionId;
-                order.ModificadoPor = 1;
+                order.ModificadoPor = request.UserId;
                 order.ModificadoEn = DateTime.Now;
 
                 await _context.SaveChangesAsync();
@@ -1631,15 +1649,15 @@ namespace FastService.McpServer.Services
                     TipoNovedadId = 16, // ESPERAREPUESTO
                     Observacion = request.Observacion,
                     Monto = 0,
-                    UserId = 1,
-                    ModificadoPor = 1,
+                    UserId = request.UserId,
+                    ModificadoPor = request.UserId,
                     ModificadoEn = DateTime.Now
                 };
                 _context.Novedads.Add(novedad);
 
                 // Update order status
                 order.EstadoReparacionId = newStatus.EstadoReparacionId;
-                order.ModificadoPor = 1;
+                order.ModificadoPor = request.UserId;
                 order.ModificadoEn = DateTime.Now;
 
                 await _context.SaveChangesAsync();
@@ -1711,7 +1729,7 @@ namespace FastService.McpServer.Services
                 {
                     order.ReparacionDetalle.Precio = request.Monto;
                     order.ReparacionDetalle.ModificadoEn = DateTime.Now;
-                    order.ReparacionDetalle.ModificadoPor = 1;
+                    order.ReparacionDetalle.ModificadoPor = request.UserId;
                 }
 
                 // Create Novedad record
@@ -1725,15 +1743,15 @@ namespace FastService.McpServer.Services
                     TipoNovedadId = 40, // REPDOMICILIO
                     Observacion = observacion,
                     Monto = request.Monto,
-                    UserId = 1,
-                    ModificadoPor = 1,
+                    UserId = request.UserId,
+                    ModificadoPor = request.UserId,
                     ModificadoEn = DateTime.Now
                 };
                 _context.Novedads.Add(novedad);
 
                 // Update order status
                 order.EstadoReparacionId = newStatus.EstadoReparacionId;
-                order.ModificadoPor = 1;
+                order.ModificadoPor = request.UserId;
                 order.ModificadoEn = DateTime.Now;
 
                 int? ventaId = null;
@@ -1750,7 +1768,7 @@ namespace FastService.McpServer.Services
                             NroFactura = request.NroFactura,
                             TipoFacturaId = request.TipoFacturaId ?? 1,
                             ModificadoEn = DateTime.Now,
-                            ModificadoPor = 1
+                            ModificadoPor = request.UserId
                         };
                         _context.Facturas.Add(factura);
                         await _context.SaveChangesAsync();
@@ -1876,22 +1894,21 @@ namespace FastService.McpServer.Services
                     ? "Equipo armado y listo para retiro"
                     : $"Equipo armado y listo para retiro. {request.Observacion}";
 
-                var userId = request.UserId ?? 1;
                 var novedad = new Novedad
                 {
                     ReparacionId = orderNumber,
                     TipoNovedadId = NovedadTipoIds.ARMADO,
                     Observacion = observacion,
                     Monto = 0,
-                    UserId = userId,
-                    ModificadoPor = userId,
+                    UserId = request.UserId,
+                    ModificadoPor = request.UserId,
                     ModificadoEn = DateTime.Now
                 };
                 _context.Novedads.Add(novedad);
 
                 // Update order status
                 order.EstadoReparacionId = newStatus.EstadoReparacionId;
-                order.ModificadoPor = userId;
+                order.ModificadoPor = request.UserId;
                 order.ModificadoEn = DateTime.Now;
 
                 await _context.SaveChangesAsync();
@@ -1997,29 +2014,28 @@ namespace FastService.McpServer.Services
                 observacionParts.Add($"UBICACION EN STOCK: {request.Ubicacion}");
                 var observacion = string.Join("\n", observacionParts);
 
-                var userId = request.UserId ?? 1;
                 var novedad = new Novedad
                 {
                     ReparacionId = orderNumber,
                     TipoNovedadId = NovedadTipoIds.ARCHIVADO,
                     Observacion = observacion,
                     Monto = 0,
-                    UserId = userId,
-                    ModificadoPor = userId,
+                    UserId = request.UserId,
+                    ModificadoPor = request.UserId,
                     ModificadoEn = DateTime.Now
                 };
                 _context.Novedads.Add(novedad);
 
                 // Update order status
                 order.EstadoReparacionId = newStatus.EstadoReparacionId;
-                order.ModificadoPor = userId;
+                order.ModificadoPor = request.UserId;
                 order.ModificadoEn = DateTime.Now;
 
                 // Update ubicacion in ReparacionDetalle
                 if (order.ReparacionDetalle != null)
                 {
                     order.ReparacionDetalle.Unicacion = request.Ubicacion;
-                    order.ReparacionDetalle.ModificadoPor = userId;
+                    order.ReparacionDetalle.ModificadoPor = request.UserId;
                     order.ReparacionDetalle.ModificadoEn = DateTime.Now;
                 }
                 else if (order.ReparacionDetalleId.HasValue)
@@ -2029,7 +2045,7 @@ namespace FastService.McpServer.Services
                     if (detalle != null)
                     {
                         detalle.Unicacion = request.Ubicacion;
-                        detalle.ModificadoPor = userId;
+                        detalle.ModificadoPor = request.UserId;
                         detalle.ModificadoEn = DateTime.Now;
                     }
                 }
@@ -2435,21 +2451,6 @@ namespace FastService.McpServer.Services
                 reparacion.ModificadoPor = request.ResponsableId > 0 ? request.ResponsableId : 1;
 
                 await _context.SaveChangesAsync();
-
-                // 5. Create modification Novedad
-                var novedad = new Novedad
-                {
-                    ReparacionId = reparacion.ReparacionId,
-                    Monto = reparacion.ReparacionDetalle?.Presupuesto,
-                    UserId = reparacion.TecnicoAsignadoId,
-                    TipoNovedadId = 5, // MODIFICACION
-                    Observacion = "Orden modificada",
-                    ModificadoEn = DateTime.Now,
-                    ModificadoPor = request.ResponsableId > 0 ? request.ResponsableId : 1
-                };
-                _context.Novedads.Add(novedad);
-                await _context.SaveChangesAsync();
-
                 await transaction.CommitAsync();
 
                 _logger.LogInformation("Updated order #{OrderNumber} for customer {CustomerName}", 

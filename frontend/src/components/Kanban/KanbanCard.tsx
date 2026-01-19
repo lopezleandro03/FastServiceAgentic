@@ -29,13 +29,15 @@ export const KanbanCard: React.FC<KanbanCardProps> = ({ order, onClick }) => {
             #{order.orderNumber}
           </span>
           <div className="flex gap-1">
-            {/* T018: Warranty indicator */}
+            {/* T018: Warranty indicator - Green shield icon */}
             {order.isWarranty && (
               <Badge 
                 variant="outline" 
-                className="text-xs px-1.5 py-0 h-5 bg-amber-50 text-amber-700 border-amber-300 font-medium"
+                className="text-xs px-1.5 py-0 h-5 bg-green-100 text-green-700 border-green-400 font-semibold"
+                title="Garantía"
               >
-                E
+                <ShieldIcon className="w-3 h-3 mr-0.5" />
+                G
               </Badge>
             )}
             {/* T018: Domicile indicator */}
@@ -116,6 +118,18 @@ const HomeIcon: React.FC<{ className?: string }> = ({ className }) => (
   >
     <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
     <polyline points="9 22 9 12 15 12 15 22" />
+  </svg>
+);
+
+// Shield icon for warranty
+const ShieldIcon: React.FC<{ className?: string }> = ({ className }) => (
+  <svg 
+    xmlns="http://www.w3.org/2000/svg" 
+    viewBox="0 0 24 24" 
+    fill="currentColor"
+    className={className}
+  >
+    <path fillRule="evenodd" d="M12.516 2.17a.75.75 0 00-1.032 0 11.209 11.209 0 01-7.877 3.08.75.75 0 00-.722.515A12.74 12.74 0 002.25 9.75c0 5.942 4.064 10.933 9.563 12.348a.749.749 0 00.374 0c5.499-1.415 9.563-6.406 9.563-12.348 0-1.39-.223-2.73-.635-3.985a.75.75 0 00-.722-.516 11.209 11.209 0 01-7.877-3.08z" clipRule="evenodd" />
   </svg>
 );
 

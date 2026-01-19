@@ -18,6 +18,11 @@ public class PresupuestoRequest
     /// Optional observation about the budget
     /// </summary>
     public string? Observacion { get; set; }
+    
+    /// <summary>
+    /// User ID performing the action (required)
+    /// </summary>
+    public required int UserId { get; set; }
 }
 
 public class PresupuestoResponse
@@ -46,6 +51,11 @@ public class ReparadoRequest
     /// This is saved to ReparacionDetalle.ReparacionDesc
     /// </summary>
     public string? Observacion { get; set; }
+    
+    /// <summary>
+    /// User ID performing the action (required)
+    /// </summary>
+    public required int UserId { get; set; }
 }
 
 public class ReparadoResponse
@@ -73,6 +83,11 @@ public class RechazarRequest
     /// E.g., "Sin repuestos", "Daño irreparable", "No se justifica reparación"
     /// </summary>
     public string Observacion { get; set; } = string.Empty;
+    
+    /// <summary>
+    /// User ID performing the action (required)
+    /// </summary>
+    public required int UserId { get; set; }
 }
 
 public class RechazarResponse
@@ -98,6 +113,11 @@ public class EsperaRepuestoRequest
     /// Description of the required part (required)
     /// </summary>
     public string Observacion { get; set; } = string.Empty;
+    
+    /// <summary>
+    /// User ID performing the action (required)
+    /// </summary>
+    public required int UserId { get; set; }
 }
 
 public class EsperaRepuestoResponse
@@ -149,6 +169,11 @@ public class RepDomicilioRequest
     /// Invoice number (if invoiced)
     /// </summary>
     public string? NroFactura { get; set; }
+    
+    /// <summary>
+    /// User ID performing the action (required)
+    /// </summary>
+    public required int UserId { get; set; }
 }
 
 public class RepDomicilioResponse

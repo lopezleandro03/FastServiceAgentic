@@ -10,6 +10,11 @@ public class RechazaPresupuestoRequest
     /// Optional observation about the rejection (e.g., "Very expensive", "Will look elsewhere")
     /// </summary>
     public string? Observacion { get; set; }
+    
+    /// <summary>
+    /// User ID performing the action (required)
+    /// </summary>
+    public required int UserId { get; set; }
 }
 
 /// <summary>

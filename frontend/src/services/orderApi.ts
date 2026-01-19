@@ -214,7 +214,7 @@ export interface ProcessRetiraRequest {
   facturado?: boolean;
   tipoFacturaId?: number;
   nroFactura?: string;
-  userId?: number;
+  userId: number;
 }
 
 export interface ProcessRetiraResponse {
@@ -262,7 +262,7 @@ export interface ProcessSenaRequest {
   facturado?: boolean;
   tipoFacturaId?: number;
   nroFactura?: string;
-  userId?: number;
+  userId: number;
 }
 
 export interface ProcessSenaResponse {
@@ -310,6 +310,7 @@ export interface InformarPresupuestoRequest {
   accion: 'acepta' | 'rechaza' | 'confirma';
   monto?: number;
   observacion?: string;
+  userId: number;
 }
 
 export interface InformarPresupuestoResponse {
@@ -352,6 +353,7 @@ export async function processInformarPresupuesto(
 
 export interface ReingresoRequest {
   observacion: string;
+  userId: number;
 }
 
 export interface ReingresoResponse {
@@ -392,6 +394,7 @@ export async function processReingreso(
 
 export interface RechazaPresupuestoRequest {
   observacion?: string;
+  userId: number;
 }
 
 export interface RechazaPresupuestoResponse {
@@ -437,6 +440,7 @@ export async function processRechazaPresupuesto(
 export interface PresupuestoRequest {
   monto: number;
   observacion?: string;
+  userId: number;
 }
 
 export interface PresupuestoResponse {
@@ -475,6 +479,7 @@ export async function processPresupuesto(
 
 export interface ReparadoRequest {
   observacion?: string;
+  userId: number;
 }
 
 export interface ReparadoResponse {
@@ -511,6 +516,7 @@ export async function processReparado(
 
 export interface RechazarRequest {
   observacion: string;
+  userId: number;
 }
 
 export interface RechazarResponse {
@@ -547,6 +553,7 @@ export async function processRechazar(
 
 export interface EsperaRepuestoRequest {
   observacion: string;
+  userId: number;
 }
 
 export interface EsperaRepuestoResponse {
@@ -588,6 +595,7 @@ export interface RepDomicilioRequest {
   facturado?: boolean;
   tipoFacturaId?: number;
   nroFactura?: string;
+  userId: number;
 }
 
 export interface RepDomicilioResponse {
@@ -626,7 +634,7 @@ export async function processRepDomicilio(
 
 export interface ArmadoRequest {
   observacion?: string;
-  userId?: number;
+  userId: number;
 }
 
 export interface ArmadoResponse {
@@ -665,7 +673,7 @@ export async function processArmado(
 export interface ArchivarRequest {
   ubicacion: string;
   observacion?: string;
-  userId?: number;
+  userId: number;
 }
 
 export interface ArchivarResponse {

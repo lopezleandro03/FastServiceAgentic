@@ -9,6 +9,11 @@ public class ReingresoRequest
     /// Required observation explaining the reason for reingreso
     /// </summary>
     public required string Observacion { get; set; }
+    
+    /// <summary>
+    /// User ID performing the action (required)
+    /// </summary>
+    public required int UserId { get; set; }
 }
 
 /// <summary>

@@ -69,7 +69,7 @@ interface UseChatReturn {
   exitOrderEdit: () => void;
   startAddNota: (orderNumber: number) => void;
   cancelAddNota: () => void;
-  startRetira: (orderNumber: number, presupuesto?: number) => void;
+  startRetira: (orderNumber: number, presupuesto?: number, orderStatus?: string, isGarantia?: boolean) => void;
   cancelRetira: () => void;
   startSena: (orderNumber: number) => void;
   cancelSena: () => void;
@@ -249,17 +249,17 @@ export const useChat = (options: UseChatOptions = {}): UseChatReturn => {
         if (trimmedContent === 'si' || trimmedContent === 'sí' || trimmedContent === 's' || trimmedContent === 'yes' || trimmedContent === '1') {
           montoToUse = retiraPresupuesto;
         } else {
-          // Try to parse as number
+          // Try to parse as number (allow zero for gratis/warranty repairs)
           const parsedMonto = parseFloat(content.replace(/[^0-9.,]/g, '').replace(',', '.'));
-          if (!isNaN(parsedMonto) && parsedMonto > 0) {
+          if (!isNaN(parsedMonto) && parsedMonto >= 0) {
             montoToUse = parsedMonto;
           }
         }
         
-        if (montoToUse === null || montoToUse <= 0) {
+        if (montoToUse === null || montoToUse < 0) {
           const errorMessage: ChatMessage = {
             id: (Date.now() + 1).toString(),
-            content: `❌ No pude entender el monto. Por favor responde **"sí"** para usar el presupuesto de $${retiraPresupuesto?.toLocaleString('es-AR') || '0'}, o ingresa el monto final (ej: 25000):`,
+            content: `❌ No pude entender el monto. Por favor responde **"sí"** para usar el presupuesto de $${retiraPresupuesto?.toLocaleString('es-AR') || '0'}, o ingresa el monto final (ej: 25000 o 0 para sin cargo):`,
             role: 'assistant',
             timestamp: new Date(),
           };
@@ -338,7 +338,7 @@ export const useChat = (options: UseChatOptions = {}): UseChatReturn => {
             monto: retiraMonto!,
             metodoPagoId: selectedMethod.id,
             facturado: false, // Default to non-invoiced for now
-            userId: userId, // Include logged-in user's ID
+            userId: userId!, // Include logged-in user's ID
           });
           
           const successMessage: ChatMessage = {
@@ -468,7 +468,7 @@ export const useChat = (options: UseChatOptions = {}): UseChatReturn => {
             monto: senaMonto!,
             metodoPagoId: selectedMethod.id,
             facturado: false, // Default to non-invoiced for now
-            userId: userId, // Include logged-in user's ID
+            userId: userId!, // Include logged-in user's ID
           });
           
           const successMessage: ChatMessage = {
@@ -545,6 +545,7 @@ export const useChat = (options: UseChatOptions = {}): UseChatReturn => {
               accion: 'acepta',
               monto: informarPresupPresupuesto || undefined,
               observacion: 'Presupuesto informado - Cliente acepta',
+              userId: userId!,
             });
             
             const successMessage: ChatMessage = {
@@ -590,6 +591,7 @@ export const useChat = (options: UseChatOptions = {}): UseChatReturn => {
               accion: 'rechaza',
               monto: informarPresupPresupuesto || undefined,
               observacion: 'Presupuesto informado - Cliente rechaza',
+              userId: userId!,
             });
             
             const successMessage: ChatMessage = {
@@ -690,6 +692,7 @@ export const useChat = (options: UseChatOptions = {}): UseChatReturn => {
             accion: informarPresupAccion!,
             monto: montoToUse || undefined,
             observacion: `Presupuesto informado - Cliente ${informarPresupAccion}`,
+            userId: userId!,
           });
           
           const accionEmoji = informarPresupAccion === 'acepta' ? '✅' : informarPresupAccion === 'rechaza' ? '❌' : '⏳';
@@ -752,6 +755,7 @@ export const useChat = (options: UseChatOptions = {}): UseChatReturn => {
       try {
         const result = await processReingreso(pendingReingresoOrderNumber, {
           observacion: trimmedContent,
+          userId: userId!,
         });
         
         const successMessage: ChatMessage = {
@@ -800,6 +804,7 @@ export const useChat = (options: UseChatOptions = {}): UseChatReturn => {
       try {
         const result = await processRechazaPresupuesto(pendingRechazaPresupOrderNumber, {
           observacion: observacion,
+          userId: userId!,
         });
         
         const observacionText = observacion ? `\n📝 **Observación:** ${observacion}` : '';
@@ -894,6 +899,7 @@ export const useChat = (options: UseChatOptions = {}): UseChatReturn => {
           const result = await processPresupuesto(pendingPresupuestoOrderNumber, {
             monto: parsedMonto,
             observacion: presupuestoTrabajo || undefined, // Work description goes to observacion (saved in Novedades)
+            userId: userId!,
           });
           
           const successMessage: ChatMessage = {
@@ -945,6 +951,7 @@ export const useChat = (options: UseChatOptions = {}): UseChatReturn => {
       try {
         const result = await processReparado(pendingReparadoOrderNumber, {
           observacion: observacion,
+          userId: userId!,
         });
         
         const observacionText = observacion ? `\n📝 **Observación:** ${observacion}` : '';
@@ -1000,6 +1007,7 @@ export const useChat = (options: UseChatOptions = {}): UseChatReturn => {
       try {
         const result = await processRechazar(pendingRechazarOrderNumber, {
           observacion: trimmedContent,
+          userId: userId!,
         });
         
         const successMessage: ChatMessage = {
@@ -1054,6 +1062,7 @@ export const useChat = (options: UseChatOptions = {}): UseChatReturn => {
       try {
         const result = await processEsperaRepuesto(pendingEsperaRepuestoOrderNumber, {
           observacion: trimmedContent,
+          userId: userId!,
         });
         
         const successMessage: ChatMessage = {
@@ -1174,6 +1183,7 @@ export const useChat = (options: UseChatOptions = {}): UseChatReturn => {
             monto: repDomicilioMonto!,
             metodoPagoId: selectedMethod.id,
             facturado: false,
+            userId: userId!,
           });
           
           const successMessage: ChatMessage = {
@@ -1282,7 +1292,7 @@ export const useChat = (options: UseChatOptions = {}): UseChatReturn => {
       try {
         const result = await processArmado(pendingArmadoOrderNumber, {
           observacion: observacion,
-          userId: userId,
+          userId: userId!,
         });
         
         const observacionText = observacion ? `\n📝 **Observación:** ${observacion}` : '';
@@ -1360,7 +1370,7 @@ export const useChat = (options: UseChatOptions = {}): UseChatReturn => {
           const result = await processArchivar(pendingArchivarOrderNumber, {
             ubicacion: archivarUbicacion!,
             observacion: observacion,
-            userId: userId,
+            userId: userId!,
           });
           
           const observacionText = observacion ? `\n📝 **Observación:** ${observacion}` : '';
@@ -1571,9 +1581,14 @@ export const useChat = (options: UseChatOptions = {}): UseChatReturn => {
   }, []);
 
   // Allow external components to set the selected order (for action suggestions)
+  // Clear chat messages when switching to a different order
   const setSelectedOrder = useCallback((order: OrderDetails | null) => {
+    // Only clear messages if switching to a different order (not when setting to null or same order)
+    if (order && (!selectedOrderDetails || order.orderNumber !== selectedOrderDetails.orderNumber)) {
+      setMessages([]);
+    }
     setSelectedOrderDetails(order);
-  }, []);
+  }, [selectedOrderDetails]);
 
   // Start adding a nota (conversational flow)
   const startAddNota = useCallback((orderNumber: number) => {
@@ -1594,11 +1609,59 @@ export const useChat = (options: UseChatOptions = {}): UseChatReturn => {
   }, []);
 
   // Start retira flow (conversational)
-  const startRetira = useCallback((orderNumber: number, presupuesto?: number) => {
-    setPendingRetiraOrderNumber(orderNumber);
-    setRetiraStep('monto');
-    setRetiraPresupuesto(presupuesto || 0);
-  }, []);
+  // For rejected orders (RECHAZADO, RECHAZO PRESUP.) or warranty orders, skip monto/metodo - amount is 0
+  const startRetira = useCallback(async (orderNumber: number, presupuesto?: number, orderStatus?: string, isGarantia?: boolean) => {
+    const statusUpper = (orderStatus || '').toUpperCase();
+    const isRejectedOrder = statusUpper === 'RECHAZADO' || statusUpper === 'RECHAZO PRESUP.' || statusUpper === 'PEND. RETIRO';
+    const isNoChargeOrder = isRejectedOrder || isGarantia;
+    
+    if (isNoChargeOrder) {
+      // For rejected or warranty orders, process immediately with amount 0 and no payment method needed
+      setIsLoading(true);
+      try {
+        const result = await processRetira(orderNumber, {
+          monto: 0,
+          metodoPagoId: 1, // Default method (not relevant for 0 amount)
+          facturado: false,
+          userId: userId!, // Include logged-in user's ID
+        });
+        
+        const reasonText = isGarantia ? 'garantía' : 'orden rechazada/sin reparación';
+        const successMessage: ChatMessage = {
+          id: Date.now().toString(),
+          content: `✅ **¡Retiro completado!**\n\n📋 **Orden #${result.orderNumber}**\n📊 **Estado:** ${result.newStatus}\n💰 **Monto:** Sin cargo\n\n*El cliente retiró el equipo sin costo (${reasonText}).*`,
+          role: 'assistant',
+          timestamp: new Date(),
+        };
+        setMessages((prev) => [...prev, successMessage]);
+        
+        // Refresh order details if viewing
+        if (selectedOrderDetails && selectedOrderDetails.orderNumber === orderNumber) {
+          const orderResponse = await fetch(`${API_BASE_URL}/api/orders/${orderNumber}`);
+          if (orderResponse.ok) {
+            const updatedOrder = await orderResponse.json();
+            setSelectedOrderDetails(updatedOrder);
+          }
+        }
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : 'Error desconocido';
+        const errorResponseMessage: ChatMessage = {
+          id: Date.now().toString(),
+          content: `❌ Error al procesar retiro: ${errorMessage}`,
+          role: 'assistant',
+          timestamp: new Date(),
+        };
+        setMessages((prev) => [...prev, errorResponseMessage]);
+      } finally {
+        setIsLoading(false);
+      }
+    } else {
+      // Normal flow - ask for monto and payment method
+      setPendingRetiraOrderNumber(orderNumber);
+      setRetiraStep('monto');
+      setRetiraPresupuesto(presupuesto || 0);
+    }
+  }, [selectedOrderDetails, setSelectedOrderDetails, setMessages, setIsLoading, userId]);
 
   // Cancel retira flow
   const cancelRetira = useCallback(() => {

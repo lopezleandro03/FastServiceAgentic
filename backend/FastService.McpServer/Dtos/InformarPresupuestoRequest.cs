@@ -19,6 +19,11 @@ public class InformarPresupuestoRequest
     /// Optional observation/notes
     /// </summary>
     public string? Observacion { get; set; }
+    
+    /// <summary>
+    /// User ID performing the action (required)
+    /// </summary>
+    public required int UserId { get; set; }
 }
 
 /// <summary>

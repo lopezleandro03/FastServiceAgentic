@@ -17,9 +17,9 @@ public class ProcessArmadoRequest
     public string? Observacion { get; set; }
 
     /// <summary>
-    /// The user ID performing the action
+    /// The user ID performing the action (required)
     /// </summary>
-    public int? UserId { get; set; }
+    public required int UserId { get; set; }
 }
 
 /// <summary>

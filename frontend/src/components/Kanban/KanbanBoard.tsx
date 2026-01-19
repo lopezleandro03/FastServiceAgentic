@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { KanbanBoardData, KanbanFilters as KanbanFiltersType } from '../../types/kanban';
 import { fetchKanbanBoard } from '../../services/orderApi';
 import { KanbanColumn } from './KanbanColumn';
@@ -7,14 +7,37 @@ import { Skeleton } from '../ui/skeleton';
 
 interface KanbanBoardProps {
   onOrderClick?: (orderNumber: number) => void;
+  userId?: number;
+  isTecnico?: boolean;
+  isManager?: boolean;
+  isAdmin?: boolean;
 }
 
-export const KanbanBoard: React.FC<KanbanBoardProps> = ({ onOrderClick }) => {
+export const KanbanBoard: React.FC<KanbanBoardProps> = ({ onOrderClick, userId, isTecnico, isManager, isAdmin }) => {
   const [boardData, setBoardData] = useState<KanbanBoardData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
   // T024: Lift filter state to KanbanBoard
-  const [filters, setFilters] = useState<KanbanFiltersType>({});
+  // Initialize with technicianId filter only for pure tecnicos (not managers/admins)
+  const isPureTecnico = isTecnico && !isManager && !isAdmin;
+  const initialFilters = useMemo<KanbanFiltersType>(() => {
+    if (isPureTecnico && userId) {
+      return { technicianId: userId };
+    }
+    return {};
+  }, [isPureTecnico, userId]);
+  
+  const [filters, setFilters] = useState<KanbanFiltersType>(initialFilters);
+  const [hasInitializedFilters, setHasInitializedFilters] = useState(false);
+
+  // Initialize filters with technicianId when user is a pure tecnico (only once when permissions load)
+  useEffect(() => {
+    if (!hasInitializedFilters && isPureTecnico && userId) {
+      setFilters({ technicianId: userId });
+      setHasInitializedFilters(true);
+    }
+  }, [isPureTecnico, userId, hasInitializedFilters]);
 
   const loadBoard = useCallback(async () => {
     setIsLoading(true);

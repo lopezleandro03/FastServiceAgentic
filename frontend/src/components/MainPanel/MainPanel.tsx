@@ -331,7 +331,13 @@ const MainPanel: React.FC<MainPanelProps> = ({
     // Show Kanban board when no specific orders are searched
     mainBodyContent = (
       <div className="h-full min-w-0 overflow-hidden">
-        <KanbanBoard onOrderClick={handleOrderClick} />
+        <KanbanBoard 
+          onOrderClick={handleOrderClick} 
+          userId={userId}
+          isTecnico={permissions?.isTecnico}
+          isManager={permissions?.isManager}
+          isAdmin={permissions?.isAdmin}
+        />
       </div>
     );
   }

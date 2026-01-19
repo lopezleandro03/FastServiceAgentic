@@ -23,9 +23,11 @@ import { UserPermissions } from '../../types/auth';
 interface ActionSuggestionsProps {
   orderNumber: number;
   presupuesto?: number;
+  orderStatus?: string;
+  isGarantia?: boolean;
   onAddMessage: (message: { role: 'assistant' | 'user'; content: string }) => void;
   onStartAddNota?: () => void;
-  onStartRetira?: (orderNumber: number, presupuesto?: number) => void;
+  onStartRetira?: (orderNumber: number, presupuesto?: number, orderStatus?: string, isGarantia?: boolean) => void;
   onStartSena?: (orderNumber: number) => void;
   onStartInformarPresup?: (orderNumber: number, presupuesto?: number) => void;
   onStartReingreso?: (orderNumber: number) => void;
@@ -50,6 +52,8 @@ interface ActionSuggestionsProps {
 const ActionSuggestions: React.FC<ActionSuggestionsProps> = ({
   orderNumber,
   presupuesto,
+  orderStatus,
+  isGarantia,
   onAddMessage,
   onStartAddNota,
   onStartRetira,
@@ -104,20 +108,33 @@ const ActionSuggestions: React.FC<ActionSuggestionsProps> = ({
     // Handle retira conversationally (AI-assisted flow)
     if (actionType === 'retira') {
       if (onStartRetira) {
+        const statusUpper = (orderStatus || '').toUpperCase();
+        const isRejectedOrder = statusUpper === 'RECHAZADO' || statusUpper === 'RECHAZO PRESUP.' || statusUpper === 'PEND. RETIRO';
+        const isNoChargeOrder = isRejectedOrder || isGarantia;
+        
         onAddMessage({
           role: 'user',
           content: `Quiero retirar la orden #${orderNumber}`,
         });
         
-        const presupuestoText = presupuesto && presupuesto > 0 
-          ? `El presupuesto registrado es de **$${presupuesto.toLocaleString('es-AR')}**.\n\n¿Deseas usar este monto? Responde **"sí"** o ingresa el monto final a cobrar:`
-          : `No hay presupuesto registrado para esta orden.\n\nPor favor, ingresa el monto final a cobrar:`;
-        
-        onAddMessage({
-          role: 'assistant',
-          content: `✅ **Retiro de orden #${orderNumber}**\n\n${presupuestoText}`,
-        });
-        onStartRetira(orderNumber, presupuesto);
+        if (isNoChargeOrder) {
+          // For rejected or warranty orders, process immediately without asking for amount
+          const reasonText = isGarantia ? 'Garantía - sin cargo' : 'Orden rechazada/sin cargo';
+          onAddMessage({
+            role: 'assistant',
+            content: `✅ **Retiro de orden #${orderNumber}**\n\n*${reasonText} - procesando retiro...*`,
+          });
+        } else {
+          const presupuestoText = presupuesto && presupuesto > 0 
+            ? `El presupuesto registrado es de **$${presupuesto.toLocaleString('es-AR')}**.\n\n¿Deseas usar este monto? Responde **"sí"** o ingresa el monto final a cobrar:`
+            : `No hay presupuesto registrado para esta orden.\n\nPor favor, ingresa el monto final a cobrar (o 0 para sin cargo):`;
+          
+          onAddMessage({
+            role: 'assistant',
+            content: `✅ **Retiro de orden #${orderNumber}**\n\n${presupuestoText}`,
+          });
+        }
+        onStartRetira(orderNumber, presupuesto, orderStatus, isGarantia);
       }
       return;
     }

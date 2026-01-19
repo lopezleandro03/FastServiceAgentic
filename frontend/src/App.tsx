@@ -157,6 +157,8 @@ function AppContent() {
         <ActionSuggestions
           orderNumber={selectedOrderDetails.orderNumber}
           presupuesto={selectedOrderDetails.presupuesto}
+          orderStatus={selectedOrderDetails.status}
+          isGarantia={selectedOrderDetails.isGarantia}
           onAddMessage={addMessage}
           onStartAddNota={handleStartAddNota}
           onStartRetira={startRetira}

@@ -36,9 +36,9 @@ public class ProcessRetiraRequest
     public string? NroFactura { get; set; }
 
     /// <summary>
-    /// The user performing the action
+    /// The user performing the action (required)
     /// </summary>
-    public int? UserId { get; set; }
+    public required int UserId { get; set; }
 }
 
 /// <summary>
